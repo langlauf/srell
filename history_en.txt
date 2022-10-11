@@ -1,3 +1,15 @@
+20221011; version 4.001:
+  * Fixed a bug that caused dereferencing a null pointer or infinite
+    loop when a backreference is followed by * or +, and the
+    backreference appears prior to the close bracket of the
+    corresponding pair of capturing brackets, such as /\1*()/, /(\1+)/.
+  * In accordance with the ECMAScript specification, restricted
+    positions where '-' can be written without escaping in character
+    classes. Now '-' following a predefined character class such as \d,
+    \s causes an error, unless it is the final character in a character
+    class. ([\s-0] causes an error, [\s-] is accepted).
+  * Adjusted internal UTF-8 iterators.
+
 20220618; version 4.000:
   * Added support for the v-flag mode that is expected to be added to
     a future version of ECMAScript.
