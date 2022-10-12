@@ -1,3 +1,9 @@
+20221012; version 4.002:
+  * Refixed the backreference bug in a different way because the fix in
+    4.001 did not cover the problem caused by such an expression as
+    /(?:\1+)*()/. Fixed also an infinite loop caused by an expression
+    like /()(?:\1+)*/.
+
 20221011; version 4.001:
   * Fixed a bug that caused dereferencing a null pointer or infinite
     loop when a backreference is followed by * or +, and the

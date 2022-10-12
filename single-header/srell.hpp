@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.001
+**  SRELL (std::regex-like library) version 4.002
 **
 **  Copyright (c) 2012-2022, Nozomu Katoo. All rights reserved.
 **
@@ -14886,11 +14886,6 @@ struct re_state
 	{
 		return type == st_epsilon && next2 != 0 && character == meta_char::mc_bar;	//  '|'
 	}
-
-	bool is_asterisk_or_plus_for_onelen_atom() const
-	{
-		return type == st_epsilon && next1 == 1 && next2 == 2 && quantifier.is_asterisk_or_plus();
-	}
 };
 //  re_state
 
@@ -17991,6 +17986,7 @@ private:
 	{
 		atom.next2 = 1;
 		atom.type = st_backreference;
+		atom.quantifier.atleast = 0;
 
 //		atom.quantifier.atleast = cstate.atleast_widths_of_brackets[atom.number - 1];
 			//  Moved to check_backreferences().
@@ -18562,7 +18558,6 @@ private:
 
 						if (rbcs.type == st_roundbracket_close && rbcs.number == backrefno)
 						{
-							if (roundbracket_closepos < backrefpos)
 							{
 //								brs.quantifier.atleast = cstate.atleast_widths_of_brackets[backrefno - 1];
 								//  20210429: It was reported that clang-tidy was dissatisfied with this code.
@@ -18577,22 +18572,6 @@ private:
 								brs.quantifier.atleast = cstate.atleast_widths_of_brackets[backrefnoindex];
 
 								cstate.backref_used = true;
-							}
-							else
-							{
-								if (brs.next1 == -1)
-								{
-									state_type &prevstate = this->NFA_states[backrefpos + brs.next1];
-
-									if (prevstate.is_asterisk_or_plus_for_onelen_atom())
-									{
-										prevstate.next1 = 2;
-										prevstate.next2 = 0;
-									}
-								}
-
-								brs.type = st_epsilon;
-								brs.next2 = 0;
 							}
 							break;
 						}
@@ -18718,6 +18697,7 @@ private:
 				return canbe0length;
 
 			case st_backreference:
+				if (bracket_number != state.number)
 				{
 					const typename state_array::size_type nextpos = find_next1_of_bracketopen(state.number);
 
