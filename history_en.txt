@@ -1,3 +1,13 @@
+20221012; version 4.003:
+  * Re-refixed the backreference bug. Incidentally, this bug was
+    introduced along with the addition of the variable-length lookbehind
+    feature. Therefore, SRELL versions 2.000- have this bug.
+    (It originated from the fact that in a variable length lookbehind
+    assertion, it is possible that the parser encounters a backreference
+    prior to the corresponding bracket pair, such as /(?<=\1\s+(\d+))/,
+    and the parser cannot know immediately whether the corresponding
+    capturing bracket pair really exists in the expression).
+
 20221012; version 4.002:
   * Refixed the backreference bug in a different way because the fix in
     4.001 did not cover the problem caused by such an expression as
