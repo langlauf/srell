@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.003
+**  SRELL (std::regex-like library) version 4.004
 **
 **  Copyright (c) 2012-2022, Nozomu Katoo. All rights reserved.
 **
@@ -3659,9 +3659,6 @@ struct re_flags
 template <typename charT>
 struct re_compiler_state : public re_flags
 {
-	bool backref_used;
-
-	simple_array<uint_l32> atleast_widths_of_brackets;
 #if !defined(SRELL_NO_NAMEDCAPTURE)
 	groupname_mapper<charT> unresolved_gnames;
 #endif
@@ -3673,9 +3670,6 @@ struct re_compiler_state : public re_flags
 	void reset(const regex_constants::syntax_option_type flags)
 	{
 		re_flags::reset(flags);
-
-		backref_used = false;
-		atleast_widths_of_brackets.clear();
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
 		unresolved_gnames.clear();
@@ -5524,11 +5518,6 @@ private:
 
 		rb_open.atleast = rb_pop.atleast = atom.number + 1;
 		rb_open.atmost = rb_pop.atmost = this->number_of_brackets - 1;	//  max_bracketno;
-
-		if (cstate.atleast_widths_of_brackets.size() < atom.number)
-			cstate.atleast_widths_of_brackets.resize(atom.number, 0);
-
-		cstate.atleast_widths_of_brackets[atom.number - 1] = piecesize.atleast;
 	}
 
 	void combine_piece_with_quantifier(state_array &piece_with_quantifier, state_array &piece, const re_quantifier &quantifier, const re_quantifier &piecesize)
@@ -6724,9 +6713,6 @@ private:
 		atom.type = st_backreference;
 		atom.quantifier.atleast = 0;
 
-//		atom.quantifier.atleast = cstate.atleast_widths_of_brackets[atom.number - 1];
-			//  Moved to check_backreferences().
-
 		return true;
 	}
 
@@ -7294,23 +7280,7 @@ private:
 
 						if (rbcs.type == st_roundbracket_close && rbcs.number == backrefno)
 						{
-							if (roundbracket_closepos < backrefpos)
-							{
-//								brs.quantifier.atleast = cstate.atleast_widths_of_brackets[backrefno - 1];
-								//  20210429: It was reported that clang-tidy was dissatisfied with this code.
-								//  20211006: Replaced with the following code:
-
-								const uint_l32 backrefnoindex = backrefno - 1;
-
-								//  This can never be true. Added only for satisfying clang-tidy.
-								if (backrefnoindex >= cstate.atleast_widths_of_brackets.size())
-									return false;
-
-								brs.quantifier.atleast = cstate.atleast_widths_of_brackets[backrefnoindex];
-
-								cstate.backref_used = true;
-							}
-							else
+							if (roundbracket_closepos > backrefpos)
 							{
 								if (brs.next1 == -1)
 								{
@@ -7424,7 +7394,7 @@ private:
 					&& (state.type != st_roundbracket_open)
 					&& (state.type != st_roundbracket_close || state.number != bracket_number)
 					&& (state.type != st_repeat_in_push)
-					&& (state.type != st_backreference || (state.quantifier.atleast == 0 && state.next1 != state.next2))
+					&& (state.type != st_backreference || (state.next1 != state.next2))
 					&& (state.type != st_lookaround_open))
 				if (gather_nextchars(nextcharclass, pos + state.next2, checked, bracket_number, subsequent))
 					canbe0length = true;
@@ -7454,10 +7424,7 @@ private:
 				{
 					const typename state_array::size_type nextpos = find_next1_of_bracketopen(state.number);
 
-					const bool length0 = gather_nextchars(nextcharclass, nextpos, state.number, subsequent);
-
-					if (!length0)
-						return canbe0length;
+					gather_nextchars(nextcharclass, nextpos, state.number, subsequent);
 				}
 				break;
 
