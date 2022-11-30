@@ -1,3 +1,8 @@
+20221130; version 4.008:
+  * Priority was given back to the BMH matcher from the finder
+    introduced in 4.006.
+  * Minor improvements of ^ and $ in the multiline mode and \b/\B.
+
 20221124; version 4.007:
   * Added support for the un-bounded flag modifiers ((?ims-ims)), which
     are available only at the beginning of the expression (the same as
