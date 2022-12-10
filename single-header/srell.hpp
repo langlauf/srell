@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.008
+**  SRELL (std::regex-like library) version 4.009
 **
 **  Copyright (c) 2012-2022, Nozomu Katoo. All rights reserved.
 **
@@ -20645,6 +20645,7 @@ public:	//  For internal.
 	void set_prefix_first_(const BidirectionalIterator pf)
 	{
 		prefix_.first = pf;
+		prefix_.matched = prefix_.first != prefix_.second;
 	}
 
 	bool mark_as_failed_()
@@ -20794,18 +20795,44 @@ typedef smatch u8csmatch;
 	namespace regex_internal
 	{
 
+#if !defined(SRELL_NO_APIEXT)
+
+template <typename charT>
+struct repoptions
+{
+	const charT *fmt_begin;
+	const charT *fmt_end;
+	bool global;
+
+	repoptions(const charT *const b, const charT *const e, const bool g)
+		: fmt_begin(b), fmt_end(e), global(g)
+	{
+	}
+};
+
+template <typename charT, typename ST, typename SA, typename BidiIter>
+bool call_mrformat(std::basic_string<charT, ST, SA> &s, const match_results<BidiIter> &m, void *p)
+{
+	const repoptions<charT> *const opts = reinterpret_cast<const repoptions<charT> *>(p);
+
+	m.format(std::back_inserter(s), opts->fmt_begin, opts->fmt_end);	//, flags);
+	return opts->global;
+}
+
+#endif	//  !defined(SRELL_NO_APIEXT)
+
 template <typename charT, typename traits>
-class regex_object : public re_compiler<charT, traits>
+class re_object : public re_compiler<charT, traits>
 {
 public:
 
-	template <typename BidirectionalIterator>
+	template <typename BidirectionalIterator, typename Allocator>
 	bool search
 	(
 		const BidirectionalIterator begin,
 		const BidirectionalIterator end,
 		const BidirectionalIterator lookbehind_limit,
-		match_results<BidirectionalIterator> &results,
+		match_results<BidirectionalIterator, Allocator> &results,
 		const regex_constants::match_flag_type flags /* = regex_constants::match_default */
 	) const
 	{
@@ -20880,10 +20907,10 @@ private:
 
 	typedef typename traits::utf_traits utf_traits;
 
-	template <const bool icase, typename BidirectionalIterator>
+	template <const bool icase, typename BidirectionalIterator, typename Allocator>
 	bool do_search
 	(
-		match_results<BidirectionalIterator> &results
+		match_results<BidirectionalIterator, Allocator> &results
 	) const
 	{
 		re_search_state</*charT, */BidirectionalIterator> &sstate = results.sstate_;
@@ -20932,8 +20959,8 @@ private:
 
 #if !defined(SRELLDBG_NO_SCFINDER)
 
-	template <const bool icase, typename ContiguousIterator>
-	bool do_search_mc(match_results<ContiguousIterator> &results) const
+	template <const bool icase, typename ContiguousIterator, typename Allocator>
+	bool do_search_mc(match_results<ContiguousIterator, Allocator> &results) const
 	{
 		typedef typename std::iterator_traits<ContiguousIterator>::value_type char_type;
 		re_search_state<ContiguousIterator> &sstate = results.sstate_;
@@ -20972,8 +20999,8 @@ private:
 		return false;
 	}
 
-	template <const bool icase, typename BidirectionalIterator>
-	bool do_search_noncontiguous(match_results<BidirectionalIterator> &results) const
+	template <const bool icase, typename BidirectionalIterator, typename Allocator>
+	bool do_search_noncontiguous(match_results<BidirectionalIterator, Allocator> &results) const
 	{
 		typedef typename std::iterator_traits<BidirectionalIterator>::value_type char_type;
 		re_search_state<BidirectionalIterator> &sstate = results.sstate_;
@@ -21079,9 +21106,7 @@ private:
 	template <const bool icase, const bool reverse, typename BidirectionalIterator>
 	bool run_automaton
 	(
-//		match_results<BidirectionalIterator> &results,
 		re_search_state</*charT, */BidirectionalIterator> &sstate
-//		, const bool is_recursive /* = false */
 	) const
 	{
 		typedef casehelper<uchar32, icase> casehelper_type;
@@ -21833,8 +21858,151 @@ private:
 			}
 		}
 	}
+
+#if !defined(SRELL_NO_APIEXT)
+
+private:
+
+	template <typename ST, typename SA, typename iteratorTag>
+	iteratorTag pos0_(const std::basic_string<charT, ST, SA> &s, iteratorTag) const
+	{
+		return s.begin();
+	}
+	template <typename ST, typename SA>
+	const charT *pos0_(const std::basic_string<charT, ST, SA> &s, const charT *) const
+	{
+		return s.data();
+	}
+
+protected:
+
+	template <typename ST, typename SA, typename RAIter, typename MA>
+	void do_replace(
+		std::basic_string<charT, ST, SA> &s,
+		bool (*repfunc)(std::basic_string<charT, ST, SA> &, const match_results<RAIter, MA> &, void *),
+		void *ptr
+	) const
+	{
+		typedef std::basic_string<charT, ST, SA> string_type;
+		typedef typename string_type::size_type size_type;
+		typedef typename traits::utf_traits utf_traits;
+		typedef match_results<RAIter, MA> match_type;
+		regex_constants::match_flag_type flags = regex_constants::match_default;
+		string_type subst;
+		match_type match;
+		size_type offset = 0;
+		size_type prevend = 0;
+
+		for (;;)
+		{
+			if (!this->search(pos0_(s, RAIter()) + offset, pos0_(s, RAIter()) + s.size(), pos0_(s, RAIter()), match, flags))
+				break;
+
+			const typename match_type::size_type matchlen = match.length(0);
+
+			match.set_prefix_first_(pos0_(s, RAIter()) + prevend);
+
+			offset = match[0].second - pos0_(s, RAIter());
+
+			const bool continuable = repfunc(subst, match, ptr);
+
+			s.replace(match[0].first - pos0_(s, RAIter()), matchlen, subst);
+
+			if (!continuable)
+				break;
+
+			offset += subst.size() - matchlen;
+			prevend = offset;
+
+			if (matchlen == 0)
+			{
+				if (offset == s.size())
+				{
+					break;
+				}
+				else
+				{
+					RAIter it = pos0_(s, RAIter()) + offset;
+
+					utf_traits::codepoint_inc(it, pos0_(s, RAIter()) + s.size());
+					offset = it - pos0_(s, RAIter());
+				}
+			}
+
+			subst.clear();
+			flags |= regex_constants::match_prev_avail;
+		}
+	}
+
+	template <typename container, typename ST, typename SA>
+	void do_split(
+		container &c,
+		const std::basic_string<charT, ST, SA> &s,
+		const std::size_t limit /* = -1 */
+	) const
+	{
+		typedef std::basic_string<charT, ST, SA> string_type;
+		typedef typename string_type::size_type size_type;
+		typedef typename traits::utf_traits utf_traits;
+		typedef match_results<const charT *> match_type;
+		regex_constants::match_flag_type flags = regex_constants::match_default;
+		size_type offset = 0;
+		size_type prevend = 0;
+		std::size_t count = 0;
+		match_type match;
+
+		//  22.2.5.14 RegExp.prototype [ @@split ] ( string, limit ), step 14:
+		if (limit == 0)
+			return;
+
+		//  22.2.5.14 RegExp.prototype [ @@split ] ( string, limit ), step 16:
+		if (offset == s.size())
+		{
+			if (!this->search(s.data() + offset, s.data() + s.size(), s.data(), match, flags))
+				c.push_back(s);
+
+			return;
+		}
+
+		for (; offset < s.size();)
+		{
+			if (!this->search(s.data() + offset, s.data() + s.size(), s.data(), match, flags))
+				break;
+
+			if (match[0].second != s.data() + prevend)
+			{
+				if (++count == limit)
+					break;
+				c.push_back(string_type(s.data() + prevend, match[0].first));
+
+				prevend = match[0].second - s.data();
+
+				for (typename match_type::size_type i = 1; i < match.size(); ++i)
+				{
+					if (++count == limit)
+						goto FINAL_PUSH;
+					c.push_back(match[i].str());
+				}
+
+				offset = prevend;
+			}
+			else
+			{
+				const charT *nextpos = s.data() + offset;
+
+				utf_traits::codepoint_inc(nextpos, s.data() + s.size());
+				offset = nextpos - s.data();
+			}
+			flags |= regex_constants::match_prev_avail;
+		}
+
+		FINAL_PUSH:
+		c.push_back(string_type(s.data() + prevend, s.size() - prevend));
+	}
+
+#endif	//  !defined(SRELL_NO_APIEXT)
 };
-//  regex_object
+//  re_object
 
 	}	//  namespace regex_internal
 
@@ -21843,7 +22011,7 @@ private:
 
 //  28.8, class template basic_regex:
 template <class charT, class traits = regex_traits<charT> >
-class basic_regex : public regex_internal::regex_object<charT, traits>
+class basic_regex : public regex_internal::re_object<charT, traits>
 {
 public:
 
@@ -22032,6 +22200,258 @@ public:
 	{
 		regex_internal::re_object_core<charT, traits>::swap(e);
 	}
+
+#if !defined(SRELL_NO_APIEXT)
+
+	template <typename BidirectionalIterator, typename Allocator>
+	bool match(
+		const BidirectionalIterator begin,
+		const BidirectionalIterator end,
+		match_results<BidirectionalIterator, Allocator> &m,
+		const regex_constants::match_flag_type flags = regex_constants::match_default
+	) const
+	{
+		return base_type::search(begin, end, begin, m, flags | regex_constants::match_continuous | regex_constants::match_match_);
+	}
+
+	template <typename BidirectionalIterator>
+	bool match(
+		const BidirectionalIterator begin,
+		const BidirectionalIterator end,
+		const regex_constants::match_flag_type flags = regex_constants::match_default
+	) const
+	{
+		match_results<BidirectionalIterator> m;
+		return this->match(begin, end, m, flags);
+	}
+
+	template <typename Allocator>
+	bool match(
+		const charT *const str,
+		match_results<const charT *, Allocator> &m,
+		const regex_constants::match_flag_type flags = regex_constants::match_default
+	) const
+	{
+		return this->match(str, str + std::char_traits<charT>::length(str), m, flags);
+	}
+
+	bool match(
+		const charT *const str,
+		const regex_constants::match_flag_type flags = regex_constants::match_default
+	) const
+	{
+		return this->match(str, str + std::char_traits<charT>::length(str), flags);
+	}
+
+	template <typename ST, typename SA, typename MA>
+	bool match(
+		const std::basic_string<charT, ST, SA> &s,
+		match_results<typename std::basic_string<charT, ST, SA>::const_iterator, MA> &m,
+		const regex_constants::match_flag_type flags = regex_constants::match_default
+	) const
+	{
+		return this->match(s.begin(), s.end(), m, flags);
+	}
+
+	template <typename ST, typename SA>
+	bool match(
+		const std::basic_string<charT, ST, SA> &s,
+		const regex_constants::match_flag_type flags = regex_constants::match_default
+	) const
+	{
+		return this->match(s.begin(), s.end(), flags);
+	}
+
+	template <typename BidirectionalIterator, typename Allocator>
+	bool search(
+		const BidirectionalIterator begin,
+		const BidirectionalIterator end,
+		const BidirectionalIterator lookbehind_limit,
+		match_results<BidirectionalIterator, Allocator> &m,
+		const regex_constants::match_flag_type flags = regex_constants::match_default
+	) const
+	{
+		return base_type::search(begin, end, lookbehind_limit, m, flags);
+	}
+
+	template <typename BidirectionalIterator>
+	bool search(
+		const BidirectionalIterator begin,
+		const BidirectionalIterator end,
+		const BidirectionalIterator lookbehind_limit,
+		const regex_constants::match_flag_type flags = regex_constants::match_default
+	) const
+	{
+		match_results<BidirectionalIterator> m;
+		return base_type::search(begin, end, lookbehind_limit, m, flags);
+	}
+
+	template <typename BidirectionalIterator, typename Allocator>
+	bool search(
+		const BidirectionalIterator begin,
+		const BidirectionalIterator end,
+		match_results<BidirectionalIterator, Allocator> &m,
+		const regex_constants::match_flag_type flags = regex_constants::match_default
+	) const
+	{
+		return base_type::search(begin, end, begin, m, flags);
+	}
+
+	template <typename BidirectionalIterator>
+	bool search(
+		const BidirectionalIterator begin,
+		const BidirectionalIterator end,
+		const regex_constants::match_flag_type flags = regex_constants::match_default
+	) const
+	{
+		return this->search(begin, end, begin, flags);
+	}
+
+	template <typename Allocator>
+	bool search(
+		const charT *const str,
+		match_results<const charT *, Allocator> &m,
+		const regex_constants::match_flag_type flags = regex_constants::match_default
+	) const
+	{
+		return this->search(str, str + std::char_traits<charT>::length(str), m, flags);
+	}
+
+	bool search(
+		const charT *const str,
+		const regex_constants::match_flag_type flags = regex_constants::match_default
+	) const
+	{
+		return this->search(str, str + std::char_traits<charT>::length(str), flags);
+	}
+
+	template <typename ST, typename SA, typename MA>
+	bool search(
+		const std::basic_string<charT, ST, SA> &s,
+		match_results<typename std::basic_string<charT, ST, SA>::const_iterator, MA> &m,
+		const regex_constants::match_flag_type flags = regex_constants::match_default
+	) const
+	{
+		return this->search(s.begin(), s.end(), m, flags);
+	}
+
+	template <typename ST, typename SA>
+	bool search(
+		const std::basic_string<charT, ST, SA> &s,
+		const regex_constants::match_flag_type flags = regex_constants::match_default
+	) const
+	{
+		return this->search(s.begin(), s.end(), flags);
+	}
+
+	template <typename ST, typename SA>
+	void replace(
+		std::basic_string<charT, ST, SA> &s,
+		const charT *const fmt_begin,
+		const charT *const fmt_end,
+		const bool global = false
+	) const
+	{
+		regex_internal::repoptions<charT> opts(fmt_begin, fmt_end, global);
+
+		this->do_replace(s, regex_internal::call_mrformat<charT, ST, SA, const charT *>, reinterpret_cast<void *>(&opts));
+	}
+
+	template <typename ST, typename SA>
+	void replace(
+		std::basic_string<charT, ST, SA> &s,
+		const charT *const fmt,
+		const bool global = false
+	) const
+	{
+		replace(s, fmt, fmt + std::char_traits<charT>::length(fmt), global);
+	}
+
+	template <typename ST, typename SA, typename FST, typename FSA>
+	void replace(
+		std::basic_string<charT, ST, SA> &s,
+		const std::basic_string<charT, FST, FSA> &fmt,
+		const bool global = false
+	) const
+	{
+		replace(s, fmt.data(), fmt.data() + fmt.size(), global);
+	}
+
+	template <typename ST, typename SA, typename RandomAccessIterator, typename MA>
+	void replace(
+		std::basic_string<charT, ST, SA> &s,
+		bool (*repfunc)(std::basic_string<charT, ST, SA> &, const match_results<RandomAccessIterator, MA> &, void *),
+		void *ptr = NULL
+	) const
+	{
+		this->do_replace(s, repfunc, ptr);
+	}
+
+	template <typename S, typename MR>
+	void replace(
+		std::basic_string<charT, typename S::traits_type, typename S::allocator_type> &s,
+		bool (*repfunc)(std::basic_string<charT, typename S::traits_type, typename S::allocator_type> &, const match_results<typename MR::value_type::iterator, typename MR::allocator_type> &, void *),
+		void *ptr = NULL
+	) const
+	{
+		this->do_replace(s, repfunc, ptr);
+	}
+
+	//  For (?:u8c?|u16w?|u32|u1632w|w)?cmatch.
+	void replace(
+		std::basic_string<charT> &s,
+		bool (*repfunc)(std::basic_string<charT> &, const match_results<const charT *> &, void *),
+		void *ptr = NULL
+	) const
+	{
+		this->do_replace(s, repfunc, ptr);
+	}
+
+	//  For (?:u8c?|u16w?|u32|u1632w|w)?smatch.
+	void replace(
+		std::basic_string<charT> &s,
+		bool (*repfunc)(std::basic_string<charT> &, const match_results<typename std::basic_string<charT>::const_iterator> &, void *),
+		void *ptr = NULL
+	) const
+	{
+		this->do_replace(s, repfunc, ptr);
+	}
+
+	//  For lambda with (?:u8c?|u16w?|u32|u1632w|w)?cmatch.
+	void creplace(
+		std::basic_string<charT> &s,
+		bool (*repfunc)(std::basic_string<charT> &, const match_results<const charT *> &, void *),
+		void *ptr = NULL
+	) const
+	{
+		this->do_replace(s, repfunc, ptr);
+	}
+
+	//  For lambda with (?:u8c?|u16w?|u32|u1632w|w)?smatch.
+	void sreplace(
+		std::basic_string<charT> &s,
+		bool (*repfunc)(std::basic_string<charT> &, const match_results<typename std::basic_string<charT>::const_iterator> &, void *),
+		void *ptr = NULL
+	) const
+	{
+		this->do_replace(s, repfunc, ptr);
+	}
+
+	template <typename container, typename ST, typename SA>
+	void split(
+		container &c,
+		const std::basic_string<charT, ST, SA> &s,
+		const std::size_t limit = static_cast<std::size_t>(-1)
+	) const
+	{
+		this->do_split(c, s, limit);
+	}
+
+private:
+
+	typedef regex_internal::re_object<charT, traits> base_type;
+
+#endif	//  !defined(SRELL_NO_APIEXT)
 };
 template <class charT, class traits>
 	const regex_constants::syntax_option_type basic_regex<charT, traits>::icase;
