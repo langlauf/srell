@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.009
+**  SRELL (std::regex-like library) version 4.010
 **
 **  Copyright (c) 2012-2022, Nozomu Katoo. All rights reserved.
 **
@@ -19736,6 +19736,24 @@ public:
 	{
 		return str().compare(s);
 	}
+
+#if !defined(SRELL_NO_APIEXT)
+
+	template <typename ST, typename SA>
+	operator std::basic_string<value_type, ST, SA>() const
+	{
+		typedef std::basic_string<value_type, ST, SA> string_type2;
+		return matched ? string_type2(this->first, this->second) : string_type2();
+	}
+
+	template <typename ST, typename SA>
+	std::basic_string<value_type, ST, SA> str() const
+	{
+		typedef std::basic_string<value_type, ST, SA> string_type2;
+		return matched ? string_type2(this->first, this->second) : string_type2();
+	}
+
+#endif	//  !defined(SRELL_NO_APIEXT)
 };
 
 //  28.9.2, sub_match non-member operators:
@@ -21048,40 +21066,15 @@ private:
 		return false;
 	}
 
-	template <typename CharT1>
-	bool is_contiguous(const CharT1 *) const
+	bool is_contiguous(const charT *) const
 	{
 		return true;
 	}
 
-	bool is_contiguous(std::string::const_iterator) const
+	bool is_contiguous(typename std::basic_string<charT>::const_iterator) const
 	{
 		return true;
 	}
-
-	bool is_contiguous(std::wstring::const_iterator) const
-	{
-		return true;
-	}
-
-#if defined(SRELL_CPP20_CHAR8_ENABLED)
-	bool is_contiguous(std::u8string::const_iterator) const
-	{
-		return true;
-	}
-#endif
-
-#if defined(SRELL_CPP11_CHAR1632_ENABLED)
-	bool is_contiguous(std::u16string::const_iterator) const
-	{
-		return true;
-	}
-
-	bool is_contiguous(std::u32string::const_iterator) const
-	{
-		return true;
-	}
-#endif
 
 #endif	//  !defined(SRELLDBG_NO_SCFINDER)
 
@@ -21874,6 +21867,17 @@ private:
 		return s.data();
 	}
 
+	template <typename ST, typename SA, typename iteratorTag>
+	iteratorTag pos1_(const std::basic_string<charT, ST, SA> &s, iteratorTag) const
+	{
+		return s.end();
+	}
+	template <typename ST, typename SA>
+	const charT *pos1_(const std::basic_string<charT, ST, SA> &s, const charT *) const
+	{
+		return s.data() + s.size();
+	}
+
 protected:
 
 	template <typename ST, typename SA, typename RAIter, typename MA>
@@ -21895,7 +21899,7 @@ protected:
 
 		for (;;)
 		{
-			if (!this->search(pos0_(s, RAIter()) + offset, pos0_(s, RAIter()) + s.size(), pos0_(s, RAIter()), match, flags))
+			if (!this->search(pos0_(s, RAIter()) + offset, pos1_(s, RAIter()), pos0_(s, RAIter()), match, flags))
 				break;
 
 			const typename match_type::size_type matchlen = match.length(0);
@@ -21924,7 +21928,7 @@ protected:
 				{
 					RAIter it = pos0_(s, RAIter()) + offset;
 
-					utf_traits::codepoint_inc(it, pos0_(s, RAIter()) + s.size());
+					utf_traits::codepoint_inc(it, pos1_(s, RAIter()));
 					offset = it - pos0_(s, RAIter());
 				}
 			}
@@ -21934,20 +21938,33 @@ protected:
 		}
 	}
 
-	template <typename container, typename ST, typename SA>
+	template <typename BidiIter>
+	struct submatch_helper : public sub_match<BidiIter>
+	{
+		submatch_helper(const BidiIter f, const BidiIter s, const bool m = true)
+		{
+			this->first = f;
+			this->second = s;
+			this->matched = m;
+		}
+	};
+
+	template <typename MatchResults, typename container, typename ST, typename SA>
 	void do_split(
 		container &c,
 		const std::basic_string<charT, ST, SA> &s,
 		const std::size_t limit /* = -1 */
 	) const
 	{
-		typedef std::basic_string<charT, ST, SA> string_type;
-		typedef typename string_type::size_type size_type;
 		typedef typename traits::utf_traits utf_traits;
-		typedef match_results<const charT *> match_type;
+		typedef MatchResults match_type;
+		typedef typename container::value_type::iterator BidiIter;
+		typedef submatch_helper<BidiIter> helper;
 		regex_constants::match_flag_type flags = regex_constants::match_default;
-		size_type offset = 0;
-		size_type prevend = 0;
+		const BidiIter begin = pos0_(s, BidiIter());
+		const BidiIter end = pos1_(s, BidiIter());
+		BidiIter offset = begin;
+		BidiIter prevend = begin;
 		std::size_t count = 0;
 		match_type match;
 
@@ -21956,48 +21973,45 @@ protected:
 			return;
 
 		//  22.2.5.14 RegExp.prototype [ @@split ] ( string, limit ), step 16:
-		if (offset == s.size())
+		if (offset == end)
 		{
-			if (!this->search(s.data() + offset, s.data() + s.size(), s.data(), match, flags))
-				c.push_back(s);
+			if (!this->search(offset, end, begin, match, flags))
+				c.push_back(helper(begin, end));
 
 			return;
 		}
 
-		for (; offset < s.size();)
+		for (; offset < end;)
 		{
-			if (!this->search(s.data() + offset, s.data() + s.size(), s.data(), match, flags))
+			if (!this->search(offset, end, begin, match, flags))
 				break;
 
-			if (match[0].second != s.data() + prevend)
+			if (match[0].second != prevend)
 			{
 				if (++count == limit)
 					break;
-				c.push_back(string_type(s.data() + prevend, match[0].first));
+				c.push_back(helper(prevend, match[0].first));
 
-				prevend = match[0].second - s.data();
+				prevend = match[0].second;
 
 				for (typename match_type::size_type i = 1; i < match.size(); ++i)
 				{
 					if (++count == limit)
 						goto FINAL_PUSH;
-					c.push_back(match[i].str());
+					c.push_back(match[i]);
 				}
 
 				offset = prevend;
 			}
 			else
 			{
-				const charT *nextpos = s.data() + offset;
-
-				utf_traits::codepoint_inc(nextpos, s.data() + s.size());
-				offset = nextpos - s.data();
+				utf_traits::codepoint_inc(offset, end);
 			}
 			flags |= regex_constants::match_prev_avail;
 		}
 
 		FINAL_PUSH:
-		c.push_back(string_type(s.data() + prevend, s.size() - prevend));
+		c.push_back(helper(prevend, end));
 	}
 
 #endif	//  !defined(SRELL_NO_APIEXT)
@@ -22444,7 +22458,23 @@ public:
 		const std::size_t limit = static_cast<std::size_t>(-1)
 	) const
 	{
-		this->do_split(c, s, limit);
+		typedef match_results<typename container::value_type::iterator> match_type;
+		this->template do_split<match_type>(c, s, limit);
+	}
+
+	//  re.split<my_match_type>(listcontainer, string):
+	//  Overload for match_results<BidiIter, CustomAllocator> (my_match_type)
+	//  to be used internally instead of default
+	//  match_results<BidiIter, std::allocator<sub_match<BidiIter> >.
+	//  value_type of container must be sub_match<BidiIter>
+	template <typename MatchResults, typename container, typename ST, typename SA>
+	void split(
+		container &c,
+		const std::basic_string<charT, ST, SA> &s,
+		const std::size_t limit = static_cast<std::size_t>(-1)
+	) const
+	{
+		this->template do_split<MatchResults>(c, s, limit);
 	}
 
 private:
