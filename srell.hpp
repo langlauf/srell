@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.011
+**  SRELL (std::regex-like library) version 4.012
 **
 **  Copyright (c) 2012-2022, Nozomu Katoo. All rights reserved.
 **
@@ -10558,15 +10558,13 @@ protected:
 		return s.data() + s.size();
 	}
 
-	template <typename StringLike, typename RAIter, typename MA>
+	template <typename StringLike, typename ST, typename SA, typename RAIter, typename MA>
 	void do_replace(
 		StringLike &s,
-		bool (*repfunc)(std::basic_string<charT, typename StringLike::traits_type, typename StringLike::allocator_type> &, const match_results<RAIter, MA> &, void *),
+		bool (*repfunc)(std::basic_string<charT, ST, SA> &, const match_results<RAIter, MA> &, void *),
 		void *ptr
 	) const
 	{
-		typedef typename StringLike::traits_type ST;
-		typedef typename StringLike::allocator_type SA;
 		typedef std::basic_string<charT, ST, SA> string_type;
 		typedef typename string_type::size_type size_type;
 		typedef typename traits::utf_traits utf_traits;

@@ -1,5 +1,8 @@
-20221214; version 4.011:
-  ・[LWG Issue 3204] sub_matchにswap()を追加。
+20221216; version 4.012:
+  ・コンパイラによってreplace()のコンパイルに失敗する問題を修正。
+
+20221214; version 4.011/3.017（＊のみ）:
+  ＊[LWG Issue 3204] sub_matchにswap()を追加。
   ・replace()の仕様変更。std::basic_string風のコンテナ型なら何でも置換で
     きるように。
   ・srell::str_clipを追加。

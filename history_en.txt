@@ -1,5 +1,8 @@
-20221214; version 4.011:
-  * [LWG Issue 3204] Added swap() to sub_match.
+20221216; version 4.012:
+  * Fixed replace(). VC2005 could not compile it.
+
+20221214; version 4.011/3.017 (@ only):
+  @ [LWG Issue 3204] Added swap() to sub_match.
   * Modified replace() so that it can replace any container type that
     looks like std::basic_string.
   * Added srell::str_clip.
