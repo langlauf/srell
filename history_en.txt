@@ -1,3 +1,12 @@
+20221220; version 4.013:
+  * Fixed a minor issue in split(). When splitting "abc" by /$/, split()
+    returned {"abc", ""} instead of {"abc"} that is correct.
+  * Reduced the number of overload functions of replace(). Now when the
+    lambda expression is used, the type of match_results that will be
+    passed to a callback function needs specifying explicitly as the
+    template argument.
+  * Added regex_iterator2.
+
 20221216; version 4.012:
   * Fixed replace(). VC2005 could not compile it.
 
@@ -6,8 +15,8 @@
   * Modified replace() so that it can replace any container type that
     looks like std::basic_string.
   * Added srell::str_clip.
-  * Added overload functions to split() that support iterators and a
-    pointer.
+  * Added overload functions to split() that support a pair of iterators
+    and a pointer.
 
 20221212; version 4.010:
   * Adjusted the behaviour of split() in accordance with the document.

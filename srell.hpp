@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.012
+**  SRELL (std::regex-like library) version 4.013
 **
 **  Copyright (c) 2012-2022, Nozomu Katoo. All rights reserved.
 **
@@ -4579,8 +4579,8 @@ struct posdata_holder
 					if (i == inspos)
 					{
 						seqs.insert(inspos, curseq);
-						for (uchar32 i = 0; i < seqlen; ++i)
-							indices[i] += seqlen;
+						for (uchar32 j = 0; j < seqlen; ++j)
+							indices[j] += seqlen;
 						break;
 					}
 
@@ -9517,6 +9517,28 @@ bool call_mrformat(std::basic_string<charT, ST, SA> &s, const match_results<Bidi
 	return opts->global;
 }
 
+template <typename charT, typename StringLike, typename iteratorTag>
+iteratorTag pos0_(const StringLike &s, iteratorTag)
+{
+	return s.begin();
+}
+template <typename charT, typename StringLike>
+const charT *pos0_(const StringLike &s, const charT *)
+{
+	return s.data();
+}
+
+template <typename charT, typename StringLike, typename iteratorTag>
+iteratorTag pos1_(const StringLike &s, iteratorTag)
+{
+	return s.end();
+}
+template <typename charT, typename StringLike>
+const charT *pos1_(const StringLike &s, const charT *)
+{
+	return s.data() + s.size();
+}
+
 #endif	//  !defined(SRELL_NO_APIEXT)
 
 template <typename charT, typename traits>
@@ -10536,28 +10558,6 @@ private:
 
 protected:
 
-	template <typename StringLike, typename iteratorTag>
-	iteratorTag pos0_(const StringLike &s, iteratorTag) const
-	{
-		return s.begin();
-	}
-	template <typename StringLike>
-	const charT *pos0_(const StringLike &s, const charT *) const
-	{
-		return s.data();
-	}
-
-	template <typename StringLike, typename iteratorTag>
-	iteratorTag pos1_(const StringLike &s, iteratorTag) const
-	{
-		return s.end();
-	}
-	template <typename StringLike>
-	const charT *pos1_(const StringLike &s, const charT *) const
-	{
-		return s.data() + s.size();
-	}
-
 	template <typename StringLike, typename ST, typename SA, typename RAIter, typename MA>
 	void do_replace(
 		StringLike &s,
@@ -10577,19 +10577,17 @@ protected:
 
 		for (;;)
 		{
-			if (!this->search(pos0_(s, RAIter()) + offset, pos1_(s, RAIter()), pos0_(s, RAIter()), match, flags))
+			if (!this->search(pos0_<charT>(s, RAIter()) + offset, pos1_<charT>(s, RAIter()), pos0_<charT>(s, RAIter()), match, flags))
 				break;
 
 			const typename match_type::size_type matchlen = match.length(0);
 
-			match.set_prefix_first_(pos0_(s, RAIter()) + prevend);
-
-			offset = match[0].second - pos0_(s, RAIter());
+			match.set_prefix_first_(pos0_<charT>(s, RAIter()) + prevend);
+			offset = match[0].second - pos0_<charT>(s, RAIter());
 
 			const bool continuable = repfunc(subst, match, ptr);
 
-			s.replace(match[0].first - pos0_(s, RAIter()), matchlen, subst);
-
+			s.replace(match[0].first - pos0_<charT>(s, RAIter()), matchlen, subst);
 			if (!continuable)
 				break;
 
@@ -10604,13 +10602,12 @@ protected:
 				}
 				else
 				{
-					RAIter it = pos0_(s, RAIter()) + offset;
+					RAIter it = pos0_<charT>(s, RAIter()) + offset;
 
-					utf_traits::codepoint_inc(it, pos1_(s, RAIter()));
-					offset = it - pos0_(s, RAIter());
+					utf_traits::codepoint_inc(it, pos1_<charT>(s, RAIter()));
+					offset = it - pos0_<charT>(s, RAIter());
 				}
 			}
-
 			subst.clear();
 			flags |= regex_constants::match_prev_avail;
 		}
@@ -10644,12 +10641,10 @@ protected:
 		std::size_t count = 0;
 		match_type match;
 
-		//  22.2.5.14 RegExp.prototype [ @@split ] ( string, limit ), step 14:
-		if (limit == 0)
+		if (limit == 0)	//  22.2.5.14 RegExp.prototype [ @@split ] ( string, limit ), step 14:
 			return;
 
-		//  22.2.5.14 RegExp.prototype [ @@split ] ( string, limit ), step 16:
-		if (offset == end)
+		if (offset == end)	//  22.2.5.14 RegExp.prototype [ @@split ] ( string, limit ), step 16:
 		{
 			if (!this->search(offset, end, begin, match, flags))
 				c.push_back(helper(begin, end));
@@ -10659,7 +10654,7 @@ protected:
 
 		for (; offset < end;)
 		{
-			if (!this->search(offset, end, begin, match, flags))
+			if (!this->search(offset, end, begin, match, flags) || match[0].first == end)
 				break;
 
 			if (match[0].second != prevend)
@@ -11095,50 +11090,6 @@ public:
 		this->do_replace(s, repfunc, ptr);
 	}
 
-	//  For (?:u8c?|u16w?|u32|u1632w|w)?cmatch.
-	template <typename StringLike>
-	void replace(
-		StringLike &s,
-		bool (*repfunc)(std::basic_string<charT, typename StringLike::traits_type, typename StringLike::allocator_type> &, const match_results<const charT *> &, void *),
-		void *ptr = NULL
-	) const
-	{
-		this->do_replace(s, repfunc, ptr);
-	}
-
-	//  For (?:u8c?|u16w?|u32|u1632w|w)?smatch.
-	template <typename StringLike>
-	void replace(
-		StringLike &s,
-		bool (*repfunc)(std::basic_string<charT, typename StringLike::traits_type, typename StringLike::allocator_type> &, const match_results<typename std::basic_string<charT>::const_iterator> &, void *),
-		void *ptr = NULL
-	) const
-	{
-		this->do_replace(s, repfunc, ptr);
-	}
-
-	//  For lambda with (?:u8c?|u16w?|u32|u1632w|w)?cmatch.
-	template <typename StringLike>
-	void creplace(
-		StringLike &s,
-		bool (*repfunc)(std::basic_string<charT, typename StringLike::traits_type, typename StringLike::allocator_type> &, const match_results<const charT *> &, void *),
-		void *ptr = NULL
-	) const
-	{
-		this->do_replace(s, repfunc, ptr);
-	}
-
-	//  For lambda with (?:u8c?|u16w?|u32|u1632w|w)?smatch.
-	template <typename StringLike>
-	void sreplace(
-		StringLike &s,
-		bool (*repfunc)(std::basic_string<charT, typename StringLike::traits_type, typename StringLike::allocator_type> &, const match_results<typename std::basic_string<charT>::const_iterator> &, void *),
-		void *ptr = NULL
-	) const
-	{
-		this->do_replace(s, repfunc, ptr);
-	}
-
 	template <typename container, typename ST, typename SA>
 	void split(
 		container &c,
@@ -11148,7 +11099,7 @@ public:
 	{
 		typedef typename container::value_type::iterator BidiIter;
 		typedef match_results<BidiIter> match_type;	//  match_type::value_type == container::value_type.
-		this->template do_split<match_type>(c, this->pos0_(s, BidiIter()), this->pos1_(s, BidiIter()), limit);
+		this->template do_split<match_type>(c, regex_internal::pos0_<charT>(s, BidiIter()), regex_internal::pos1_<charT>(s, BidiIter()), limit);
 	}
 
 	template <typename container, typename BidirectionalIterator>
@@ -11191,7 +11142,7 @@ public:
 	) const
 	{
 		typedef typename container::value_type::iterator BidiIter;
-		this->template do_split<MatchResults>(c, this->pos0_(s, BidiIter()), this->pos1_(s, BidiIter()), limit);
+		this->template do_split<MatchResults>(c, regex_internal::pos0_<charT>(s, BidiIter()), regex_internal::pos1_<charT>(s, BidiIter()), limit);
 	}
 
 	template <typename MatchResults, typename container, typename BidirectionalIterator>
@@ -11342,19 +11293,14 @@ public:
 		//  end-of-sequence, because it happens only when 1) never tried
 		//  regex_search, or 2) regex_search returned false.
 
-		if (this->match.size() == 0 || right.match.size() == 0)
+		if (right.match.size() == 0 || this->match.size() == 0)
 			return this->match.size() == right.match.size();
 
-		return
-			this->begin == right.begin
-			&&
-			this->end == right.end
-			&&
-			this->pregex == right.pregex
-			&&
-			this->flags == right.flags
-			&&
-			this->match[0] == right.match[0];
+		return this->begin == right.begin
+			&& this->end == right.end
+			&& this->pregex == right.pregex
+			&& this->flags == right.flags
+			&& this->match[0] == right.match[0];
 	}
 
 	bool operator!=(const regex_iterator &right) const
@@ -11503,6 +11449,371 @@ typedef regex_iterator<std::string::const_iterator, std::iterator_traits<std::st
 		typedef regex_iterator<std::wstring::const_iterator, std::iterator_traits<std::wstring::const_iterator>::value_type, u16regex_traits<std::iterator_traits<std::wstring::const_iterator>::value_type> > u16wsregex_iterator;
 		typedef u16wcregex_iterator u1632wcregex_iterator;
 		typedef u16wsregex_iterator u1632wsregex_iterator;
+	#endif
+#endif
+
+template <typename BidirectionalIterator, typename BasicRegex = basic_regex<typename std::iterator_traits<BidirectionalIterator>::value_type, regex_traits<typename std::iterator_traits<BidirectionalIterator>::value_type> >, typename MatchResults = match_results<BidirectionalIterator> >
+class regex_iterator2
+{
+public:
+
+	typedef typename std::iterator_traits<BidirectionalIterator>::value_type char_type;
+	typedef BasicRegex regex_type;
+	typedef typename regex_type::traits_type traits;
+	typedef MatchResults value_type;
+	typedef std::ptrdiff_t difference_type;
+	typedef const value_type *pointer;
+	typedef const value_type &reference;
+	typedef std::input_iterator_tag iterator_category;
+
+	regex_iterator2()
+	{
+	}
+
+	regex_iterator2(
+		const BidirectionalIterator b,
+		const BidirectionalIterator e,
+		const regex_type &re,
+		const regex_constants::match_flag_type m = regex_constants::match_default)
+		: begin_(b), end_(e), pregex_(&re), flags_(m)
+	{
+		rewind();
+	}
+
+	template <typename ST, typename SA>
+	regex_iterator2(
+		const std::basic_string<char_type, ST, SA> &s,
+		const regex_type &re,
+		const regex_constants::match_flag_type m = regex_constants::match_default)
+		: begin_(regex_internal::pos0_<char_type>(s, BidirectionalIterator()))
+		, end_(regex_internal::pos1_<char_type>(s, BidirectionalIterator()))
+		, pregex_(&re), flags_(m)
+	{
+		rewind();
+	}
+
+	regex_iterator2(const regex_iterator2 &right)
+	{
+		operator=(right);
+	}
+
+	regex_iterator2 &operator=(const regex_iterator2 &right)
+	{
+		if (this != &right)
+		{
+			this->begin_ = right.begin_;
+			this->end_ = right.end_;
+			this->pregex_ = right.pregex_;
+			this->flags_ = right.flags_;
+			this->match_ = right.match_;
+			this->prevmatch_empty_ = right.prevmatch_empty_;
+			this->submatch_ = right.submatch_;
+		}
+		return *this;
+	}
+
+	bool operator==(const regex_iterator2 &right) const
+	{
+		if (right.match_.size() == 0 || this->match_.size() == 0)
+			return this->match_.size() == right.match_.size();
+
+		return this->begin_ == right.begin_
+			&& this->end_ == right.end_
+			&& this->pregex_ == right.pregex_
+			&& this->flags_ == right.flags_
+			&& this->match_[0] == right.match_[0]
+			&& this->prevmatch_empty_ == right.prevmatch_empty_
+			&& this->submatch_ == right.submatch_;
+	}
+
+	bool operator!=(const regex_iterator2 &right) const
+	{
+//		return !(*this == right);
+		return !operator==(right);
+	}
+
+	const value_type &operator*() const
+	{
+		return match_;
+	}
+
+	const value_type *operator->() const
+	{
+		return &match_;
+	}
+
+	bool done() const
+	{
+		return match_.size() == 0;
+	}
+
+	void assign(
+		const BidirectionalIterator b,
+		const BidirectionalIterator e,
+		const regex_type &re,
+		const regex_constants::match_flag_type m = regex_constants::match_default)
+	{
+		begin_ = b;
+		end_ = e;
+		pregex_ = &re;
+		flags_ = m;
+		rewind();
+	}
+	void assign(const regex_iterator2 &right)
+	{
+		operator=(right);
+	}
+
+	void rewind()
+	{
+		flags_ &= ~regex_constants::match_prev_avail;
+
+		if (regex_search(begin_, end_, begin_, match_, *pregex_, flags_))
+		{
+			flags_ |= regex_constants::match_prev_avail;
+			prevmatch_empty_ = match_[0].first == match_[0].second;
+		}
+		else
+			match_.set_prefix_first_(begin_);
+
+		submatch_ = 0u;
+	}
+
+	regex_iterator2 &operator++()
+	{
+		if (match_.size())
+		{
+			const BidirectionalIterator prevend = match_[0].second;
+			BidirectionalIterator start = prevend;
+
+			if (prevmatch_empty_)
+			{
+				if (start == end_)
+				{
+					match_.clear_();
+					return *this;
+				}
+				else
+				{
+//					++start;
+					utf_traits::codepoint_inc(start, end_);
+				}
+			}
+
+			if (regex_search(start, end_, begin_, match_, *pregex_, flags_))
+				prevmatch_empty_ = match_[0].first == match_[0].second;
+
+			match_.set_prefix_first_(prevend);
+		}
+		return *this;
+	}
+
+	regex_iterator2 operator++(int)
+	{
+		const regex_iterator2 tmp = *this;
+		++(*this);
+		return tmp;
+	}
+
+	//  For replace.
+
+	//  Replaces [match_[0].first, match_[0].second) in
+	//  [entire_string.begin(), entire_string.end()) with replacement,
+	//  and adjusts begin_, end_, match_[0].first/second, and
+	//  match_.prefix().first/second, even if the allocation of
+	//  entire_string is moved as a result of the replacing operation.
+	template <typename ST, typename SA>
+	void replace(std::basic_string<char_type, ST, SA> &entire_string, const std::basic_string<char_type, ST, SA> &replacement)
+	{
+		typedef std::basic_string<char_type, ST, SA> string_type;
+
+		if (match_.size())
+		{
+			const BidirectionalIterator oldbegin = regex_internal::pos0_<char_type>(entire_string, BidirectionalIterator());
+			const typename string_type::size_type oldbeginoffset = begin_ - oldbegin;
+			const typename string_type::size_type oldendoffset = end_ - oldbegin;
+			const typename string_type::size_type pos = match_[0].first - oldbegin;
+			const typename string_type::size_type count = match_[0].second - match_[0].first;
+			const typename match_type::difference_type addition = replacement.size() - match_.length(0);
+
+			entire_string.replace(pos, count, replacement);
+
+			const BidirectionalIterator newbegin = regex_internal::pos0_<char_type>(entire_string, BidirectionalIterator());
+
+			begin_ = newbegin + oldbeginoffset;
+			end_ = newbegin + (oldendoffset + addition);	//  VC checks if an iterator exceeds end().
+
+			match_.update_m0_(newbegin + pos, newbegin + (pos + count + addition));
+
+			prevmatch_empty_ = count == 0;
+		}
+	}
+
+	template <typename ST, typename SA>
+	void replace(std::basic_string<char_type, ST, SA> &entire_string, const BidirectionalIterator b, const BidirectionalIterator e)
+	{
+		typedef std::basic_string<char_type, ST, SA> string_type;
+
+		replace(entire_string, string_type(b, e));
+	}
+
+	template <typename ST, typename SA>
+	void replace(std::basic_string<char_type, ST, SA> &entire_string, const char_type *const replacement)
+	{
+		typedef std::basic_string<char_type, ST, SA> string_type;
+
+		replace(entire_string, string_type(replacement));
+	}
+
+	//  For split.
+
+	//  1. Until done() returns true, gather this->prefix() when
+	//     split_ready() returns true,
+	//  2. Once done() becomes true, get remainder().
+
+	//  Returns if this->prefix() holds a range that is worthy of being
+	//  treated as a split substring.
+//	bool splittable() const
+	bool split_ready()	//const
+	{
+		if (match_.size())
+		{
+			if (match_[0].first != end_)
+			{
+				return match_.prefix().first != match_[0].second;
+			}
+			match_.clear_();
+		}
+		return false;	//  Iterating complete.
+	}
+
+	//  When the only_after_match parameter is false, returns
+	//  [prefix().first, end); otherwise (when true) returns
+	//  [match_[0].second, end).
+	//  This function is intended to be called after iterating is
+	//  finished, to receive the range of suffix() of the last match.
+	//  If iterating is aborted during processing (e.g. pushing to a
+	//  list container) a captured subsequence (match_[n] where n >= 1),
+	//  then should be called with only_after_match being true,
+	//  otherwise [prefix().first, prefix().second) would be duplicated.
+	const typename value_type::value_type &remainder(const bool only_after_match = false)
+	{
+		if (only_after_match && match_.size())
+			match_.set_prefix_first_(match_[0].second);
+
+		match_.set_prefix_second_(end_);
+		return match_.prefix();
+	}
+
+	//  The following 4 split_* functions are intended to be used
+	//  together, as follows:
+	//
+	//    for (it.split_begin(); !it.done(); it.split_next()) {
+	//      if (++count == LIMIT)
+	//        break;
+	//      list.push_back(it.split_range());
+	//    }
+	//    list.push_back(it.split_remainder());
+
+	//  Moves to a first subsequence for which split_ready() returns
+	//  true. This should be called only once before beginning iterating
+	//  (or after calling rewind()).
+	bool split_begin()
+	{
+		if (split_ready())
+			return true;
+
+//		submatch_ = 0u;
+		operator++();
+		return split_ready();
+	}
+
+	//  Moves to a next subsequence for which split_ready() returns
+	//  true.
+	//  This function is intended to be used instead of the ordinary
+	//  increment operator (++).
+	bool split_next()
+	{
+		if (++submatch_ >= match_.size())
+		{
+			submatch_ = 0u;
+			operator++();
+		}
+		return split_begin();
+	}
+
+	//  Returns a current subsequence to which the iterator points.
+	const typename value_type::value_type &split_range() const
+	{
+		return submatch_ == 0u ? match_.prefix() : match_[submatch_];
+	}
+
+	//  Returns the final subsequence immediately following the last
+	//  match range. This should be called after iterating is complete
+	//  or aborted.
+	//  Unlike remainder() above, a boolean value corresponding to
+	//  only_after_match is automatically calculated.
+	const typename value_type::value_type &split_remainder()
+	{
+		if (submatch_ > 0u)
+			match_.set_prefix_first_(match_[0].second);
+
+		match_.set_prefix_second_(end_);
+		return match_.prefix();
+	}
+
+private:
+
+	typedef match_results<BidirectionalIterator> match_type;
+
+	BidirectionalIterator begin_;
+	BidirectionalIterator end_;
+	const regex_type *pregex_;
+	regex_constants::match_flag_type flags_;
+	match_type match_;
+	bool prevmatch_empty_;
+	typename match_type::size_type submatch_;
+
+	typedef typename traits::utf_traits utf_traits;
+};
+
+typedef regex_iterator2<const char *> cregex_iterator2;
+typedef regex_iterator2<const wchar_t *> wcregex_iterator2;
+typedef regex_iterator2<std::string::const_iterator> sregex_iterator2;
+typedef regex_iterator2<std::wstring::const_iterator> wsregex_iterator2;
+
+typedef regex_iterator2<const char *, u8cregex> u8ccregex_iterator2;
+typedef regex_iterator2<std::string::const_iterator, u8cregex> u8csregex_iterator2;
+
+#if defined(SRELL_CPP11_CHAR1632_ENABLED)
+	typedef regex_iterator2<const char16_t *> u16cregex_iterator2;
+	typedef regex_iterator2<const char32_t *> u32cregex_iterator2;
+	typedef regex_iterator2<std::u16string::const_iterator> u16sregex_iterator2;
+	typedef regex_iterator2<std::u32string::const_iterator> u32sregex_iterator2;
+#endif
+
+#if defined(SRELL_CPP20_CHAR8_ENABLED)
+	typedef regex_iterator2<const char8_t *> u8cregex_iterator2;
+#else	//  !defined(SRELL_CPP20_CHAR8_ENABLED)
+	typedef u8ccregex_iterator2 u8cregex_iterator2;
+#endif
+#if defined(SRELL_CPP20_CHAR8_ENABLED) && (SRELL_CPP20_CHAR8_ENABLED >= 2)
+	typedef regex_iterator2<std::u8string::const_iterator> u8sregex_iterator2;
+#else	//  !defined(SRELL_CPP20_CHAR8_ENABLED) || (SRELL_CPP20_CHAR8_ENABLED < 2)
+	typedef u8csregex_iterator2 u8sregex_iterator2;
+#endif
+
+#if defined(WCHAR_MAX)
+	#if (WCHAR_MAX >= 0x10ffff)
+		typedef wcregex_iterator2 u32wcregex_iterator2;
+		typedef wsregex_iterator2 u32wsregex_iterator2;
+		typedef u32wcregex_iterator2 u1632wcregex_iterator2;
+		typedef u32wsregex_iterator2 u1632wsregex_iterator2;
+	#elif (WCHAR_MAX >= 0xffff)
+		typedef regex_iterator2<const wchar_t *, u16wregex> u16wcregex_iterator2;
+		typedef regex_iterator2<std::wstring::const_iterator, u16wregex> u16wsregex_iterator2;
+		typedef u16wcregex_iterator2 u1632wcregex_iterator2;
+		typedef u16wsregex_iterator2 u1632wsregex_iterator2;
 	#endif
 #endif
 
