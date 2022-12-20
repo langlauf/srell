@@ -1,3 +1,7 @@
+20221220; version 4.014:
+  ・誤って前版で抜けていたmatch_resultsのメンバ函数を補充。
+  ・regex_token_iteratorの簡素化。
+
 20221220; version 4.013:
   ・"abc"を/$/でsplit()すると、{"abc"}となるべきところが{"abc", ""}にな
     ってしまっていた問題を修正。

@@ -1,3 +1,8 @@
+20221220; version 4.014:
+  * Supplemented some member functions that were missing accidentally
+    from match_results in the previous release.
+  * Simplified regex_token_iterator.
+
 20221220; version 4.013:
   * Fixed a minor issue in split(). When splitting "abc" by /$/, split()
     returned {"abc", ""} instead of {"abc"} that is correct.

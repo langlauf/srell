@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.013
+**  SRELL (std::regex-like library) version 4.014
 **
 **  Copyright (c) 2012-2022, Nozomu Katoo. All rights reserved.
 **
@@ -9310,8 +9310,8 @@ public:	//  For internal.
 		suffix_.first = sub_matches_[0].second = sstate_.nth.in_string;
 		suffix_.second = sstate_.srchend;
 
-		prefix_.matched = prefix_.first != prefix_.second;	//  The spec says prefix().first != prefix().second
-		suffix_.matched = suffix_.first != suffix_.second;	//  The spec says suffix().first != suffix().second
+		prefix_.matched = prefix_.first != prefix_.second;
+		suffix_.matched = suffix_.first != suffix_.second;
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
 		gnames_ = gnames;
@@ -9344,6 +9344,23 @@ public:	//  For internal.
 	{
 		prefix_.first = pf;
 		prefix_.matched = prefix_.first != prefix_.second;
+	}
+
+	void set_prefix_second_(const BidirectionalIterator ps)
+	{
+		prefix_.second = ps;
+		prefix_.matched = prefix_.first != prefix_.second;
+	}
+
+	void update_m0_(const BidirectionalIterator mf, const BidirectionalIterator ms)
+	{
+		sub_matches_.resize(1);
+
+		sub_matches_[0].first = mf;
+		sub_matches_[0].second = ms;
+		sub_matches_[0].matched = true;
+
+		prefix_.first = prefix_.second = mf;
 	}
 
 	bool mark_as_failed_()
@@ -11248,8 +11265,8 @@ public:
 	typedef basic_regex<charT, traits> regex_type;
 	typedef match_results<BidirectionalIterator> value_type;
 	typedef std::ptrdiff_t difference_type;
-	typedef const value_type * pointer;
-	typedef const value_type & reference;
+	typedef const value_type *pointer;
+	typedef const value_type &reference;
 	typedef std::forward_iterator_tag iterator_category;
 
 	regex_iterator()
@@ -11289,10 +11306,6 @@ public:
 
 	bool operator==(const regex_iterator &right) const
 	{
-		//  It is probably safe to assume that match.size() == 0 means
-		//  end-of-sequence, because it happens only when 1) never tried
-		//  regex_search, or 2) regex_search returned false.
-
 		if (right.match.size() == 0 || this->match.size() == 0)
 			return this->match.size() == right.match.size();
 
@@ -11459,16 +11472,13 @@ public:
 
 	typedef typename std::iterator_traits<BidirectionalIterator>::value_type char_type;
 	typedef BasicRegex regex_type;
-	typedef typename regex_type::traits_type traits;
 	typedef MatchResults value_type;
 	typedef std::ptrdiff_t difference_type;
 	typedef const value_type *pointer;
 	typedef const value_type &reference;
 	typedef std::input_iterator_tag iterator_category;
 
-	regex_iterator2()
-	{
-	}
+	regex_iterator2() {}
 
 	regex_iterator2(
 		const BidirectionalIterator b,
@@ -11477,7 +11487,7 @@ public:
 		const regex_constants::match_flag_type m = regex_constants::match_default)
 		: begin_(b), end_(e), pregex_(&re), flags_(m)
 	{
-		rewind();
+		rewind_();
 	}
 
 	template <typename ST, typename SA>
@@ -11489,7 +11499,7 @@ public:
 		, end_(regex_internal::pos1_<char_type>(s, BidirectionalIterator()))
 		, pregex_(&re), flags_(m)
 	{
-		rewind();
+		rewind_();
 	}
 
 	regex_iterator2(const regex_iterator2 &right)
@@ -11521,9 +11531,7 @@ public:
 			&& this->end_ == right.end_
 			&& this->pregex_ == right.pregex_
 			&& this->flags_ == right.flags_
-			&& this->match_[0] == right.match_[0]
-			&& this->prevmatch_empty_ == right.prevmatch_empty_
-			&& this->submatch_ == right.submatch_;
+			&& this->match_[0] == right.match_[0];
 	}
 
 	bool operator!=(const regex_iterator2 &right) const
@@ -11557,7 +11565,7 @@ public:
 		end_ = e;
 		pregex_ = &re;
 		flags_ = m;
-		rewind();
+		rewind_();
 	}
 	void assign(const regex_iterator2 &right)
 	{
@@ -11567,16 +11575,7 @@ public:
 	void rewind()
 	{
 		flags_ &= ~regex_constants::match_prev_avail;
-
-		if (regex_search(begin_, end_, begin_, match_, *pregex_, flags_))
-		{
-			flags_ |= regex_constants::match_prev_avail;
-			prevmatch_empty_ = match_[0].first == match_[0].second;
-		}
-		else
-			match_.set_prefix_first_(begin_);
-
-		submatch_ = 0u;
+		rewind_();
 	}
 
 	regex_iterator2 &operator++()
@@ -11619,9 +11618,7 @@ public:
 
 	//  Replaces [match_[0].first, match_[0].second) in
 	//  [entire_string.begin(), entire_string.end()) with replacement,
-	//  and adjusts begin_, end_, match_[0].first/second, and
-	//  match_.prefix().first/second, even if the allocation of
-	//  entire_string is moved as a result of the replacing operation.
+	//  and adjusts all the internal iterators accordingly.
 	template <typename ST, typename SA>
 	void replace(std::basic_string<char_type, ST, SA> &entire_string, const std::basic_string<char_type, ST, SA> &replacement)
 	{
@@ -11764,7 +11761,23 @@ public:
 
 private:
 
+	void rewind_()
+	{
+		if (regex_search(begin_, end_, begin_, match_, *pregex_, flags_))
+		{
+			flags_ |= regex_constants::match_prev_avail;
+			prevmatch_empty_ = match_[0].first == match_[0].second;
+		}
+		else
+			match_.set_prefix_first_(begin_);
+
+		submatch_ = 0u;
+	}
+
+private:
+
 	typedef match_results<BidirectionalIterator> match_type;
+	typedef typename regex_type::traits_type::utf_traits utf_traits;
 
 	BidirectionalIterator begin_;
 	BidirectionalIterator end_;
@@ -11774,7 +11787,6 @@ private:
 	bool prevmatch_empty_;
 	typename match_type::size_type submatch_;
 
-	typedef typename traits::utf_traits utf_traits;
 };
 
 typedef regex_iterator2<const char *> cregex_iterator2;
@@ -12214,7 +12226,7 @@ public:
 	typedef const value_type & reference;
 	typedef std::forward_iterator_tag iterator_category;
 
-	regex_token_iterator() : result(NULL)
+	regex_token_iterator() : result_(NULL)
 	{
 		//  Constructs the end-of-sequence iterator.
 	}
@@ -12225,7 +12237,7 @@ public:
 		const regex_type &re,
 		int submatch = 0,
 		regex_constants::match_flag_type m = regex_constants::match_default
-	) : position(a, b, re, m), result(NULL), subs(1, submatch)
+	) : position_(a, b, re, m), result_(NULL), subs_(1, submatch)
 	{
 		post_constructor(a, b);
 	}
@@ -12236,7 +12248,7 @@ public:
 		const regex_type &re,
 		const std::vector<int> &submatches,
 		regex_constants::match_flag_type m = regex_constants::match_default
-	) : position(a, b, re, m), result(NULL), subs(submatches)
+	) : position_(a, b, re, m), result_(NULL), subs_(submatches)
 	{
 		post_constructor(a, b);
 	}
@@ -12248,7 +12260,7 @@ public:
 		const regex_type &re,
 		std::initializer_list<int> submatches,
 		regex_constants::match_flag_type m = regex_constants::match_default
-	) : position(a, b, re, m), result(NULL), subs(submatches)
+	) : position_(a, b, re, m), result_(NULL), subs_(submatches)
 	{
 		post_constructor(a, b);
 	}
@@ -12261,7 +12273,7 @@ public:
 		const regex_type &re,
 		const int (&submatches)[N],
 		regex_constants::match_flag_type m = regex_constants::match_default
-	) : position(a, b, re, m), result(NULL), subs(submatches, submatches + N)
+	) : position_(a, b, re, m), result_(NULL), subs_(submatches, submatches + N)
 	{
 		post_constructor(a, b);
 	}
@@ -12275,29 +12287,27 @@ public:
 	{
 		if (this != &that)
 		{
-			this->position = that.position;
-			this->result = that.result;
-			this->suffix = that.suffix;
-			this->N = that.N;
-			this->subs = that.subs;
+			this->position_ = that.position_;
+			this->result_ = that.result_;
+			this->suffix_ = that.suffix_;
+			this->N_ = that.N_;
+			this->minus1_in_subs_ = that.minus1_in_subs_;
+			this->subs_ = that.subs_;
 		}
 		return *this;
 	}
 
 	bool operator==(const regex_token_iterator &right)
 	{
-		if (this->result == NULL || right.result == NULL)
-			return this->result == right.result;
+		if (right.result_ == NULL || this->result_ == NULL)
+			return this->result_ == right.result_;
 
-		if (this->result == &this->suffix || right.result == &right.suffix)
-			return this->suffix == right.suffix;
+		if (this->result_ == &this->suffix_ || right.result_ == &right.suffix_)
+			return this->suffix_ == right.suffix_;
 
-		return
-			this->position == right.position
-			&&
-			this->N == right.N
-			&&
-			this->subs == right.subs;
+		return this->position_ == right.position_
+			&& this->N_ == right.N_
+			&& this->subs_ == right.subs_;
 	}
 
 	bool operator!=(const regex_token_iterator &right)
@@ -12307,55 +12317,33 @@ public:
 
 	const value_type &operator*()
 	{
-		return *result;
+		return *result_;
 	}
 
 	const value_type *operator->()
 	{
-		return result;
+		return result_;
 	}
 
 	regex_token_iterator &operator++()
 	{
-		position_iterator prev(position);
 		position_iterator eos_iterator;
 
-		if (result != NULL)
-			//  To avoid inifinite loop. The specification does not require, though.
+		if (result_ == &suffix_)
+			result_ = NULL;	//  end-of-sequence.
+		else if (result_ != NULL)
 		{
-			if (result == &suffix)
+			if (++this->N_ >= subs_.size())
 			{
-				result = NULL;	//  end-of-sequence.
-			}
-			else
-			{
-				++this->N;
-				for (;;)
+				this->N_ = 0;
+				suffix_ = position_->suffix();
+				if (++position_ == eos_iterator)
 				{
-					if (this->N < subs.size())
-					{
-						result = subs[this->N] != -1 ? &((*position)[subs[this->N]]) : &((*position).prefix());
-						break;
-					}
-
-					this->N = 0;
-					++position;
-
-					if (position == eos_iterator)
-					{
-						if (this->N < subs.size() && prev->suffix().length() && minus1_in_subs())
-						{
-							suffix = prev->suffix();
-							result = &suffix;
-						}
-						else
-						{
-							result = NULL;
-						}
-						break;
-					}
+					result_ = (minus1_in_subs_ && suffix_.matched) ? &suffix_ : NULL;
+					return *this;
 				}
 			}
+			result_ = subs_[this->N_] != -1 ? &((*position_)[subs_[this->N_]]) : &((*position_).prefix());
 		}
 		return *this;
 	}
@@ -12373,44 +12361,48 @@ private:
 	{
 		position_iterator eos_iterator;
 
-		this->N = 0;
+		this->N_ = 0;
 
-		if (position != eos_iterator && subs.size())
+		minus1_in_subs_ = false;
+		for (std::size_t i = 0; i < subs_.size(); ++i)
 		{
-			result = subs[this->N] != -1 ? &((*position)[subs[this->N]]) : &((*position).prefix());
+			if (subs_[i] == -1)
+			{
+				minus1_in_subs_ = true;
+				break;
+			}
 		}
-		else if (minus1_in_subs())	//  end-of-sequence.
+
+		if (position_ != eos_iterator && subs_.size())
 		{
-			suffix.first   = a;
-			suffix.second  = b;
-			suffix.matched = a != b;
+			result_ = subs_[this->N_] != -1 ? &((*position_)[subs_[this->N_]]) : &((*position_).prefix());
+		}
+		else if (minus1_in_subs_)
+		{
+			suffix_.matched = a != b;
 			//  28.1.2.7: In a suffix iterator the member result holds a pointer
 			//  to the data member suffix, the value of the member suffix.match is true,
 
-			if (suffix.matched)
-				result = &suffix;
+			if (suffix_.matched)
+			{
+				suffix_.first = a;
+				suffix_.second = b;
+				result_ = &suffix_;
+			}
 			else
-				result = NULL;	//  Means end-of-sequence.
+				result_ = NULL;	//  Means end-of-sequence.
 		}
-	}
-
-	bool minus1_in_subs() const
-	{
-		for (std::size_t i = 0; i < subs.size(); ++i)
-			if (subs[i] == -1)
-				return true;
-
-		return false;
 	}
 
 private:
 
 	typedef regex_iterator<BidirectionalIterator, charT, traits> position_iterator;
-	position_iterator position;
-	const value_type *result;
-	value_type suffix;
-	std::size_t N;
-	std::vector<int> subs;
+	position_iterator position_;
+	const value_type *result_;
+	value_type suffix_;
+	std::size_t N_;
+	bool minus1_in_subs_;
+	std::vector<int> subs_;
 };
 
 typedef regex_token_iterator<const char *> cregex_token_iterator;
