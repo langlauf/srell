@@ -1,3 +1,8 @@
+20221227; version 4.015:
+  * Fixed a minor issue in regex_iterator2 that was treated as an error
+    by VC when _ITERATOR_DEBUG_LEVEL >= 1.
+  * Other improvements.
+
 20221220; version 4.014:
   * Supplemented some member functions that were missing accidentally
     from match_results in the previous release.

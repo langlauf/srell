@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.014
+**  SRELL (std::regex-like library) version 4.015
 **
 **  Copyright (c) 2012-2022, Nozomu Katoo. All rights reserved.
 **
@@ -20666,13 +20666,18 @@ public:	//  For internal.
 		return true;
 	}
 
-	void set_prefix_first_(const BidirectionalIterator pf)
+	void set_prefix1_(const BidirectionalIterator pf)
+	{
+		prefix_.first = pf;
+	}
+
+	void update_prefix1_(const BidirectionalIterator pf)
 	{
 		prefix_.first = pf;
 		prefix_.matched = prefix_.first != prefix_.second;
 	}
 
-	void set_prefix_second_(const BidirectionalIterator ps)
+	void update_prefix2_(const BidirectionalIterator ps)
 	{
 		prefix_.second = ps;
 		prefix_.matched = prefix_.first != prefix_.second;
@@ -21925,7 +21930,7 @@ protected:
 
 			const typename match_type::size_type matchlen = match.length(0);
 
-			match.set_prefix_first_(pos0_<charT>(s, RAIter()) + prevend);
+			match.update_prefix1_(pos0_<charT>(s, RAIter()) + prevend);
 			offset = match[0].second - pos0_<charT>(s, RAIter());
 
 			const bool continuable = repfunc(subst, match, ptr);
@@ -22701,7 +22706,7 @@ public:
 							//  the offset from the sequence passed in the call to regex_search.
 							//
 							//  To satisfy this:
-							match.set_prefix_first_(prevend);
+							match.update_prefix1_(prevend);
 						}
 					}
 				}
@@ -22811,9 +22816,9 @@ public:
 		const BidirectionalIterator e,
 		const regex_type &re,
 		const regex_constants::match_flag_type m = regex_constants::match_default)
-		: begin_(b), end_(e), pregex_(&re), flags_(m)
+		: begin_(b), end_(e), pregex_(&re)
 	{
-		rewind_();
+		rewind(m);
 	}
 
 	template <typename ST, typename SA>
@@ -22823,9 +22828,9 @@ public:
 		const regex_constants::match_flag_type m = regex_constants::match_default)
 		: begin_(regex_internal::pos0_<char_type>(s, BidirectionalIterator()))
 		, end_(regex_internal::pos1_<char_type>(s, BidirectionalIterator()))
-		, pregex_(&re), flags_(m)
+		, pregex_(&re)
 	{
-		rewind_();
+		rewind(m);
 	}
 
 	regex_iterator2(const regex_iterator2 &right)
@@ -22881,6 +22886,11 @@ public:
 		return match_.size() == 0;
 	}
 
+	bool empty() const
+	{
+		return begin_ == end_;
+	}
+
 	void assign(
 		const BidirectionalIterator b,
 		const BidirectionalIterator e,
@@ -22890,18 +22900,25 @@ public:
 		begin_ = b;
 		end_ = e;
 		pregex_ = &re;
-		flags_ = m;
-		rewind_();
+		rewind(m);
 	}
 	void assign(const regex_iterator2 &right)
 	{
 		operator=(right);
 	}
 
-	void rewind()
+	void rewind(const regex_constants::match_flag_type m = regex_constants::match_default)
 	{
-		flags_ &= ~regex_constants::match_prev_avail;
-		rewind_();
+		flags_ = m;
+
+		if (regex_search(begin_, end_, begin_, match_, *pregex_, flags_))
+		{
+			prevmatch_empty_ = match_[0].first == match_[0].second;
+		}
+		else
+			match_.set_prefix1_(begin_);
+
+		submatch_ = 0u;
 	}
 
 	regex_iterator2 &operator++()
@@ -22925,10 +22942,11 @@ public:
 				}
 			}
 
+			flags_ |= regex_constants::match_prev_avail;
 			if (regex_search(start, end_, begin_, match_, *pregex_, flags_))
 				prevmatch_empty_ = match_[0].first == match_[0].second;
 
-			match_.set_prefix_first_(prevend);
+			match_.update_prefix1_(prevend);
 		}
 		return *this;
 	}
@@ -23022,9 +23040,9 @@ public:
 	const typename value_type::value_type &remainder(const bool only_after_match = false)
 	{
 		if (only_after_match && match_.size())
-			match_.set_prefix_first_(match_[0].second);
+			match_.set_prefix1_(match_[0].second);
 
-		match_.set_prefix_second_(end_);
+		match_.update_prefix2_(end_);
 		return match_.prefix();
 	}
 
@@ -23061,8 +23079,9 @@ public:
 		{
 			submatch_ = 0u;
 			operator++();
+			return split_begin();
 		}
-		return split_begin();
+		return !done();
 	}
 
 	//  Returns a current subsequence to which the iterator points.
@@ -23079,25 +23098,10 @@ public:
 	const typename value_type::value_type &split_remainder()
 	{
 		if (submatch_ > 0u)
-			match_.set_prefix_first_(match_[0].second);
+			match_.set_prefix1_(match_[0].second);
 
-		match_.set_prefix_second_(end_);
+		match_.update_prefix2_(end_);
 		return match_.prefix();
-	}
-
-private:
-
-	void rewind_()
-	{
-		if (regex_search(begin_, end_, begin_, match_, *pregex_, flags_))
-		{
-			flags_ |= regex_constants::match_prev_avail;
-			prevmatch_empty_ = match_[0].first == match_[0].second;
-		}
-		else
-			match_.set_prefix_first_(begin_);
-
-		submatch_ = 0u;
 	}
 
 private:
@@ -23565,7 +23569,7 @@ public:
 		regex_constants::match_flag_type m = regex_constants::match_default
 	) : position_(a, b, re, m), result_(NULL), subs_(1, submatch)
 	{
-		post_constructor(a, b);
+		post_constructor_(a, b);
 	}
 
 	regex_token_iterator(
@@ -23576,7 +23580,7 @@ public:
 		regex_constants::match_flag_type m = regex_constants::match_default
 	) : position_(a, b, re, m), result_(NULL), subs_(submatches)
 	{
-		post_constructor(a, b);
+		post_constructor_(a, b);
 	}
 
 #if defined(SRELL_CPP11_INITIALIZER_LIST_ENABLED)
@@ -23588,7 +23592,7 @@ public:
 		regex_constants::match_flag_type m = regex_constants::match_default
 	) : position_(a, b, re, m), result_(NULL), subs_(submatches)
 	{
-		post_constructor(a, b);
+		post_constructor_(a, b);
 	}
 #endif
 
@@ -23601,7 +23605,7 @@ public:
 		regex_constants::match_flag_type m = regex_constants::match_default
 	) : position_(a, b, re, m), result_(NULL), subs_(submatches, submatches + N)
 	{
-		post_constructor(a, b);
+		post_constructor_(a, b);
 	}
 
 	regex_token_iterator(const regex_token_iterator &that)
@@ -23617,7 +23621,6 @@ public:
 			this->result_ = that.result_;
 			this->suffix_ = that.suffix_;
 			this->N_ = that.N_;
-			this->minus1_in_subs_ = that.minus1_in_subs_;
 			this->subs_ = that.subs_;
 		}
 		return *this;
@@ -23653,19 +23656,19 @@ public:
 
 	regex_token_iterator &operator++()
 	{
-		position_iterator eos_iterator;
-
 		if (result_ == &suffix_)
-			result_ = NULL;	//  end-of-sequence.
+			result_ = NULL;
 		else if (result_ != NULL)
 		{
 			if (++this->N_ >= subs_.size())
 			{
+				position_iterator eos_iterator;
+
 				this->N_ = 0;
 				suffix_ = position_->suffix();
 				if (++position_ == eos_iterator)
 				{
-					result_ = (minus1_in_subs_ && suffix_.matched) ? &suffix_ : NULL;
+					result_ = (suffix_.matched && minus1_in_subs_()) ? &suffix_ : NULL;
 					return *this;
 				}
 			}
@@ -23683,41 +23686,40 @@ public:
 
 private:
 
-	void post_constructor(const BidirectionalIterator a, const BidirectionalIterator b)
+	void post_constructor_(const BidirectionalIterator a, const BidirectionalIterator b)
 	{
 		position_iterator eos_iterator;
 
 		this->N_ = 0;
 
-		minus1_in_subs_ = false;
-		for (std::size_t i = 0; i < subs_.size(); ++i)
-		{
-			if (subs_[i] == -1)
-			{
-				minus1_in_subs_ = true;
-				break;
-			}
-		}
-
 		if (position_ != eos_iterator && subs_.size())
 		{
 			result_ = subs_[this->N_] != -1 ? &((*position_)[subs_[this->N_]]) : &((*position_).prefix());
+			return;
 		}
-		else if (minus1_in_subs_)
+
+		if (minus1_in_subs_())
 		{
 			suffix_.matched = a != b;
-			//  28.1.2.7: In a suffix iterator the member result holds a pointer
-			//  to the data member suffix, the value of the member suffix.match is true,
 
 			if (suffix_.matched)
 			{
 				suffix_.first = a;
 				suffix_.second = b;
 				result_ = &suffix_;
+				return;
 			}
-			else
-				result_ = NULL;	//  Means end-of-sequence.
 		}
+		result_ = NULL;
+	}
+
+	bool minus1_in_subs_() const
+	{
+		for (std::size_t i = 0; i < subs_.size(); ++i)
+			if (subs_[i] == -1)
+				return true;
+
+		return false;
 	}
 
 private:
@@ -23727,7 +23729,6 @@ private:
 	const value_type *result_;
 	value_type suffix_;
 	std::size_t N_;
-	bool minus1_in_subs_;
 	std::vector<int> subs_;
 };
 

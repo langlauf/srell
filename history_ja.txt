@@ -1,3 +1,8 @@
+20221227; version 4.015:
+  ・VCで_ITERATOR_DEBUG_LEVELを1以上にすると、エラー扱いされる
+    regex_iterator2中のコードを修正。
+  ・その他改良など。
+
 20221220; version 4.014:
   ・誤って前版で抜けていたmatch_resultsのメンバ函数を補充。
   ・regex_token_iteratorの簡素化。
