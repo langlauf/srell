@@ -1,8 +1,8 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.015
+**  SRELL (std::regex-like library) version 4.016
 **
-**  Copyright (c) 2012-2022, Nozomu Katoo. All rights reserved.
+**  Copyright (c) 2012-2023, Nozomu Katoo. All rights reserved.
 **
 **  Redistribution and use in source and binary forms, with or without
 **  modification, are permitted provided that the following conditions are
@@ -344,34 +344,36 @@ private:
 
 			st_epsilon,                 //  0x02
 
-			st_check_counter,           //  0x03
+			st_characteri,              //  0x03
+
+			st_check_counter,           //  0x04
 //			st_increment_counter,       //  0x04
-			st_decrement_counter,       //  0x04
-			st_save_and_reset_counter,  //  0x05
-			st_restore_counter,         //  0x06
+			st_decrement_counter,       //  0x05
+			st_save_and_reset_counter,  //  0x06
+			st_restore_counter,         //  0x07
 
-			st_roundbracket_open,       //  0x07
-			st_roundbracket_pop,        //  0x08
-			st_roundbracket_close,      //  0x09
+			st_roundbracket_open,       //  0x08
+			st_roundbracket_pop,        //  0x09
+			st_roundbracket_close,      //  0x0a
 
-			st_repeat_in_push,          //  0x0a
-			st_repeat_in_pop,           //  0x0b
-			st_check_0_width_repeat,    //  0x0c
+			st_repeat_in_push,          //  0x0b
+			st_repeat_in_pop,           //  0x0c
+			st_check_0_width_repeat,    //  0x0d
 
-			st_backreference,           //  0x0d
+			st_backreference,           //  0x0e
 
-			st_lookaround_open,         //  0x0e
+			st_lookaround_open,         //  0x0f
 
 //			st_lookaround_pop,          //  0x10
 
-			st_bol,                     //  0x0f
-			st_eol,                     //  0x10
-			st_boundary,                //  0x11
+			st_bol,                     //  0x10
+			st_eol,                     //  0x11
+			st_boundary,                //  0x12
 
-			st_success,                 //  0x12
+			st_success,                 //  0x13
 
 #if !defined(SRELLDBG_NO_NEXTPOS_OPT)
-			st_move_nextpos,            //  0x13
+			st_move_nextpos,            //  0x14
 #endif
 
 			st_lookaround_close        = st_success,
@@ -3296,7 +3298,7 @@ struct re_quantifier
 
 	bool is_valid() const
 	{
-		return atleast <= atmost && atmost > 0;
+		return atleast <= atmost;
 	}
 
 	void set_infinity()
@@ -3429,6 +3431,7 @@ struct re_state
 	};
 
 	//  st_character,               //  0x00
+	//  st_characteri,              //  0x03
 		//  char/number:        character
 		//  next1:              gen.
 		//  next2:              +1 (exit. used only when '*' or '?')
@@ -3449,7 +3452,7 @@ struct re_state
 		//  quantifiers:        -
 		//  is_not/dont_push:   -
 
-	//  st_check_counter,           //  0x03
+	//  st_check_counter,           //  0x04
 		//  char/number:        counter number
 		//  next1:              greedy: epsilon that may push backtracking data to decrement_counter.
 		//                      not-greedy: out-of-loop
@@ -3459,28 +3462,28 @@ struct re_state
 		//  q.greedy:           gen.
 		//  is_not/dont_push:   - (was dont_push)
 
-	//  st_decrement_counter,       //  0x04
+	//  st_decrement_counter,       //  0x05
 		//  char/number:        counter number
 		//  next1:              0 (always treated as "not matched")
 		//  next2:              0
 		//  quantifiers:        -
 		//  is_not/dont_push:   -
 
-	//  st_save_and_reset_counter,  //  0x05
+	//  st_save_and_reset_counter,  //  0x06
 		//  char/number:        counter number
 		//  next1:              +2 (check_counter)
 		//  next2:              +1 (restore_counter)
 		//  quantifiers:        -
 		//  is_not/dont_push:   - (was dont_push)
 
-	//  st_restore_counter,         //  0x06
+	//  st_restore_counter,         //  0x07
 		//  char/number:        counter number
 		//  next1:              0 (always treated as "not matched")
 		//  next2:              0
 		//  quantifiers:        -
 		//  is_not/dont_push:   -
 
-	//  st_roundbracket_open,       //  0x07
+	//  st_roundbracket_open,       //  0x08
 		//  char/number:        bracket number
 		//  next1:              +2 (next of roundbracket_pop, atom)
 		//  next2:              +1 (roundbracket_pop)
@@ -3489,7 +3492,7 @@ struct re_state
 		//  q.greedy:           -
 		//  is_not/dont_push:   - (was dont_push)
 
-	//  st_roundbracket_pop,        //  0x08
+	//  st_roundbracket_pop,        //  0x09
 		//  char/number:        bracket number
 		//  next1:              0 (always treated as "not matched")
 		//  next2:              0
@@ -3498,42 +3501,42 @@ struct re_state
 		//  q.greedy:           -
 		//  is_not/dont_push:   - (was dont_push)
 
-	//  st_roundbracket_close,      //  0x09
+	//  st_roundbracket_close,      //  0x0a
 		//  char/number:        bracket number
 		//  next1:              gen.
 		//  next2:              +1 (exit for 0 width loop)
 		//  quantifiers:        -
 		//  is_not/dont_push:   -
 
-	//  st_repeat_in_push,          //  0x0a
+	//  st_repeat_in_push,          //  0x0b
 		//  char/number:        repeat counter
 		//  next1:              +2 (next of repeat_in_pop, atom)
 		//  next2:              +1 (repeat_in_pop)
 		//  quantifiers:        -
 		//  is_not/dont_push:   -
 
-	//  st_repeat_in_pop,           //  0x0b
+	//  st_repeat_in_pop,           //  0x0c
 		//  char/number:        repeat counter
 		//  next1:              0 (always treated as "not matched")
 		//  next2:              0
 		//  quantifiers:        -
 		//  is_not/dont_push:   -
 
-	//  st_check_0_width_repeat,    //  0x0c
+	//  st_check_0_width_repeat,    //  0x0d
 		//  char/number:        repeat counter
 		//  next1:              gen. (epsilon or check_counter)
 		//  next2:              +1 (exit for 0 width loop)
 		//  quantifiers:        -
 		//  is_not/dont_push:   -
 
-	//  st_backreference,           //  0x0d
+	//  st_backreference,           //  0x0e
 		//  char/number:        bracket number
 		//  next1:              gen.
 		//  next2:              +1 (exit for 0 width match)
 		//  quantifiers:        -
 		//  is_not/dont_push:   -
 
-	//  st_lookaround_open,         //  0x0e
+	//  st_lookaround_open,         //  0x0f
 		//  char/number:        -
 		//  next1:              next of lookaround_close (to where jumps after lookaround assertion)
 		//  next2:              +2 (the contents of brackets)
@@ -3543,31 +3546,31 @@ struct re_state
 		//  q.greedy:           -
 		//  is_not/dont_push:   not
 
-	//  st_bol,                     //  0x0f
+	//  st_bol,                     //  0x10
 		//  char/number:        character class number of newline
 		//  next1/next2:        -
 		//  quantifiers:        -
 		//  is_not/dont_push:   -
 
-	//  st_eol,                     //  0x10
+	//  st_eol,                     //  0x11
 		//  char/number:        character class number of newline
 		//  next1/next2:        -
 		//  quantifiers:        -
 		//  is_not/dont_push:   -
 
-	//  st_boundary,                //  0x11
+	//  st_boundary,                //  0x12
 		//  char/number:        character class number of \w
 		//  next1/next2:        -
 		//  quantifiers:        -
 		//  is_not/dont_push:   not
 
-	//  st_success,                 //  0x12
+	//  st_success,                 //  0x13
 		//  char/number:        -
 		//  next1/next2:        -
 		//  quantifiers:        -
 		//  is_not/dont_push:   -
 
-	//  st_move_nextpos,            //  0x13
+	//  st_move_nextpos,            //  0x14
 		//  char/number:        -
 		//  next1/next2:        -
 		//  quantifiers:        -
@@ -3616,11 +3619,6 @@ struct re_state
 		return type == st_roundbracket_open || type == st_backreference;
 	}
 
-	bool is_negcharclass() const
-	{
-		return type == st_character_class && is_not;
-	}
-
 	bool is_branch() const
 	{
 		return type == st_epsilon && next2 != 0 && character == meta_char::mc_bar;	//  '|'
@@ -3629,6 +3627,11 @@ struct re_state
 	bool is_asterisk_or_plus_for_onelen_atom() const
 	{
 		return type == st_epsilon && ((next1 == 1 && next2 == 2) || (next1 == 2 && next2 == 1)) && quantifier.is_asterisk_or_plus();
+	}
+
+	bool is_ccassert() const
+	{
+		return type == st_character_class || type == st_bol || type == st_eol || type == st_boundary;
 	}
 };
 //  re_state
@@ -3654,7 +3657,11 @@ struct re_flags
 #endif
 	}
 
+#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
 	void restore_from(const re_flags &backup)
+#else
+	void restore_from(const re_flags &)
+#endif
 	{
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
 		back = backup.back;
@@ -5131,7 +5138,7 @@ private:
 		state_array branch;
 		re_quantifier branchsize;
 
-		piecesize.reset(0);
+		piecesize.set(constants::infinity, 0u);
 
 		for (;;)
 		{
@@ -5140,9 +5147,7 @@ private:
 			if (!make_branch(branch, branchsize, curpos, end, cstate))
 				return false;
 
-			//  For piecesize.atleast, 0 as the initial value and 0 as an
-			//  actual value must be distinguished.
-			if (piecesize.atmost == 0 || piecesize.atleast > branchsize.atleast)
+			if (!piecesize.is_valid() || piecesize.atleast > branchsize.atleast)
 				piecesize.atleast = branchsize.atleast;
 
 			if (piecesize.atmost < branchsize.atmost)
@@ -6212,8 +6217,8 @@ private:
 				basepos.do_subtract(newpos);
 				break;
 
-			default:
 //			case op_firstcc:
+			default:
 				basepos.swap(newpos);
 			}
 		}
@@ -6412,7 +6417,11 @@ private:
 		}
 
 		++curpos;
+#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
 		pos.split_seqs_and_ranges(seqs, this->is_icase(), cstate.back);
+#else
+		pos.split_seqs_and_ranges(seqs, this->is_icase(), false);
+#endif
 
 		return true;
 	}
@@ -6924,7 +6933,12 @@ private:
 
 #if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
 
-	bool parse_escape_p_vmode(posdata_holder &pos, state_type &patom, const uchar32 *&curpos, const uchar32 *const end, const cstate_type &cstate)
+	bool parse_escape_p_vmode(posdata_holder &pos, state_type &patom, const uchar32 *&curpos, const uchar32 *const end,
+#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
+		const cstate_type &cstate)
+#else
+		const cstate_type &)
+#endif
 	{
 		if (curpos == end)
 			this->throw_error(regex_constants::error_escape);
@@ -6961,7 +6975,11 @@ private:
 			simple_array<uchar32> sequences;
 
 			this->character_class.get_prawdata(sequences, patom.number);
+#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
 			pos.split_seqs_and_ranges(sequences, this->is_icase(), cstate.back);
+#else
+			pos.split_seqs_and_ranges(sequences, this->is_icase(), false);
+#endif
 
 			patom.quantifier.set(pos.length.first, pos.length.second);
 
@@ -7075,6 +7093,7 @@ private:
 	{
 #if !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT)
 
+		const re_state_type st_char_or_chari = st_character;
 		simple_array<uchar32> ins_bt;
 
 		branchatom.number = 0u;
@@ -7142,7 +7161,7 @@ private:
 											ins_bt.insert(inspos, static_cast<uchar32>(srcpos));
 										}
 									}
-									else if (dstref.type == st_character && srcref.character != dstref.character)
+									else if (dstref.type == st_char_or_chari && srcref.character != dstref.character)
 									{
 										if (dstref.quantifier.is_greedy)
 										{
@@ -7155,7 +7174,7 @@ private:
 
 									break;
 								}
-								else if (srcref.character == dstref.character && dstref.type == st_character)
+								else if (srcref.character == dstref.character && dstref.type == st_char_or_chari)
 								{
 									++srcpos;
 									++dstpos;
@@ -7677,6 +7696,14 @@ private:
 				state.next_state2 = &this->NFA_states[pos + state.next2];
 			else
 				state.next_state2 = NULL;
+
+			if (this->is_ricase())
+			{
+				if (state.type == st_character)
+					state.type = st_characteri;
+				else if (state.type == st_backreference)
+					state.icase = true;
+			}
 		}
 	}
 
@@ -7844,9 +7871,9 @@ private:
 
 			if (this->NFA_states[cur].type != st_success)
 			{
-				const state_type &prevstate = this->NFA_states[cur - 1];
-
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER) && !defined(SRELLDBG_NO_1STCHRCLS) && !defined(SRELLDBG_NO_BITSET)
+
+				const state_type &prevstate = this->NFA_states[cur - 1];
 
 #if !defined(SRELLDBG_NO_SPLITCC)
 				if (!inserted && prevstate.next1 == 0)
@@ -8230,7 +8257,7 @@ private:
 		{
 			state_type &state = this->NFA_states[i];
 
-			if (state.type == st_character_class || state.type == st_bol || state.type == st_eol || state.type == st_boundary)
+			if (state.is_ccassert())
 			{
 				const range_pair &posinfo = this->character_class.charclasspos(state.number);
 				state.quantifier.setccpos(posinfo.first, posinfo.second);
@@ -9598,7 +9625,6 @@ public:
 			else
 #endif
 			{
-
 				results.sstate_.init_for_automaton(this->number_of_brackets, this->number_of_counters, this->number_of_repeats);
 
 				if (results.sstate_.match_continuous_flag())
@@ -9612,9 +9638,7 @@ public:
 #if !defined(SRELLDBG_NO_SCFINDER)
 					if (this->NFA_states[0].character != constants::invalid_u32value)
 					{
-						if (is_contiguous(begin)
-							? (!this->is_ricase() ? do_search_mc<false>(results) : do_search_mc<true>(results))
-							: (!this->is_ricase() ? do_search_noncontiguous<false>(results) : do_search_noncontiguous<true>(results)))
+						if (is_contiguous(begin) ? do_search_mc(results) : do_search_noncontiguous(results))
 							goto FOUND;
 
 						goto NOT_FOUND;
@@ -9622,11 +9646,7 @@ public:
 #endif	//  !defined(SRELLDBG_NO_SCFINDER)
 				}
 
-#if !defined(SRELL_NO_ICASE)
-				if (!this->is_ricase() ? do_search<false>(results) : do_search<true>(results))
-#else
-				if (do_search<false>(results))
-#endif
+				if (do_search(results))
 				{
 #if !defined(SRELLDBG_NO_SCFINDER)
 					FOUND:
@@ -9649,7 +9669,7 @@ private:
 
 	typedef typename traits::utf_traits utf_traits;
 
-	template <const bool icase, typename BidirectionalIterator, typename Allocator>
+	template <typename BidirectionalIterator, typename Allocator>
 	bool do_search
 	(
 		match_results<BidirectionalIterator, Allocator> &results
@@ -9690,7 +9710,7 @@ private:
 #else
 			sstate.reset(/* first, */ this->limit_counter);
 #endif
-			if (run_automaton<icase, false>(sstate /* , false */))
+			if (run_automaton<false>(sstate /* , false */))
 				return true;
 
 			if (final)
@@ -9701,7 +9721,7 @@ private:
 
 #if !defined(SRELLDBG_NO_SCFINDER)
 
-	template <const bool icase, typename ContiguousIterator, typename Allocator>
+	template <typename ContiguousIterator, typename Allocator>
 	bool do_search_mc(match_results<ContiguousIterator, Allocator> &results) const
 	{
 		typedef typename std::iterator_traits<ContiguousIterator>::value_type char_type;
@@ -9730,7 +9750,7 @@ private:
 #else
 				sstate.reset(this->limit_counter);
 #endif
-				if (run_automaton<icase, false>(sstate))
+				if (run_automaton<false>(sstate))
 					return true;
 			}
 			else
@@ -9741,7 +9761,7 @@ private:
 		return false;
 	}
 
-	template <const bool icase, typename BidirectionalIterator, typename Allocator>
+	template <typename BidirectionalIterator, typename Allocator>
 	bool do_search_noncontiguous(match_results<BidirectionalIterator, Allocator> &results) const
 	{
 		typedef typename std::iterator_traits<BidirectionalIterator>::value_type char_type;
@@ -9763,7 +9783,7 @@ private:
 #else
 				sstate.reset(this->limit_counter);
 #endif
-				if (run_automaton<icase, false>(sstate))
+				if (run_automaton<false>(sstate))
 					return true;
 			}
 			else
@@ -9802,31 +9822,12 @@ private:
 
 #endif	//  !defined(SRELLDBG_NO_SCFINDER)
 
-	template <typename T, const bool>
-	struct casehelper
-	{
-		static T canonicalise(const T t)
-		{
-			return t;
-		}
-	};
-
-	template <typename T>
-	struct casehelper<T, true>
-	{
-		static T canonicalise(const T t)
-		{
-			return unicode_case_folding::do_casefolding(t);
-		}
-	};
-
-	template <const bool icase, const bool reverse, typename BidirectionalIterator>
+	template <const bool reverse, typename BidirectionalIterator>
 	bool run_automaton
 	(
 		re_search_state</*charT, */BidirectionalIterator> &sstate
 	) const
 	{
-		typedef casehelper<uchar32, icase> casehelper_type;
 		typedef typename re_object_core<charT, traits>::state_type state_type;
 		typedef re_search_state</*charT, */BidirectionalIterator> ss_type;
 //		typedef typename ss_type::search_core_state scstate_type;
@@ -9895,7 +9896,7 @@ private:
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
 						const BidirectionalIterator prevpos = sstate.nth.in_string;
 #endif
-						const uchar32 uchar = casehelper_type::canonicalise(utf_traits::codepoint_inc(sstate.nth.in_string, sstate.srchend));
+						const uchar32 uchar = utf_traits::codepoint_inc(sstate.nth.in_string, sstate.srchend);
 						RETRY_CF:
 						const state_type &current_NFA2 = *sstate.nth.in_NFA_states;
 
@@ -9930,7 +9931,7 @@ private:
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
 						const BidirectionalIterator prevpos = sstate.nth.in_string;
 #endif
-						const uchar32 uchar = casehelper_type::canonicalise(utf_traits::dec_codepoint(sstate.nth.in_string, sstate.lblim));
+						const uchar32 uchar = utf_traits::dec_codepoint(sstate.nth.in_string, sstate.lblim);
 						RETRY_CB:
 						const state_type &current_NFA2 = *sstate.nth.in_NFA_states;
 
@@ -10064,6 +10065,87 @@ private:
 			default:
 				switch (current_NFA.type)
 				{
+
+			case st_characteri:
+
+#if defined(_MSC_VER) && _MSC_VER >= 1400
+#pragma warning(push)
+#pragma warning(disable:4127)
+#endif
+				if (!reverse)
+#if defined(_MSC_VER) && _MSC_VER >= 1400
+#pragma warning(pop)
+#endif
+				{
+					if (!sstate.is_at_srchend())
+					{
+#if !defined(SRELLDBG_NO_ASTERISK_OPT)
+						const BidirectionalIterator prevpos = sstate.nth.in_string;
+#endif
+						const uchar32 uchar = unicode_case_folding::do_casefolding(utf_traits::codepoint_inc(sstate.nth.in_string, sstate.srchend));
+						RETRY_CFI:
+						const state_type &current_NFA2 = *sstate.nth.in_NFA_states;
+
+						if (current_NFA2.character == uchar)
+							goto MATCHED;
+
+#if !defined(SRELLDBG_NO_ASTERISK_OPT)
+						if (current_NFA2.next_state2)
+						{
+							sstate.nth.in_NFA_states = current_NFA2.next_state2;
+
+							if (sstate.nth.in_NFA_states->type == st_characteri)
+								goto RETRY_CFI;
+
+							sstate.nth.in_string = prevpos;
+							continue;
+						}
+#endif
+					}
+#if !defined(SRELLDBG_NO_ASTERISK_OPT)
+					else if (current_NFA.next_state2)
+					{
+						sstate.nth.in_NFA_states = current_NFA.next_state2;
+						continue;
+					}
+#endif
+				}
+				else	//  reverse == true.
+				{
+					if (!sstate.is_at_lookbehindlimit())
+					{
+#if !defined(SRELLDBG_NO_ASTERISK_OPT)
+						const BidirectionalIterator prevpos = sstate.nth.in_string;
+#endif
+						const uchar32 uchar = unicode_case_folding::do_casefolding(utf_traits::dec_codepoint(sstate.nth.in_string, sstate.lblim));
+						RETRY_CBI:
+						const state_type &current_NFA2 = *sstate.nth.in_NFA_states;
+
+						if (current_NFA2.character == uchar)
+							goto MATCHED;
+
+#if !defined(SRELLDBG_NO_ASTERISK_OPT)
+						if (current_NFA2.next_state2)
+						{
+							sstate.nth.in_NFA_states = current_NFA2.next_state2;
+
+							if (sstate.nth.in_NFA_states->type == st_characteri)
+								goto RETRY_CBI;
+
+							sstate.nth.in_string = prevpos;
+							continue;
+						}
+#endif
+					}
+#if !defined(SRELLDBG_NO_ASTERISK_OPT)
+					else if (current_NFA.next_state2)
+					{
+						sstate.nth.in_NFA_states = current_NFA.next_state2;
+						continue;
+					}
+#endif
+				}
+				goto NOT_MATCHED;
 
 			case st_check_counter:
 				{
@@ -10299,32 +10381,58 @@ private:
 #pragma warning(pop)
 #endif
 							{
-								for (BidirectionalIterator backrefpos = brc.open_at; backrefpos != brc.close_at;)
-								{
-									if (!sstate.is_at_srchend())
-									{
-										const uchar32 uchartxt = utf_traits::codepoint_inc(sstate.nth.in_string, sstate.srchend);
-										const uchar32 ucharref = utf_traits::codepoint_inc(backrefpos, brc.close_at);
+								BidirectionalIterator backrefpos = brc.open_at;
 
-										if (casehelper_type::canonicalise(uchartxt) == casehelper_type::canonicalise(ucharref))
-											continue;
+								if (!current_NFA.icase)
+								{
+									for (; backrefpos != brc.close_at;)
+									{
+										if (sstate.is_at_srchend() || *sstate.nth.in_string++ != *backrefpos++)
+											goto NOT_MATCHED;
 									}
-									goto NOT_MATCHED;
+								}
+								else
+								{
+									for (; backrefpos != brc.close_at;)
+									{
+										if (!sstate.is_at_srchend())
+										{
+											const uchar32 uchartxt = utf_traits::codepoint_inc(sstate.nth.in_string, sstate.srchend);
+											const uchar32 ucharref = utf_traits::codepoint_inc(backrefpos, brc.close_at);
+
+											if (unicode_case_folding::do_casefolding(uchartxt) == unicode_case_folding::do_casefolding(ucharref))
+												continue;
+										}
+										goto NOT_MATCHED;
+									}
 								}
 							}
 							else	//  reverse == true.
 							{
-								for (BidirectionalIterator backrefpos = brc.close_at; backrefpos != brc.open_at;)
-								{
-									if (!sstate.is_at_lookbehindlimit())
-									{
-										const uchar32 uchartxt = utf_traits::dec_codepoint(sstate.nth.in_string, sstate.lblim);
-										const uchar32 ucharref = utf_traits::dec_codepoint(backrefpos, brc.open_at);
+								BidirectionalIterator backrefpos = brc.close_at;
 
-										if (casehelper_type::canonicalise(uchartxt) == casehelper_type::canonicalise(ucharref))
-											continue;
+								if (!current_NFA.icase)
+								{
+									for (; backrefpos != brc.open_at;)
+									{
+										if (sstate.is_at_lookbehindlimit() || *--sstate.nth.in_string != *--backrefpos)
+											goto NOT_MATCHED;
 									}
-									goto NOT_MATCHED;
+								}
+								else
+								{
+									for (; backrefpos != brc.open_at;)
+									{
+										if (!sstate.is_at_lookbehindlimit())
+										{
+											const uchar32 uchartxt = utf_traits::dec_codepoint(sstate.nth.in_string, sstate.lblim);
+											const uchar32 ucharref = utf_traits::dec_codepoint(backrefpos, brc.open_at);
+
+											if (unicode_case_folding::do_casefolding(uchartxt) == unicode_case_folding::do_casefolding(ucharref))
+												continue;
+										}
+										goto NOT_MATCHED;
+									}
 								}
 							}
 						}
@@ -10379,9 +10487,9 @@ private:
 					sstate.nth.in_NFA_states = current_NFA.next_state2;
 
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
-					is_matched = current_NFA.quantifier.atleast == 0 ? run_automaton<icase, false>(sstate /* , true */) : run_automaton<icase, true>(sstate /* , true */);
+					is_matched = current_NFA.quantifier.atleast == 0 ? run_automaton<false>(sstate /* , true */) : run_automaton<true>(sstate /* , true */);
 #else
-					is_matched = run_automaton<icase, false>(sstate /* , true */);
+					is_matched = run_automaton<false>(sstate /* , true */);
 #endif
 
 #if defined(SRELL_FIXEDWIDTHLOOKBEHIND)
@@ -11300,11 +11408,14 @@ public:
 	{
 		if (this != &that)
 		{
-			this->begin = that.begin;
-			this->end = that.end;
-			this->pregex = that.pregex;
-			this->flags = that.flags;
 			this->match = that.match;
+			if (this->match.size() > 0)
+			{
+				this->begin = that.begin;
+				this->end = that.end;
+				this->pregex = that.pregex;
+				this->flags = that.flags;
+			}
 		}
 		return *this;
 	}
@@ -11447,8 +11558,8 @@ typedef regex_iterator<std::wstring::const_iterator> wsregex_iterator;
 	typedef regex_iterator<std::u8string::const_iterator> u8sregex_iterator;
 #endif
 
-typedef regex_iterator<const char *, std::iterator_traits<const char *>::value_type, u8regex_traits<std::iterator_traits<const char *>::value_type> > u8ccregex_iterator;
-typedef regex_iterator<std::string::const_iterator, std::iterator_traits<std::string::const_iterator>::value_type, u8regex_traits<std::iterator_traits<std::string::const_iterator>::value_type> > u8csregex_iterator;
+typedef regex_iterator<const char *, typename std::iterator_traits<const char *>::value_type, u8regex_traits<typename std::iterator_traits<const char *>::value_type> > u8ccregex_iterator;
+typedef regex_iterator<std::string::const_iterator, typename std::iterator_traits<std::string::const_iterator>::value_type, u8regex_traits<typename std::iterator_traits<std::string::const_iterator>::value_type> > u8csregex_iterator;
 #if !defined(SRELL_CPP20_CHAR8_ENABLED)
 	typedef u8ccregex_iterator u8cregex_iterator;
 #endif
@@ -11463,8 +11574,8 @@ typedef regex_iterator<std::string::const_iterator, std::iterator_traits<std::st
 		typedef u32wcregex_iterator u1632wcregex_iterator;
 		typedef u32wsregex_iterator u1632wsregex_iterator;
 	#elif WCHAR_MAX >= 0xffff
-		typedef regex_iterator<const wchar_t *, std::iterator_traits<const wchar_t *>::value_type, u16regex_traits<std::iterator_traits<const wchar_t *>::value_type> > u16wcregex_iterator;
-		typedef regex_iterator<std::wstring::const_iterator, std::iterator_traits<std::wstring::const_iterator>::value_type, u16regex_traits<std::iterator_traits<std::wstring::const_iterator>::value_type> > u16wsregex_iterator;
+		typedef regex_iterator<const wchar_t *, typename std::iterator_traits<const wchar_t *>::value_type, u16regex_traits<typename std::iterator_traits<const wchar_t *>::value_type> > u16wcregex_iterator;
+		typedef regex_iterator<std::wstring::const_iterator, typename std::iterator_traits<std::wstring::const_iterator>::value_type, u16regex_traits<typename std::iterator_traits<std::wstring::const_iterator>::value_type> > u16wsregex_iterator;
 		typedef u16wcregex_iterator u1632wcregex_iterator;
 		typedef u16wsregex_iterator u1632wsregex_iterator;
 	#endif
@@ -11516,13 +11627,16 @@ public:
 	{
 		if (this != &right)
 		{
-			this->begin_ = right.begin_;
-			this->end_ = right.end_;
-			this->pregex_ = right.pregex_;
-			this->flags_ = right.flags_;
 			this->match_ = right.match_;
-			this->prevmatch_empty_ = right.prevmatch_empty_;
-			this->submatch_ = right.submatch_;
+			if (this->match_.size() > 0)
+			{
+				this->begin_ = right.begin_;
+				this->end_ = right.end_;
+				this->pregex_ = right.pregex_;
+				this->flags_ = right.flags_;
+				this->prevmatch_empty_ = right.prevmatch_empty_;
+				this->submatch_ = right.submatch_;
+			}
 		}
 		return *this;
 	}
@@ -12226,8 +12340,8 @@ public:
 	typedef basic_regex<charT, traits> regex_type;
 	typedef sub_match<BidirectionalIterator> value_type;
 	typedef std::ptrdiff_t difference_type;
-	typedef const value_type * pointer;
-	typedef const value_type & reference;
+	typedef const value_type *pointer;
+	typedef const value_type &reference;
 	typedef std::forward_iterator_tag iterator_category;
 
 	regex_token_iterator() : result_(NULL)
@@ -12291,11 +12405,14 @@ public:
 	{
 		if (this != &that)
 		{
-			this->position_ = that.position_;
 			this->result_ = that.result_;
-			this->suffix_ = that.suffix_;
-			this->N_ = that.N_;
-			this->subs_ = that.subs_;
+			if (this->result_)
+			{
+				this->position_ = that.position_;
+				this->suffix_ = that.suffix_;
+				this->N_ = that.N_;
+				this->subs_ = that.subs_;
+			}
 		}
 		return *this;
 	}
@@ -12425,8 +12542,8 @@ typedef regex_token_iterator<std::wstring::const_iterator> wsregex_token_iterato
 	typedef regex_token_iterator<std::u8string::const_iterator> u8sregex_token_iterator;
 #endif
 
-typedef regex_token_iterator<const char *, std::iterator_traits<const char *>::value_type, u8regex_traits<std::iterator_traits<const char *>::value_type> > u8ccregex_token_iterator;
-typedef regex_token_iterator<std::string::const_iterator, std::iterator_traits<std::string::const_iterator>::value_type, u8regex_traits<std::iterator_traits<std::string::const_iterator>::value_type> > u8csregex_token_iterator;
+typedef regex_token_iterator<const char *, typename std::iterator_traits<const char *>::value_type, u8regex_traits<typename std::iterator_traits<const char *>::value_type> > u8ccregex_token_iterator;
+typedef regex_token_iterator<std::string::const_iterator, typename std::iterator_traits<std::string::const_iterator>::value_type, u8regex_traits<typename std::iterator_traits<std::string::const_iterator>::value_type> > u8csregex_token_iterator;
 #if !defined(SRELL_CPP20_CHAR8_ENABLED)
 	typedef u8ccregex_token_iterator u8cregex_token_iterator;
 #endif
@@ -12441,8 +12558,8 @@ typedef regex_token_iterator<std::string::const_iterator, std::iterator_traits<s
 		typedef u32wcregex_token_iterator u1632wcregex_token_iterator;
 		typedef u32wsregex_token_iterator u1632wsregex_token_iterator;
 	#elif WCHAR_MAX >= 0xffff
-		typedef regex_token_iterator<const wchar_t *, std::iterator_traits<const wchar_t *>::value_type, u16regex_traits<std::iterator_traits<const wchar_t *>::value_type> > u16wcregex_token_iterator;
-		typedef regex_token_iterator<std::wstring::const_iterator, std::iterator_traits<std::wstring::const_iterator>::value_type, u16regex_traits<std::iterator_traits<std::wstring::const_iterator>::value_type> > u16wsregex_token_iterator;
+		typedef regex_token_iterator<const wchar_t *, typename std::iterator_traits<const wchar_t *>::value_type, u16regex_traits<typename std::iterator_traits<const wchar_t *>::value_type> > u16wcregex_token_iterator;
+		typedef regex_token_iterator<std::wstring::const_iterator, typename std::iterator_traits<std::wstring::const_iterator>::value_type, u16regex_traits<typename std::iterator_traits<std::wstring::const_iterator>::value_type> > u16wsregex_token_iterator;
 		typedef u16wcregex_token_iterator u1632wcregex_token_iterator;
 		typedef u16wsregex_token_iterator u1632wsregex_token_iterator;
 	#endif
