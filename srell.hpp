@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.016
+**  SRELL (std::regex-like library) version 4.017
 **
 **  Copyright (c) 2012-2023, Nozomu Katoo. All rights reserved.
 **
@@ -9638,7 +9638,7 @@ public:
 #if !defined(SRELLDBG_NO_SCFINDER)
 					if (this->NFA_states[0].character != constants::invalid_u32value)
 					{
-						if (is_contiguous(begin) ? do_search_mc(results) : do_search_noncontiguous(results))
+						if (do_search_sc(results, typename std::iterator_traits<BidirectionalIterator>::iterator_category()))
 							goto FOUND;
 
 						goto NOT_FOUND;
@@ -9722,47 +9722,51 @@ private:
 #if !defined(SRELLDBG_NO_SCFINDER)
 
 	template <typename ContiguousIterator, typename Allocator>
-	bool do_search_mc(match_results<ContiguousIterator, Allocator> &results) const
+	bool do_search_sc(match_results<ContiguousIterator, Allocator> &results, const std::random_access_iterator_tag) const
 	{
-		typedef typename std::iterator_traits<ContiguousIterator>::value_type char_type;
-		re_search_state<ContiguousIterator> &sstate = results.sstate_;
-		const ContiguousIterator searchend = sstate.nth.in_string;
-		const char_type ec = static_cast<char_type>(this->NFA_states[0].character);
-
-		for (;;)
+		if (is_contiguous(results.sstate_.srchbegin))
 		{
-			if (sstate.nextpos >= searchend)
-				break;
+			typedef typename std::iterator_traits<ContiguousIterator>::value_type char_type;
+			re_search_state<ContiguousIterator> &sstate = results.sstate_;
+			const ContiguousIterator searchend = sstate.nth.in_string;
+			const char_type ec = static_cast<char_type>(this->NFA_states[0].character);
 
-			sstate.nth.in_string = sstate.nextpos;
-
-			const char_type *const bgnpos = std::char_traits<char_type>::find(&*sstate.nextpos, sstate.srchend - sstate.nextpos, ec);
-
-			if (bgnpos)
+			for (;;)
 			{
-//				sstate.nth.in_string = bgnpos;
-				sstate.nth.in_string += bgnpos - &*sstate.nextpos;
-//				sstate.nextpos = bgnpos + 1;
-				sstate.nextpos = sstate.nth.in_string + 1;
+				if (sstate.nextpos >= searchend)
+					break;
+
+				sstate.nth.in_string = sstate.nextpos;
+
+				const char_type *const bgnpos = std::char_traits<char_type>::find(&*sstate.nextpos, sstate.srchend - sstate.nextpos, ec);
+
+				if (bgnpos)
+				{
+//					sstate.nth.in_string = bgnpos;
+					sstate.nth.in_string += bgnpos - &*sstate.nextpos;
+//					sstate.nextpos = bgnpos + 1;
+					sstate.nextpos = sstate.nth.in_string + 1;
 
 #if defined(SRELL_NO_LIMIT_COUNTER)
-				sstate.reset();
+					sstate.reset();
 #else
-				sstate.reset(this->limit_counter);
+					sstate.reset(this->limit_counter);
 #endif
-				if (run_automaton<false>(sstate))
-					return true;
+					if (run_automaton<false>(sstate))
+						return true;
+				}
+				else
+				{
+					break;
+				}
 			}
-			else
-			{
-				break;
-			}
+			return false;
 		}
-		return false;
+		return do_search_sc(results, std::bidirectional_iterator_tag());
 	}
 
 	template <typename BidirectionalIterator, typename Allocator>
-	bool do_search_noncontiguous(match_results<BidirectionalIterator, Allocator> &results) const
+	bool do_search_sc(match_results<BidirectionalIterator, Allocator> &results, const std::bidirectional_iterator_tag) const
 	{
 		typedef typename std::iterator_traits<BidirectionalIterator>::value_type char_type;
 		re_search_state<BidirectionalIterator> &sstate = results.sstate_;

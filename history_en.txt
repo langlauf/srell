@@ -1,3 +1,7 @@
+20230107; version 4.017:
+  * Fixed a bug that caused compilation to fail since version 4.006 when
+    bidirectional iterators were passed to an algorithm function.
+
 20230106; version 4.016/3.018 (@ only):
   * Merged four automata into two (preparation for i-modifier support).
   @ Fixed the pattern compiler not to treat /a{0,0}/ as an error.
