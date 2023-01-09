@@ -1,3 +1,9 @@
+20230109; version 4.018:
+  * Cancelled the mergence of automata that was done in version 4.016.
+    Starting to modify the pattern compiler of 4.017 for i-modifier
+    support showed icase search performance degradation that did not
+    surface in preliminary examinations.
+
 20230107; version 4.017:
   * Fixed a bug that caused compilation to fail since version 4.006 when
     bidirectional iterators were passed to an algorithm function.
