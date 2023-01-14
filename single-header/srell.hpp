@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.018
+**  SRELL (std::regex-like library) version 4.019
 **
 **  Copyright (c) 2012-2023, Nozomu Katoo. All rights reserved.
 **
@@ -14602,7 +14602,7 @@ struct re_quantifier
 		uint_l32 atleast;
 		//  (Special case 3: v1) in lookaround_open represents the number of characters to be rewound.
 		//  (Special case 3: v2) in lookaround_open represents: 0=lookaheads, 1=lookbehinds,
-		//    2=matchpointrewinder.
+		//    2=matchpointrewinder, 3=rewinder+rerun.
 		//  (Special case 4) in NFA_states[0] represents the class number of the first character class.
 		uchar32 offset;
 	};
@@ -14680,10 +14680,6 @@ struct re_quantifier
 	bool is_asterisk_or_plus() const
 	{
 		return atleast <= 1 && atmost == constants::infinity;
-	}
-	bool is_question_or_asterisk() const
-	{
-		return atleast == 0 && (atmost == 1 || atmost == constants::infinity);
 	}
 
 	bool has_simple_equivalence() const
@@ -14924,10 +14920,15 @@ struct re_state
 
 	void reset()
 	{
-		number = 0;
-		type   = st_character;
-		next1  = 1;
-		next2  = 0;
+		reset(st_character);
+	}
+
+	void reset(const re_state_type t)
+	{
+		type = t;
+		character = char_ctrl::cc_nul;
+		next1 = 1;
+		next2 = 0;
 		is_not = false;
 		quantifier.reset();
 	}
@@ -14957,7 +14958,12 @@ struct re_state
 
 	bool is_noncapturinggroup() const
 	{
-		return type == st_epsilon && character == meta_char::mc_colon;
+		return type == st_epsilon && next2 == 0 && character == meta_char::mc_colon;
+	}
+
+	bool is_noncapturinggroup_begin_or_end() const
+	{
+		return type == st_epsilon && next2 == 0 && (character == meta_char::mc_colon || character == char_other::co_smcln);
 	}
 
 	bool has_0widthchecker() const
@@ -14970,9 +14976,29 @@ struct re_state
 		return type == st_epsilon && next2 != 0 && character == meta_char::mc_bar;	//  '|'
 	}
 
+	bool is_question_or_asterisk() const
+	{
+		return type == st_epsilon && character == meta_char::mc_astrsk && next2 != 0;
+	}
+
 	bool is_asterisk_or_plus_for_onelen_atom() const
 	{
 		return type == st_epsilon && ((next1 == 1 && next2 == 2) || (next1 == 2 && next2 == 1)) && quantifier.is_asterisk_or_plus();
+	}
+
+	bool is_same_character_or_charclass(const re_state &right) const
+	{
+		return type == right.type && (type == st_character ? character == right.character : number == right.number);
+	}
+
+	std::ptrdiff_t nearnext() const
+	{
+		return quantifier.is_greedy ? next1 : next2;
+	}
+
+	std::ptrdiff_t farnext() const
+	{
+		return quantifier.is_greedy ? next2 : next1;
 	}
 };
 //  re_state
@@ -16736,15 +16762,19 @@ private:
 		switch (atom.type)
 		{
 		case st_epsilon:
-
-			if (piece.size() == 2)	//  ':' + something.
 			{
-				piece.erase(0);
-				return true;
-			}
+				state_type &firstatom = piece[0];
 
-			piece[0].quantifier.atmost = this->number_of_brackets - 1;
-			atom.character = char_other::co_smcln;	//  ';'
+				if (piece.size() == 2)	//  ':' + something.
+				{
+					piece.erase(0);
+					return true;
+				}
+
+				firstatom.quantifier.atmost = this->number_of_brackets - 1;
+				firstatom.quantifier.is_greedy = piecesize.atleast != 0u ? true : false;
+				atom.character = char_other::co_smcln;	//  ';'
+			}
 			break;
 
 //		case st_lookaround_pop:
@@ -16974,7 +17004,7 @@ private:
 		piece.push_back(atom);
 	}
 
-	void set_bracket_close(state_array &piece, state_type &atom, const re_quantifier & /* piecesize */, cstate_type & /* cstate */)
+	void set_bracket_close(state_array &piece, state_type &atom, const re_quantifier &piecesize, cstate_type & /* cstate */)
 	{
 //		uint_l32 max_bracketno = atom.number;
 
@@ -16996,6 +17026,7 @@ private:
 
 		rb_open.atleast = rb_pop.atleast = atom.number + 1;
 		rb_open.atmost = rb_pop.atmost = this->number_of_brackets - 1;	//  max_bracketno;
+		rb_open.is_greedy = piecesize.atleast != 0u ? true : false;
 	}
 
 	void combine_piece_with_quantifier(state_array &piece_with_quantifier, state_array &piece, const re_quantifier &quantifier, const re_quantifier &piecesize)
@@ -17148,7 +17179,7 @@ private:
 			}
 			atom.type = st_epsilon;	//  st_increment_counter;
 			piece.insert(0, atom);
-			piece[0].number = 0;
+			piece[0].character = char_ctrl::cc_nul;
 
 			atom.type = st_check_counter;
 			//  greedy:  3.check_counter(4|6), 4.piece, 5.LAorC0WR(3|0), 6.OutOfLoop.
@@ -19045,6 +19076,10 @@ private:
 
 	void optimise()
 	{
+#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
+		find_entrypoint();
+#endif
+
 #if !defined(SRELLDBG_NO_BRANCH_OPT2) && !defined(SRELLDBG_NO_ASTERISK_OPT)
 		branch_optimisation2();
 #endif
@@ -19108,190 +19143,43 @@ private:
 
 	void asterisk_optimisation()
 	{
-		state_type *prevstate_is_astrskepsilon = NULL;
-		const state_type *prevcharstate = NULL;
-		state_size_type mnp_inspos = 0;
-		bool inspos_updatable = true;
-#if !defined(SRELLDBG_NO_SPLITCC)
-		bool inserted = false;
-#endif
-
-		for (typename state_array::size_type cur = 1; cur < this->NFA_states.size(); ++cur)
+		for (state_size_type pos = 1u; pos < this->NFA_states.size(); ++pos)
 		{
-			state_type &curstate = this->NFA_states[cur];
+			state_type &curstate = this->NFA_states[pos];
 
 			switch (curstate.type)
 			{
-			case st_epsilon:
-				if (curstate.character == meta_char::mc_astrsk)
-				{
-					prevstate_is_astrskepsilon = &curstate;
-				}
-				else
-				{
-					prevstate_is_astrskepsilon = NULL;
-					inspos_updatable = false;
-				}
-				break;
-
 			case st_character:
 			case st_character_class:
-				if (inspos_updatable)
+				if (this->NFA_states[pos - 1].is_question_or_asterisk())
 				{
-					if (prevcharstate)
-					{
-						if (prevcharstate->type != curstate.type || prevcharstate->number != curstate.number)
-							inspos_updatable = false;
-					}
-					if (inspos_updatable)
-					{
-						if (prevstate_is_astrskepsilon)
-						{
-							inspos_updatable = false;
-							if (prevstate_is_astrskepsilon->quantifier.is_asterisk_or_plus())
-							{
-								mnp_inspos = cur + 1;
-							}
-						}
-					}
-					prevcharstate = &curstate;
-				}
-				if (prevstate_is_astrskepsilon)
-				{
-					const re_quantifier &eq = prevstate_is_astrskepsilon->quantifier;
-					const state_size_type epsilonno = cur - 1;
-					const std::ptrdiff_t faroffset = eq.is_greedy ? prevstate_is_astrskepsilon->next2 : prevstate_is_astrskepsilon->next1;
-					const state_size_type nextno = epsilonno + faroffset;
-#if !defined(SRELLDBG_NO_SPLITCC)
-					const state_size_type origlen = this->NFA_states.size();
-#endif
+					state_type &estate = this->NFA_states[pos - 1];
+					const state_size_type nextno = pos + estate.farnext() - 1;
 
-					if (is_exclusive_sequence(eq, cur, nextno))
+					if (is_exclusive_sequence(estate.quantifier, pos, nextno))
 					{
-						state_type &epsilonstate = this->NFA_states[epsilonno];
-						state_type &curstate2 = this->NFA_states[cur];
+						state_type &estate2 = this->NFA_states[pos - 1];
+						state_type &cstate2 = this->NFA_states[pos];
 
-						epsilonstate.next1 = 1;
-						epsilonstate.next2 = 0;
-						epsilonstate.number = 0;
-						if (epsilonstate.quantifier.is_infinity())
+						estate2.next1 = 1;
+						estate2.next2 = 0;
+						estate2.character = char_ctrl::cc_nul;
+						if (estate2.quantifier.is_infinity())
 						{
-							curstate2.next1 = 0;
-							curstate2.next2 = faroffset - 1;
+							cstate2.next1 = 0;
+							cstate2.next2 = nextno - pos;
 						}
 						else	//  ? or {0,1}
 						{
-							curstate2.next2 = faroffset - 1;
+							cstate2.next2 = nextno - pos;
 						}
-
-#if !defined(SRELLDBG_NO_SPLITCC)
-						if (mnp_inspos == nextno && origlen != this->NFA_states.size())
-							inserted = true;
-#endif
 					}
-					prevstate_is_astrskepsilon = NULL;
 				}
-				break;
+				continue;
 
-			default:
-				prevstate_is_astrskepsilon = NULL;
-				inspos_updatable = false;
+			default:;
 			}
 		}
-
-#if !defined(SRELLDBG_NO_NEXTPOS_OPT)
-
-		if (mnp_inspos != 0)
-		{
-			state_size_type cur = mnp_inspos;
-
-			if (this->NFA_states[cur].type != st_success)
-			{
-#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER) && !defined(SRELLDBG_NO_1STCHRCLS) && !defined(SRELLDBG_NO_BITSET)
-
-				const state_type &prevstate = this->NFA_states[cur - 1];
-
-#if !defined(SRELLDBG_NO_SPLITCC)
-				if (!inserted && prevstate.next1 == 0)
-#else
-				if (prevstate.next1 == 0)
-#endif
-				{
-					range_pairs prevcc;
-					range_pairs nextcc;
-
-//					gather_if_char_or_cc_strict(prevcc, prevstate);
-					if (prevstate.type == st_character)
-					{
-						prevcc.set_solerange(range_pair_helper(prevstate.character));
-					}
-					else if (prevstate.type == st_character_class)
-					{
-						prevcc = this->character_class[prevstate.number];
-					}
-
-					gather_nextchars(nextcc, cur, 0u, true);
-
-					const uint_l32 cpnum_prevcc = prevcc.total_codepoints();
-					const uint_l32 cpnum_nextcc = nextcc.total_codepoints();
-
-					if (cpnum_nextcc != 0 && cpnum_nextcc < cpnum_prevcc)
-					{
-						state_array newNFAs;
-						state_type atom;
-
-						atom.reset();
-						atom.character = meta_char::mc_eq;	//  '='
-						atom.type = st_lookaround_open;
-						atom.next1 = static_cast<std::ptrdiff_t>(cur - 1) * 2 + 2;
-						atom.next2 = 1;
-						atom.quantifier.atleast = 2; //  Match point rewinder.
-						newNFAs.append(1, atom);
-
-						newNFAs.append(this->NFA_states, 1, cur - 1);
-
-						atom.type = st_lookaround_close;
-						atom.next1 = 0;
-						atom.next2 = 0;
-						newNFAs.append(1, atom);
-
-						insert_at(1, newNFAs.size());
-						this->NFA_states.replace(1, newNFAs.size(), newNFAs);
-						this->NFA_states[0].next2 = this->NFA_states[0].next1;
-						this->NFA_states[0].next1 = 1;
-
-						return;
-					}
-				}
-#endif	//  !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER) && !defined(SRELLDBG_NO_1STCHRCLS) && !defined(SRELLDBG_NO_BITSET)
-
-				insert_at(cur, 1);
-				state_type &mnpstate = this->NFA_states[cur];
-				state_type &charstate = this->NFA_states[cur - 1];
-
-				mnpstate.type = st_move_nextpos;
-
-#if !defined(SRELLDBG_NO_SPLITCC)
-
-				if (inserted)
-				{
-					charstate.next2 = 1;
-				}
-				else
-#endif
-				if (charstate.next1 == 0)
-				{
-					mnpstate.next1 = charstate.next2 - 1;
-					charstate.next2 = 1;
-				}
-				else
-				{
-					mnpstate.next1 = -2;
-					charstate.next1 = 1;
-				}
-			}
-		}
-#endif	//  !defined(SRELLDBG_NO_NEXTPOS_OPT)
 	}
 
 	bool is_exclusive_sequence(const re_quantifier &eq, const state_size_type curno, const state_size_type nextno)	//  const
@@ -19461,6 +19349,18 @@ private:
 			this->NFA_states.insert(pos, newstate);
 	}
 
+	bool check_if_backref_used(state_size_type pos, const uint_l32 number) const
+	{
+		for (; pos < this->NFA_states.size(); ++pos)
+		{
+			const state_type &state = this->NFA_states[pos];
+
+			if (state.type == st_backreference && state.number == number)
+				return true;
+		}
+		return false;
+	}
+
 #if !defined(SRELLDBG_NO_NEXTPOS_OPT)
 #endif	//  !defined(SRELLDBG_NO_NEXTPOS_OPT)
 
@@ -19538,10 +19438,7 @@ private:
 				if (unicode_case_folding::count_caseunfolding(state.character) > 1)
 					return true;
 			}
-			else if (state.type == st_backreference)
-				return true;
 		}
-//		this->soflags &= ~regex_constants::icase;
 		return false;
 	}
 #endif	//  !defined(SRELL_NO_ICASE)
@@ -19711,6 +19608,667 @@ private:
 		}
 	}
 #endif	//   !defined(SRELLDBG_NO_BRANCH_OPT2)
+
+#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
+
+	void find_entrypoint()
+	{
+		if (find_singlechar_ep(1u, false))
+			return;
+
+		find_better_ep(1u);
+	}
+
+	bool find_singlechar_ep(state_size_type cur, const bool contiguous)
+	{
+		bool firstchar = !contiguous ? true : false;
+		bool needs_rerun = false;
+
+		for (; cur < this->NFA_states.size(); ++cur)
+		{
+			const state_type &state = this->NFA_states[cur];
+
+			switch (state.type)
+			{
+			case st_character:
+				if (firstchar)
+				{
+					return true;
+				}
+
+				if (cur + 1 < this->NFA_states.size())
+				{
+					const state_type &nextstate = this->NFA_states[cur + 1];
+
+					if (nextstate.type == st_character)
+						++cur;
+					else
+					{
+						if (find_singlechar_ep(cur + 1, true))
+							return true;
+						if (contiguous)
+							return false;
+					}
+				}
+				create_rewinder(cur, needs_rerun);
+				return true;
+
+			case st_character_class:
+				firstchar = false;
+				continue;
+
+			case st_epsilon:
+				if (state.next2 != 0)
+				{
+					if (state.character == meta_char::mc_astrsk)
+					{
+						needs_rerun = true;
+						cur += state.farnext() - 1;
+						firstchar = false;
+						continue;
+					}
+					else if (state.character == 0u)
+					{
+						++cur;
+						if (is_reversible_atom(cur))
+						{
+							firstchar = false;
+							needs_rerun = true;
+							continue;
+						}
+					}
+					return false;
+				}
+				continue;
+
+			case st_save_and_reset_counter:
+				cur += 5;
+				if (cur < this->NFA_states.size())
+				{
+					const state_type &ccatom = this->NFA_states[cur];
+
+					if (ccatom.is_character_or_class())
+					{
+						if (!state.quantifier.is_same())
+							needs_rerun = true;
+
+						firstchar = false;
+						continue;;
+					}
+					if (is_reversible_atom(cur))
+					{
+						firstchar = false;
+						needs_rerun = true;
+						continue;
+					}
+				}
+				return false;
+
+			case st_repeat_in_push:
+			case st_backreference:
+			case st_lookaround_open:
+				return false;
+
+			case st_check_counter:
+			case st_decrement_counter:
+			case st_restore_counter:
+			case st_repeat_in_pop:
+			case st_check_0_width_repeat:
+				return false;	//  NFA_states broken.
+
+			case st_roundbracket_open:
+				if (check_if_backref_used(cur + 1, state.number))
+				{
+					return false;
+				}
+				needs_rerun = true;
+				//@fallthrough@
+
+			default:;
+			}
+		}
+		return false;
+	}
+
+	bool is_reversible_atom(state_size_type &pos) const
+	{
+		const state_type &s = this->NFA_states[pos];
+		state_size_type end = 0u;
+
+		switch (s.type)
+		{
+		case st_character:
+		case st_character_class:
+			return true;
+
+		case st_epsilon:
+			if (s.next2 == 0 && s.character == meta_char::mc_colon)
+				end = skip_group(this->NFA_states, pos);
+			break;
+
+		case st_roundbracket_open:
+			if (check_if_backref_used(pos + 1, s.number))
+			{
+				return false;
+			}
+			end = skip_bracket(s.number, this->NFA_states, pos);
+			break;
+
+		case st_repeat_in_push:
+			end = skip_0width_checker(s.number, this->NFA_states, pos);
+			//@fallthrough@
+
+		default:;
+		}
+
+		if (end != 0u && !has_obstacle_to_reverse(pos, end))
+		{
+			pos = end;
+			return true;
+		}
+		return false;
+	}
+
+	bool has_obstacle_to_reverse(state_size_type pos, const state_size_type end) const
+	{
+		for (; pos < end; ++pos)
+		{
+			const state_type &s = this->NFA_states[pos];
+
+			if (s.type == st_epsilon)
+			{
+				if (s.character == meta_char::mc_bar || s.character == char_alnum::ch_s)
+					return true;
+			}
+			else if (s.type == st_backreference)
+				return true;
+			else if (s.type == st_lookaround_open)
+				return true;
+		}
+		return false;
+	}
+
+	state_size_type skip_bracket(const uint_l32 no, const state_array &NFAs, state_size_type pos) const
+	{
+		return find_pair(st_roundbracket_close, NFAs, no, pos);
+	}
+
+	state_size_type skip_0width_checker(const uint_l32 no, const state_array &NFAs, state_size_type pos) const
+	{
+		return find_pair(st_check_0_width_repeat, NFAs, no, pos);
+	}
+
+	state_size_type find_pair(const re_state_type type, const state_array &NFAs, const uint_l32 no, state_size_type pos) const
+	{
+		for (++pos; pos < NFAs.size(); ++pos)
+		{
+			const state_type &s = NFAs[pos];
+
+			if (s.type == type && s.number == no)
+				return pos;
+		}
+		return 0u;
+	}
+
+	state_size_type skip_group(const state_array &NFAs, state_size_type pos) const
+	{
+		uint_l32 depth = 1u;
+
+		for (++pos; pos < NFAs.size(); ++pos)
+		{
+			const state_type &s = NFAs[pos];
+
+			if (s.type == st_epsilon)
+			{
+				if (s.character == meta_char::mc_colon)
+					++depth;
+				else if (s.character == char_other::co_smcln)
+				{
+					if (--depth == 0u)
+						return pos;
+				}
+			}
+		}
+		return 0u;
+	}
+
+	void create_rewinder(const state_size_type end, const bool needs_rerun)
+	{
+		state_array newNFAs;
+		state_type natom;
+
+		newNFAs.append(this->NFA_states, 1u, end - 1u);
+		if (!reverse_atoms(newNFAs) || newNFAs.size() == 0u)
+			return;
+
+		natom.reset();
+		natom.character = meta_char::mc_eq;	//  '='
+		natom.type = st_lookaround_open;
+		natom.next1 = static_cast<std::ptrdiff_t>(end - 1 + newNFAs.size()) + 2;
+		natom.next2 = 1;
+		natom.quantifier.atleast = needs_rerun ? 3 : 2; //  Match point rewinder.
+			//  "singing" problem: /\w+ing/ against "singing" matches the
+			//  entire "singing". However, if modified like /(?<=\K\w+)ing/
+			//  it matches "sing" only, which is not correct (but correct if
+			//  /\w+?ing/). To avoid this problem, after rewinding is
+			//  finished rerunning the automaton forwards from the found
+			//  point is needed if the reversed states contain a variable
+			//  length (non fixed length) atom.
+			//  TODO: This rerunning can be avoided if the reversed atoms
+			//  are an exclusive sequence, like /\d+[:,]+\d+abcd/.
+		newNFAs.insert(0, natom);
+
+		natom.type = st_lookaround_close;
+		natom.next1 = 0;
+		natom.next2 = 0;
+		newNFAs.append(1, natom);
+
+		this->NFA_states.insert(1, newNFAs);
+		this->NFA_states[0].next2 = static_cast<std::ptrdiff_t>(newNFAs.size() + 1);
+	}
+
+	bool reverse_atoms(state_array &NFAs)
+	{
+		state_array revNFAs;
+		state_array atomseq;
+		state_type epsilon;
+
+		epsilon.reset(st_epsilon);
+
+		for (state_size_type cur = 0u; cur < NFAs.size();)
+		{
+			const state_type &state = NFAs[cur];
+
+			switch (state.type)
+			{
+			case st_epsilon:
+				if (state.is_noncapturinggroup_begin_or_end())
+				{
+					revNFAs.insert(0, epsilon);
+					++cur;
+					continue;
+				}
+				break;
+
+			case st_roundbracket_open:
+				atomseq.clear();
+				atomseq.push_back(epsilon);
+				atomseq.push_back(epsilon);
+				revNFAs.insert(0, atomseq);
+				cur += 2;
+				continue;
+
+			case st_roundbracket_close:
+				revNFAs.insert(0, epsilon);
+				cur += 1;
+				continue;
+
+			default:;
+			}
+
+			const state_size_type boundary = find_atom_boundary(NFAs, cur, NFAs.size());
+
+			if (boundary == 0u)
+			{
+				return false;
+			}
+
+			if (cur == boundary)
+			{
+				return false;
+			}
+
+			atomseq.clear();
+			atomseq.append(NFAs, cur, boundary - cur);
+
+			if (!mend_for_reverse(atomseq))
+			{
+				return false;
+			}
+
+			cur = boundary;
+			revNFAs.insert(0, atomseq);
+		}
+		revNFAs.swap(NFAs);
+		return true;
+	}
+
+	bool mend_for_reverse(state_array &atoms)
+	{
+		for (state_size_type pos = 0; pos < atoms.size(); ++pos)
+		{
+			state_type &s = atoms[pos];
+
+			switch (s.type)
+			{
+			case st_roundbracket_open:
+				if (!check_if_backref_used(pos + 1, s.number))
+				{
+					const state_size_type end = skip_bracket(s.number, atoms, pos);
+
+					if (end != 0u)
+					{
+						pos += 2;
+						state_array rev(atoms, pos, end - pos);
+
+						if (reverse_atoms(rev) && (end - pos) == rev.size())
+						{
+							if (s.quantifier.is_greedy)
+							{
+								atoms[pos - 2].reset(st_epsilon);
+								atoms[pos - 1].reset(st_epsilon);
+								atoms[end].type = st_epsilon;
+								atoms[end].character = char_ctrl::cc_nul;
+								atoms[end].next2 = 0;
+							}
+							else
+							{
+								state_type &bro = atoms[pos - 2];
+								state_type &brp = atoms[pos - 1];
+								state_type &brc = atoms[end];
+
+								bro.type = st_repeat_in_push;
+								brp.type = st_repeat_in_pop;
+								brc.type = st_check_0_width_repeat;
+
+								bro.number = this->number_of_repeats;
+								brp.number = this->number_of_repeats;
+								brc.number = this->number_of_repeats;
+								++this->number_of_repeats;
+							}
+							atoms.replace(pos, end - pos, rev);
+							pos += rev.size();
+							continue;
+						}
+					}
+				}
+				return false;
+
+			case st_epsilon:
+				if (s.character == meta_char::mc_colon)
+				{
+					state_size_type end = skip_group(atoms, pos);
+
+					if (end != 0u)
+					{
+						++pos;
+						state_array rev(atoms, pos, end - pos);
+
+						if (reverse_atoms(rev) && (end - pos) == rev.size())
+						{
+							atoms.replace(pos, end - pos, rev);
+							pos += rev.size();
+							continue;
+						}
+					}
+					return false;
+				}
+				else if (s.character == meta_char::mc_astrsk && s.next2 != 0)
+				{
+					if (!s.quantifier.is_greedy)
+					{
+						s.next2 = s.next1;
+						s.next1 = 1;
+						s.quantifier.is_greedy = true;
+					}
+				}
+				continue;
+
+			case st_save_and_reset_counter:
+				if (pos + 5 < atoms.size())
+				{
+					state_type &ccstate = atoms[pos + 2];
+
+					if (!ccstate.quantifier.is_greedy)
+					{
+//						for (uint_l32 j = 0; j < 5; ++j)
+//							atoms[pos + j].quantifier.is_greedy = true;
+
+						ccstate.next2 = ccstate.next1;
+						ccstate.next1 = 1;
+						ccstate.quantifier.is_greedy = true;
+					}
+					continue;
+				}
+				return false;
+
+			default:;
+			}
+		}
+		return true;
+	}
+
+	state_size_type find_atom_boundary(const state_array &NFAs, state_size_type cur, const state_size_type end) const
+	{
+		const state_size_type begin = cur;
+		state_size_type endpos = cur;
+		const state_type *bstate = NULL;
+
+		for (; cur < end; ++cur)
+		{
+			const state_type &state = NFAs[cur];
+
+			switch (state.type)
+			{
+			case st_character:
+			case st_character_class:
+				if (bstate == NULL)
+					bstate = &state;
+				else if (!bstate->is_same_character_or_charclass(state))
+					return endpos;
+
+				endpos = cur + 1;
+				continue;
+
+			case st_epsilon:
+				if (state.next2 == 0)
+				{
+					if (bstate)
+						return endpos;
+
+					if (state.next1 > 1)
+						continue;
+
+					if (state.character == meta_char::mc_escape)
+						return cur + 1;
+
+					if (state.character == meta_char::mc_colon)	//  (?:...)
+					{
+						const state_size_type gend = skip_group(NFAs, cur);
+
+						if (gend != 0u)
+							return gend + 1;
+
+						return 0u;
+					}
+
+					if (state.character == char_other::co_smcln)
+						return cur + 1;
+
+					return 0u;
+				}
+
+				if (state.character == meta_char::mc_astrsk)
+				{
+					if (cur + 1 < end)
+					{
+						const state_type &nextstate = NFAs[cur + 1];
+
+						if (bstate == NULL)
+						{
+							if (nextstate.is_character_or_class())
+							{
+								bstate = &nextstate;
+								++cur;
+								endpos = cur + 1;
+								continue;
+							}
+						}
+						else if (bstate->is_same_character_or_charclass(nextstate))
+						{
+							++cur;
+							endpos = cur + 1;
+							continue;
+						}
+						else
+							return endpos;
+					}
+					return 0u;
+				}
+
+				if (state.character == 0u)
+				{
+					if (bstate)
+						return endpos;
+
+					return cur + state.farnext();
+				}
+				return 0u;
+
+			case st_save_and_reset_counter:
+				if (cur + 5 < end)
+				{
+					const state_type &corcstate = NFAs[cur + 5];
+
+					if (bstate == NULL)
+					{
+						if (corcstate.is_character_or_class())
+						{
+							bstate = &corcstate;
+							cur += 5;
+							endpos = cur + 1;
+							continue;
+						}
+						if (bstate)
+							return endpos;
+					}
+
+					if (bstate && !bstate->is_same_character_or_charclass(corcstate))
+						return endpos;
+
+					const state_type &ccstate = NFAs[cur + 2];
+					return cur + 2 + ccstate.farnext();
+				}
+				return 0u;
+
+			case st_bol:
+			case st_eol:
+			case st_boundary:
+			case st_backreference:
+				if (bstate)
+					return endpos;
+				return cur + 1;
+
+			case st_roundbracket_open:
+				if (bstate)
+					return endpos;
+				else
+				{
+					const state_size_type rbend = skip_bracket(state.number, NFAs, cur);
+
+					if (rbend != 0u)
+					{
+						return rbend + 1;
+					}
+				}
+				return 0u;
+
+			case st_repeat_in_push:
+				if (bstate)
+					return endpos;
+				else
+				{
+					const state_size_type rpend = skip_0width_checker(state.number, NFAs, cur);
+
+					if (rpend != 0u)
+						return rpend + 1;
+				}
+				return 0u;
+
+			case st_lookaround_open:
+				if (bstate)
+					return endpos;
+				return cur + state.next1;
+
+			case st_roundbracket_close:
+			case st_check_0_width_repeat:
+			case st_lookaround_close:
+				return endpos;
+
+			case st_roundbracket_pop:
+			case st_check_counter:
+			case st_decrement_counter:
+			case st_restore_counter:
+			case st_repeat_in_pop:
+				return 0u;
+
+			default:
+				return 0u;
+			}
+		}
+		return begin != endpos ? endpos : 0u;
+	}
+
+	bool find_better_ep(state_size_type cur)
+	{
+		state_size_type betterpos = 0u;
+		uint_l32 bp_cpnum = 0u;
+		range_pairs nextcc;
+
+		for (; cur < this->NFA_states.size();)
+		{
+			const state_size_type boundary = find_atom_boundary(this->NFA_states, cur, this->NFA_states.size());
+
+			if (boundary == 0u)
+			{
+				break;
+			}
+
+			if (cur == boundary)
+			{
+				break;
+			}
+
+			nextcc.clear();
+			const bool canbe0length = gather_nextchars(nextcc, cur, 0u, false);
+
+			if (canbe0length)
+			{
+				break;
+			}
+
+			const uint_l32 cpnum = nextcc.total_codepoints();
+
+			if (betterpos != 0u)
+			{
+				if (bp_cpnum >= cpnum)
+				{
+					betterpos = cur;
+					bp_cpnum = cpnum;
+				}
+			}
+			else
+			{
+				betterpos = cur;
+				bp_cpnum = cpnum;
+			}
+
+			if (has_obstacle_to_reverse(cur, boundary))
+			{
+				break;
+			}
+			cur = boundary;
+		}
+
+		if (betterpos > 1u)
+		{
+			create_rewinder(betterpos, true);
+			return true;
+		}
+		return false;
+	}
+
+#endif	//  !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
 
 public:	//  For debug.
 
@@ -21742,7 +22300,7 @@ private:
 					sstate.btstack_size = sstate.bt_stack.size();
 
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
-					if (current_NFA.quantifier.atleast == 2)
+					if (current_NFA.quantifier.atleast >= 2)
 					{
 						sstate.repeat_stack.push_back(sstate.lblim);
 						sstate.lblim = sstate.srchbegin;
@@ -21779,7 +22337,7 @@ private:
 					{
 
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
-						if (current_NFA.quantifier.atleast == 2)
+						if (current_NFA.quantifier.atleast >= 2)
 						{
 							sstate.lblim = sstate.repeat_stack[backup_bottom.repeatstack_size];
 							if (is_matched)
@@ -21791,7 +22349,10 @@ private:
 						if (current_NFA.character != meta_char::mc_gt)	//  '>'
 #endif
 						{
-							sstate.nth.in_string = orgpos;
+#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
+							if (current_NFA.quantifier.atleast < 3)
+#endif
+								sstate.nth.in_string = orgpos;
 						}
 						sstate.bt_stack.resize(sstate.btstack_size);
 
@@ -21805,7 +22366,12 @@ private:
 				}
 				if (is_matched)
 				{
-					sstate.nth.in_NFA_states = current_NFA.next_state1;
+#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
+					if (current_NFA.quantifier.atleast == 3)
+						sstate.nth.in_NFA_states = this->NFA_states[0].next_state2;
+					else
+#endif
+						sstate.nth.in_NFA_states = current_NFA.next_state1;
 					continue;
 				}
 

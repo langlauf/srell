@@ -1,3 +1,6 @@
+20230114; version 4.019:
+  * Implemented a new entry point selector.
+
 20230109; version 4.018:
   * Cancelled the mergence of automata that was done in version 4.016.
     Starting to modify the pattern compiler of 4.017 for i-modifier
@@ -25,7 +28,7 @@
 
 20221220; version 4.013:
   * Fixed a minor issue in split(). When splitting "abc" by /$/, split()
-    returned {"abc", ""} instead of {"abc"} that is correct.
+    had returned {"abc", ""} instead of {"abc"} that is correct.
   * Reduced the number of overload functions of replace(). Now when the
     lambda expression is used, the type of match_results that will be
     passed to a callback function needs specifying explicitly as the
@@ -73,8 +76,8 @@
     be disabled by defining SRELL_NO_UBMOD.
 
 20221123; version 4.006:
-  * Added a new entry point finder for expressions whose first matching
-    character is a single character.
+  * Added a new finder for expressions whose first matching character is
+    a single character.
 
 20221030; version 4.005/3.015 (@ only):
   @ Fixed a problem that caused undefined behaviour in conditions where
