@@ -1,11 +1,16 @@
+20230724; version 4.020:
+  * Simplified the method of converting properties of strings to the
+    internal representation.
+  * Other minor improvements.
+
 20230114; version 4.019:
   * Implemented a new entry point selector.
 
 20230109; version 4.018:
-  * Cancelled the mergence of automata that was done in version 4.016.
-    Starting to modify the pattern compiler of 4.017 for i-modifier
-    support showed icase search performance degradation that did not
-    surface in preliminary examinations.
+  * Cancelled the mergence of automata that was done in version 4.016,
+    because once I began to modify the pattern compiler for i-modifier
+    support, icase search performance degradation that had not surface
+    in preliminary examinations appeared.
 
 20230107; version 4.017:
   * Fixed a bug that caused compilation to fail since version 4.006 when

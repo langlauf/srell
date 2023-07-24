@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.019
+**  SRELL (std::regex-like library) version 4.020
 **
 **  Copyright (c) 2012-2023, Nozomu Katoo. All rights reserved.
 **
@@ -54,7 +54,6 @@
   #endif
 #endif
 #ifdef __cpp_initializer_lists
-#include <initializer_list>
   #ifndef SRELL_CPP11_INITIALIZER_LIST_ENABLED
   #define SRELL_CPP11_INITIALIZER_LIST_ENABLED
   #endif
@@ -116,7 +115,9 @@
 #endif
 #define SRELL_NO_NAMEDCAPTURE
 #define SRELL_NO_SINGLELINE
-#define SRELL_FIXEDWIDTHLOOKBEHIND
+//#define SRELL_FIXEDWIDTHLOOKBEHIND
+//  Since version 4.019, SRELL highly depends on the variable-length
+//  lookbehind feature. Uncommenting this line is not recommended.
 #endif
 
 namespace srell
@@ -3592,15 +3593,10 @@ struct re_state
 		//  quantifiers:        -
 		//  is_not/dont_push:   -
 
-	void reset()
-	{
-		reset(st_character);
-	}
-
-	void reset(const re_state_type t)
+	void reset(const re_state_type t = st_character, const uchar32 c = char_ctrl::cc_nul)
 	{
 		type = t;
-		character = char_ctrl::cc_nul;
+		character = c;
 		next1 = 1;
 		next2 = 0;
 		is_not = false;
@@ -3630,6 +3626,11 @@ struct re_state
 #endif
 	}
 
+	bool has_0widthchecker() const
+	{
+		return type == st_roundbracket_open || type == st_backreference;
+	}
+
 	bool is_noncapturinggroup() const
 	{
 		return type == st_epsilon && next2 == 0 && character == meta_char::mc_colon;
@@ -3640,9 +3641,9 @@ struct re_state
 		return type == st_epsilon && next2 == 0 && (character == meta_char::mc_colon || character == char_other::co_smcln);
 	}
 
-	bool has_0widthchecker() const
+	bool is_noncapturinggroup_containing_capturinggroup() const
 	{
-		return type == st_roundbracket_open || type == st_backreference;
+		return is_noncapturinggroup() && quantifier.is_valid();
 	}
 
 	bool is_branch() const
@@ -5136,8 +5137,7 @@ private:
 //		this->soflags = flags;
 		cstate.reset(flags, begin);
 
-		atom.reset();
-		atom.type = st_epsilon;
+		atom.reset(st_epsilon);
 		atom.next2 = 1;
 		this->NFA_states.push_back(atom);
 
@@ -5196,9 +5196,7 @@ private:
 
 			if (curpos != end && *curpos == meta_char::mc_bar)
 			{
-				atom.reset();
-				atom.character = meta_char::mc_bar;
-				atom.type = st_epsilon;
+				atom.reset(st_epsilon, meta_char::mc_bar);
 				atom.next2 = static_cast<std::ptrdiff_t>(branch.size()) + 2;
 				branch.insert(0, atom);
 			}
@@ -5215,8 +5213,7 @@ private:
 			//  *curpos == '|'
 
 			prevbranch_end = piece.size();
-			atom.reset();
-			atom.type = st_epsilon;
+			atom.reset(st_epsilon);
 			piece.push_back(atom);
 
 			++curpos;
@@ -5306,8 +5303,7 @@ private:
 	{
 		state_type atom;
 
-		atom.reset();
-		atom.character = *curpos++;
+		atom.reset(st_character, *curpos++);
 
 		switch (atom.character)
 		{
@@ -5399,8 +5395,7 @@ private:
 		if (curpos == end)
 			this->throw_error(regex_constants::error_paren);
 
-		atom.reset();
-		atom.type = st_roundbracket_open;
+		atom.reset(st_roundbracket_open);
 
 		if (*curpos == meta_char::mc_query)	//  '?'
 		{
@@ -5708,7 +5703,7 @@ private:
 		state_type &firstatom = piece[0];
 //		const bool firstpiece_is_roundbracket_open = (firstatom.type == st_roundbracket_open);
 		const bool piece_has_0widthchecker = firstatom.has_0widthchecker();
-		const bool piece_is_noncapturinggroup_contaning_capturinggroup = firstatom.is_noncapturinggroup() && firstatom.quantifier.is_valid();
+		const bool piece_is_noncapturinggroup_containing_capturinggroup = firstatom.is_noncapturinggroup_containing_capturinggroup();
 		state_type atom;
 
 		if (quantifier.atmost == 0)
@@ -5864,7 +5859,7 @@ private:
 		//  atom.type is epsilon or check_counter.
 		//  Its "next"s point to piece and OutOfLoop.
 
-		if (!piece_is_noncapturinggroup_contaning_capturinggroup && (piecesize.atleast || piece_has_0widthchecker))
+		if (!piece_is_noncapturinggroup_containing_capturinggroup && (piecesize.atleast || piece_has_0widthchecker))
 		{
 			const typename state_array::size_type piece_size = piece.size();
 			state_type &lastatom = piece[piece_size - 1];
@@ -5900,7 +5895,7 @@ private:
 
 			const state_size_type org1stpos = (atom.type == st_check_counter) ? 2 : 0;
 
-			if (piece_is_noncapturinggroup_contaning_capturinggroup)
+			if (piece_is_noncapturinggroup_containing_capturinggroup)
 				atom.quantifier = piece[org1stpos].quantifier;
 			else
 				atom.quantifier.set(1, 0);
@@ -6091,8 +6086,7 @@ private:
 		{
 			state_type atom;
 
-			atom.reset();
-			atom.character = pos.ranges.consists_of_one_character(this->is_icase());
+			atom.reset(st_character, pos.ranges.consists_of_one_character(this->is_icase()));
 
 			if (atom.character == constants::invalid_u32value)
 			{
@@ -7042,9 +7036,9 @@ private:
 	{
 		uint_l32 seqlen = static_cast<uint_l32>(pos.indices.size());
 		state_type ccatom;
+		simple_array<uchar32> ins_bt;
 
-		ccatom.reset();
-		ccatom.type = st_character_class;
+		ccatom.reset(st_character_class);
 		ccatom.number = this->character_class.register_newclass(pos.ranges);
 
 		if (seqlen > 0)
@@ -7059,12 +7053,9 @@ private:
 			for (uint_l32 i = 0; i < seqlen; ++i)
 				branch[i].reset();
 
-			branchatom.reset();
-			branchatom.type = st_epsilon;
-			branchatom.character = meta_char::mc_bar;	//  '|'
+			branchatom.reset(st_epsilon, meta_char::mc_bar);
 
-			jumpatom.reset();
-			jumpatom.type = st_epsilon;
+			jumpatom.reset(st_epsilon);
 
 			--seqlen;
 
@@ -7086,6 +7077,51 @@ private:
 
 						if (count == seqlen)
 						{
+#if !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT)
+							state_size_type bpos = 0;
+
+							for (state_size_type ppos = 0; ppos < piece.size();)
+							{
+								if (bpos + 1 == branch.size())
+								{
+									uint_l32 inspos = static_cast<uint_l32>(ins_bt.size());
+
+									for (; inspos >= 2 && (ins_bt[inspos - 2] > ppos); inspos -= 2);
+
+									ins_bt.insert(inspos, static_cast<uchar32>(piece.size() + 2 - 1));
+									ins_bt.insert(inspos, static_cast<uchar32>(ppos + 2));
+									goto SKIP_APPEND;
+								}
+
+								state_type &pst = piece[ppos];
+
+								if (pst.character == branch[bpos].character)
+								{
+									++bpos;
+									ppos += pst.next1;
+								}
+								else if (pst.next2)
+									ppos += pst.next2;
+								else
+								{
+									pst.next2 = static_cast<std::ptrdiff_t>(piece.size() - ppos);
+									break;
+								}
+							}
+
+							{
+								const state_size_type alen = branch.size() - bpos;
+
+								if (piece.size())
+									piece[piece.size() - 1].next1 = alen;
+
+								piece.append(branch, bpos, alen);
+							}
+							SKIP_APPEND:
+							count = 0;
+
+#else	//  defined(SRELLDBG_NO_ASTERISK_OPT) || defined(SRELLDBG_NO_POS_OPT)
+
 							if (piece.size())
 							{
 								state_type &lastatom = piece[piece.size() - 1];
@@ -7097,6 +7133,8 @@ private:
 							piece.push_back(branchatom);
 							piece.append(branch);
 							count = 0;
+
+#endif	//  !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT)
 						}
 					}
 				}
@@ -7108,6 +7146,9 @@ private:
 
 				lastatom.next1 = has_empty ? 3 : 2;
 
+#if !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT)
+				piece.insert(0, branchatom);
+#endif
 				piece[prevbranch_end].next2 = static_cast<std::ptrdiff_t>(piece.size() - prevbranch_end);
 			}
 
@@ -7132,155 +7173,12 @@ private:
 			branchatom.quantifier.atmost = 1;
 			piece.push_back(branchatom);
 
-			optimise_pos(piece, branchatom, has_empty);
+#if !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT)
+			insert_btbranch(piece, ins_bt);
+#endif
 
 		}
 		return ccatom.number;
-	}
-
-	void optimise_pos(state_array &piece, state_type &branchatom, const bool has_empty) const
-	{
-#if !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT)
-
-		simple_array<uchar32> ins_bt;
-
-		branchatom.number = 0u;
-		branchatom.next1 = 0;
-
-		for (state_size_type srcbase = 1; srcbase < piece.size();)
-		{
-			state_type &srcbaseatom = piece[srcbase];
-
-			if (srcbaseatom.is_branch())
-			{
-				if (srcbaseatom.quantifier.atleast == 1)
-				{
-					break;
-				}
-
-				const state_size_type dstbaseinit = srcbase + srcbaseatom.next2;
-				const uint_l32 srcseqlen = srcbaseatom.quantifier.atleast;
-
-				for (uint_l32 complen = srcseqlen; complen;)
-				{
-					state_size_type dstbase = dstbaseinit;
-					bool modified = false;
-
-					--complen;
-
-					for (;;)
-					{
-						state_type &dstbaseatom = piece[dstbase];
-						const uint_l32 dstseqlen = dstbaseatom.quantifier.atleast;
-						state_size_type dstpos = dstbase + (dstbaseatom.type == st_epsilon ? 1 : 0);
-
-						if (piece[dstpos].type == st_character_class)
-						{
-							branchatom.next2 = static_cast<std::ptrdiff_t>(dstbase);
-							break;
-						}
-
-						if (dstseqlen >= complen)
-						{
-							state_size_type srcpos = srcbase + 1;
-
-							for (uint_l32 i = 0;; ++i)
-							{
-								state_type &srcref = piece[srcpos];
-								state_type &dstref = piece[dstpos];
-
-								if (i == complen)
-								{
-									if (dstref.type == st_epsilon)
-									{
-										if (complen)
-										{
-											uint_l32 inspos = static_cast<uint_l32>(ins_bt.size());
-
-											for (; !piece[srcpos].quantifier.is_greedy;)
-												srcpos = piece[srcpos].quantifier.atmost;
-
-											for (; inspos >= 2 && (ins_bt[inspos - 2] > srcpos);)
-											{
-												inspos -= 2;
-											}
-
-											ins_bt.insert(inspos, static_cast<uchar32>(dstpos));
-											ins_bt.insert(inspos, static_cast<uchar32>(srcpos));
-										}
-										break;
-									}
-									else if (dstref.type == st_character && srcref.character != dstref.character)
-									{
-										if (dstref.quantifier.is_greedy)
-										{
-											piece[srcpos].next2 = static_cast<std::ptrdiff_t>(dstpos - srcpos);
-											dstref.quantifier.is_greedy = false;
-											dstref.quantifier.atmost = static_cast<uint_l32>(srcpos);
-										}
-										modified = true;
-									}
-
-									break;
-								}
-								else if (srcref.character == dstref.character && dstref.type == st_character)
-								{
-									++srcpos;
-									++dstpos;
-								}
-								else
-									break;
-							}
-
-							if (modified)
-								break;
-
-							if (dstbaseatom.type == st_epsilon && dstbaseatom.next2)
-							{
-								dstbase += dstbaseatom.next2;
-							}
-							else
-							{
-								break;
-							}
-						}
-						else
-							break;
-					}
-				}
-
-				if (branchatom.number == 0)
-				{
-					branchatom.next1 = static_cast<std::ptrdiff_t>(srcbase);
-				}
-				else
-				{
-					srcbaseatom.next2 = 0;
-					srcbaseatom.character = char_alnum::ch_s;
-				}
-
-				srcbase = dstbaseinit;
-
-				++branchatom.number;
-			}
-			else
-				break;
-//				++srcbase;
-		}
-
-		if (branchatom.next2 == 0)
-			++branchatom.next2;
-
-		if (branchatom.next1 != 0)
-			piece[branchatom.next1].next2 = static_cast<std::ptrdiff_t>(branchatom.next2 - branchatom.next1);
-
-		if (has_empty)
-		{
-			piece[branchatom.next2].next2 = 0;
-			piece[branchatom.next2 + 1].next2 = 1;
-		}
-
-#endif	//  !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT)
 	}
 
 	void insert_btbranch(state_array &piece, const simple_array<uchar32> &ins_bt) const
@@ -7291,9 +7189,7 @@ private:
 		uchar32 offset = 0;
 		uint_l32 chainindex = 0;
 
-		insstate.reset();
-		insstate.type = st_epsilon;
-		insstate.character = meta_char::mc_bar;
+		insstate.reset(st_epsilon, meta_char::mc_bar);
 
 		reordering1.resize(piece.size() + 1);
 		reordering2.resize(piece.size() + 1);
@@ -7910,9 +7806,7 @@ private:
 					state_type &n0 = this->NFA_states[nextno];
 					state_type &n1 = this->NFA_states[nextno + 1];
 
-					n0.reset();
-					n0.type = st_epsilon;
-					n0.character = meta_char::mc_astrsk;
+					n0.reset(st_epsilon, meta_char::mc_astrsk);
 					n0.quantifier = backupeq;
 //					n0.next2 = 1;
 					n0.next2 = 2;
@@ -7922,10 +7816,8 @@ private:
 						n0.next2 = 1;
 					}
 
-					n1.reset();
-					n1.type = st_character_class;
+					n1.reset(st_character_class, removed.consists_of_one_character(this->is_icase()));
 
-					n1.character = removed.consists_of_one_character(this->is_icase());
 					if (n1.character != constants::invalid_u32value)
 						n1.type = st_character;
 					else
@@ -8017,8 +7909,7 @@ private:
 				state.next2 -= len;
 		}
 
-		newstate.reset();
-		newstate.type = st_epsilon;
+		newstate.reset(st_epsilon);
 		for (std::ptrdiff_t count = 0; count < len; ++count)
 			this->NFA_states.insert(pos, newstate);
 	}
@@ -8212,8 +8103,7 @@ private:
 							{
 								if (next2next2pos)	//  if (nstate2.is_branch())
 								{
-									nstate2.reset();
-									nstate2.type = st_epsilon;
+									nstate2.reset(st_epsilon);
 								}
 
 								if (postcharchainpos == 0)
@@ -8515,9 +8405,7 @@ private:
 		if (!reverse_atoms(newNFAs) || newNFAs.size() == 0u)
 			return;
 
-		natom.reset();
-		natom.character = meta_char::mc_eq;	//  '='
-		natom.type = st_lookaround_open;
+		natom.reset(st_lookaround_open, meta_char::mc_eq);
 		natom.next1 = static_cast<std::ptrdiff_t>(end - 1 + newNFAs.size()) + 2;
 		natom.next2 = 1;
 		natom.quantifier.atleast = needs_rerun ? 3 : 2; //  Match point rewinder.
@@ -8741,7 +8629,12 @@ private:
 						return endpos;
 
 					if (state.next1 > 1)
-						continue;
+					{
+						if (state.quantifier.atmost != 1u)
+							continue;
+
+						return 0u;
+					}
 
 					if (state.character == meta_char::mc_escape)
 						return cur + 1;
@@ -8915,7 +8808,7 @@ private:
 
 			if (betterpos != 0u)
 			{
-				if (bp_cpnum >= cpnum)
+				if (bp_cpnum > cpnum || (bp_cpnum == cpnum && betterpos == 1u))
 				{
 					betterpos = cur;
 					bp_cpnum = cpnum;
@@ -12102,6 +11995,8 @@ typedef regex_iterator<std::string::const_iterator, typename std::iterator_trait
 	#endif
 #endif
 
+#if !defined(SRELL_NO_APIEXT)
+
 template <typename BidirectionalIterator, typename BasicRegex = basic_regex<typename std::iterator_traits<BidirectionalIterator>::value_type, regex_traits<typename std::iterator_traits<BidirectionalIterator>::value_type> >, typename MatchResults = match_results<BidirectionalIterator> >
 class regex_iterator2
 {
@@ -12467,6 +12362,8 @@ typedef regex_iterator2<std::string::const_iterator, u8cregex> u8csregex_iterato
 		typedef u16wsregex_iterator2 u1632wsregex_iterator2;
 	#endif
 #endif
+
+#endif	//  !defined(SRELL_NO_APIEXT)
 
 //  ... "regex_iterator.hpp"]
 //  ["regex_algorithm.hpp" ...
@@ -13089,25 +12986,4 @@ typedef regex_token_iterator<std::string::const_iterator, typename std::iterator
 //  ... "regex_token_iterator.hpp"]
 
 }		//  namespace srell
-
-#ifdef SRELL_NOEXCEPT
-#undef SRELL_NOEXCEPT
-#endif
-
-#ifdef SRELL_CPP20_CHAR8_ENABLED
-#undef SRELL_CPP20_CHAR8_ENABLED
-#endif
-
-#ifdef SRELL_CPP11_CHAR1632_ENABLED
-#undef SRELL_CPP11_CHAR1632_ENABLED
-#endif
-
-#ifdef SRELL_CPP11_INITIALIZER_LIST_ENABLED
-#undef SRELL_CPP11_INITIALIZER_LIST_ENABLED
-#endif
-
-#ifdef SRELL_CPP11_MOVE_ENABLED
-#undef SRELL_CPP11_MOVE_ENABLED
-#endif
-
 #endif	//  SRELL_REGEX_TEMPLATE_LIBRARY
