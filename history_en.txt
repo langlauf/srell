@@ -1,7 +1,20 @@
+20230727; version 4.021:
+  * Improved the branch optimisation so that SRELL can optimise
+    alternatives without inserting new additional internal states.
+
 20230724; version 4.020:
   * Simplified the method of converting properties of strings to the
     internal representation.
   * Other minor improvements.
+
+* [4.000-4.019, v flag mode] Because there was a mistake in the setting
+  for compiling my own source files to a release version, the v flag
+  mode was not correctly implemented in SRELL 4.000-4.019. Adding the
+  following line at the last of the optimise_pos() function fixes the
+  problem:
+    insert_btbranch(piece, ins_bt);
+  The bug originated from the fact that this function was not called
+  from anywhere.
 
 20230114; version 4.019:
   * Implemented a new entry point selector.

@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.020
+**  SRELL (std::regex-like library) version 4.021
 **
 **  Copyright (c) 2012-2023, Nozomu Katoo. All rights reserved.
 **
@@ -481,6 +481,18 @@ private:
 			static const uchar32 co_tilde = 0x7e;	//  '~'
 		}
 		//  char_other
+
+		namespace epsilon_type	//  Used only in the pattern compiler.
+		{
+			static const uchar32 et_ccastrsk = meta_char::mc_astrsk;	//  '*'
+			static const uchar32 et_alt      = meta_char::mc_bar;		//  '|'
+			static const uchar32 et_fmrbckrf = meta_char::mc_escape;	//  '\\'
+			static const uchar32 et_fmrposbr = char_alnum::ch_s;	//  's'
+			static const uchar32 et_hooked   = 0x68;		//  'h'
+			static const uchar32 et_bo2rmvd  = meta_char::mc_exclam;	//  '!'
+			static const uchar32 et_bo2end   = meta_char::mc_query;	//  '?'
+		}
+		//  epsilon_type
 	}
 	//  namespace regex_internal
 
@@ -5196,7 +5208,7 @@ private:
 
 			if (curpos != end && *curpos == meta_char::mc_bar)
 			{
-				atom.reset(st_epsilon, meta_char::mc_bar);
+				atom.reset(st_epsilon, epsilon_type::et_alt);
 				atom.next2 = static_cast<std::ptrdiff_t>(branch.size()) + 2;
 				branch.insert(0, atom);
 			}
@@ -5713,7 +5725,7 @@ private:
 		atom.quantifier = quantifier;
 
 		if (firstatom.is_character_or_class())
-			atom.character = meta_char::mc_astrsk;
+			atom.character = epsilon_type::et_ccastrsk;
 
 		if (quantifier.atmost == 1)
 		{
@@ -5728,7 +5740,7 @@ private:
 					atom.next2 = 1;
 				}
 
-				if (atom.character == meta_char::mc_astrsk)
+				if (atom.character == epsilon_type::et_ccastrsk)
 					firstatom.quantifier = quantifier;
 
 				piece_with_quantifier.push_back(atom);
@@ -5762,7 +5774,7 @@ private:
 			for (uint_l32 i = 0; i < quantifier.atleast; ++i)
 				piece_with_quantifier += piece;
 
-			if (atom.character == meta_char::mc_astrsk)
+			if (atom.character == epsilon_type::et_ccastrsk)
 				firstatom.quantifier.set(0, 1, quantifier.is_greedy);
 
 			atom.type = st_epsilon;
@@ -7036,7 +7048,6 @@ private:
 	{
 		uint_l32 seqlen = static_cast<uint_l32>(pos.indices.size());
 		state_type ccatom;
-		simple_array<uchar32> ins_bt;
 
 		ccatom.reset(st_character_class);
 		ccatom.number = this->character_class.register_newclass(pos.ranges);
@@ -7044,7 +7055,11 @@ private:
 		if (seqlen > 0)
 		{
 			const bool has_empty = pos.has_empty();
+#if !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT) && !defined(SRELLDBG_NO_STATEHOOK)
 			state_size_type prevbranch_end = 0;
+#else
+			state_size_type prevbranch_alt = 0;
+#endif
 			state_type branchatom;
 			state_type jumpatom;
 			state_array branch;
@@ -7053,7 +7068,7 @@ private:
 			for (uint_l32 i = 0; i < seqlen; ++i)
 				branch[i].reset();
 
-			branchatom.reset(st_epsilon, meta_char::mc_bar);
+			branchatom.reset(st_epsilon, epsilon_type::et_alt);
 
 			jumpatom.reset(st_epsilon);
 
@@ -7077,24 +7092,35 @@ private:
 
 						if (count == seqlen)
 						{
-#if !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT)
+#if !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT) && !defined(SRELLDBG_NO_STATEHOOK)
 							state_size_type bpos = 0;
 
 							for (state_size_type ppos = 0; ppos < piece.size();)
 							{
 								if (bpos + 1 == branch.size())
 								{
-									uint_l32 inspos = static_cast<uint_l32>(ins_bt.size());
+									piece.push_backncr(piece[ppos]);
 
-									for (; inspos >= 2 && (ins_bt[inspos - 2] > ppos); inspos -= 2);
+									state_type &pst = piece[ppos];
 
-									ins_bt.insert(inspos, static_cast<uchar32>(piece.size() + 2 - 1));
-									ins_bt.insert(inspos, static_cast<uchar32>(ppos + 2));
+									pst.reset(st_epsilon, epsilon_type::et_hooked);
+									pst.next1 = static_cast<std::ptrdiff_t>(piece.size() - 1 - ppos);
+									pst.next2 = static_cast<std::ptrdiff_t>(prevbranch_end - ppos);
+
+									state_type &bst = piece[piece.size() - 1];
+
+									bst.next1 = static_cast<std::ptrdiff_t>(bst.next1 - pst.next1);
+									bst.next2 = bst.next2 ? static_cast<std::ptrdiff_t>(bst.next2 - pst.next1) : 0;
 									goto SKIP_APPEND;
 								}
 
 								state_type &pst = piece[ppos];
 
+#if 0
+								if (pst.type == st_epsilon)
+									ppos += pst.next1;
+								else
+#endif
 								if (pst.character == branch[bpos].character)
 								{
 									++bpos;
@@ -7113,28 +7139,29 @@ private:
 								const state_size_type alen = branch.size() - bpos;
 
 								if (piece.size())
-									piece[piece.size() - 1].next1 = alen;
+									piece[prevbranch_end].next1 = piece.size() + alen - 1 - prevbranch_end;
 
 								piece.append(branch, bpos, alen);
+								prevbranch_end = piece.size() - 1;
 							}
 							SKIP_APPEND:
 							count = 0;
 
-#else	//  defined(SRELLDBG_NO_ASTERISK_OPT) || defined(SRELLDBG_NO_POS_OPT)
+#else	//  defined(SRELLDBG_NO_ASTERISK_OPT) || defined(SRELLDBG_NO_POS_OPT) || defined(SRELLDBG_NO_STATEHOOK)
 
 							if (piece.size())
 							{
 								state_type &lastatom = piece[piece.size() - 1];
 
 								lastatom.next1 = seqlen + 2;
-								piece[prevbranch_end].next2 = static_cast<std::ptrdiff_t>(piece.size() - prevbranch_end);
+								piece[prevbranch_alt].next2 = static_cast<std::ptrdiff_t>(piece.size() - prevbranch_alt);
 							}
-							prevbranch_end = piece.size();
+							prevbranch_alt = piece.size();
 							piece.push_back(branchatom);
 							piece.append(branch);
 							count = 0;
 
-#endif	//  !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT)
+#endif	//  !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT) && !defined(SRELLDBG_NO_STATEHOOK)
 						}
 					}
 				}
@@ -7142,14 +7169,20 @@ private:
 
 			if (piece.size())
 			{
+#if !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT) && !defined(SRELLDBG_NO_STATEHOOK)
+				state_type &lastatom = piece[prevbranch_end];
+
+				lastatom.next1 = piece.size() + (has_empty ? 2 : 1) - prevbranch_end;
+
+				branchatom.next2 = static_cast<std::ptrdiff_t>(piece.size() + 1);
+				piece.insert(0, branchatom);
+#else
 				state_type &lastatom = piece[piece.size() - 1];
 
 				lastatom.next1 = has_empty ? 3 : 2;
 
-#if !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT)
-				piece.insert(0, branchatom);
+				piece[prevbranch_alt].next2 = static_cast<std::ptrdiff_t>(piece.size() - prevbranch_alt);
 #endif
-				piece[prevbranch_end].next2 = static_cast<std::ptrdiff_t>(piece.size() - prevbranch_end);
 			}
 
 			branchatom.quantifier.atleast = 1;
@@ -7167,46 +7200,43 @@ private:
 			branchatom.next2 = 0;
 			branchatom.quantifier.set(1, 0);
 			piece.insert(0, branchatom);
-			++prevbranch_end;
 
 			branchatom.character = char_other::co_smcln;	//  ';'
 			branchatom.quantifier.atmost = 1;
 			piece.push_back(branchatom);
 
-#if !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT)
-			insert_btbranch(piece, ins_bt);
+#if !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT) && !defined(SRELLDBG_NO_STATEHOOK)
+			reorder_piece(piece);
 #endif
 
 		}
 		return ccatom.number;
 	}
 
-	void insert_btbranch(state_array &piece, const simple_array<uchar32> &ins_bt) const
+	void reorder_piece(state_array &piece) const
 	{
-		state_type insstate;
-		simple_array<uchar32> reordering1;
-		simple_array<uchar32> reordering2;
+		simple_array<uchar32> newpos;
 		uchar32 offset = 0;
-		uint_l32 chainindex = 0;
 
-		insstate.reset(st_epsilon, meta_char::mc_bar);
-
-		reordering1.resize(piece.size() + 1);
-		reordering2.resize(piece.size() + 1);
+		newpos.resize(piece.size() + 1, 0);
 
 		for (uchar32 indx = 0; indx <= piece.size(); ++indx)
 		{
-			reordering1[indx] = indx + offset;
-
-			if (chainindex < static_cast<uint_l32>(ins_bt.size()))
+			if (newpos[indx] == 0)
 			{
-				if (indx == ins_bt[chainindex])
+				newpos[indx] = indx + offset;
+
+				state_type &st = piece[indx];
+
+				if (st.type == st_epsilon && st.character == epsilon_type::et_hooked)
 				{
+					st.character = epsilon_type::et_alt;
 					++offset;
-					chainindex += 2;
+					newpos[indx + st.next1] = indx + offset;
 				}
 			}
-			reordering2[indx] = indx + offset;
+			else
+				--offset;
 		}
 
 		for (state_size_type indx = 0; indx < piece.size(); ++indx)
@@ -7215,26 +7245,23 @@ private:
 
 			if (st.next1 != 0)
 			{
-				const uchar32 newn1 = reordering1[indx + st.next1];
-				st.next1 = static_cast<std::ptrdiff_t>(newn1 - reordering2[indx]);
+				const uchar32 newn1abs = newpos[indx + st.next1];
+				st.next1 = static_cast<std::ptrdiff_t>(newn1abs - newpos[indx]);
 			}
 
 			if (st.next2 != 0)
 			{
-				const uchar32 newn2 = reordering1[indx + st.next2];
-				st.next2 = static_cast<std::ptrdiff_t>(newn2 - reordering2[indx]);
+				const uchar32 newn2abs = newpos[indx + st.next2];
+				st.next2 = static_cast<std::ptrdiff_t>(newn2abs - newpos[indx]);
 			}
 		}
 
-		for (uint_l32 indx = 0; indx < static_cast<uint_l32>(ins_bt.size());)
-		{
-			const uchar32 srcpos = reordering1[ins_bt[indx++]];
-			const uchar32 dstpos = reordering1[ins_bt[indx++]];
+		state_array newpiece(piece.size());
 
-			piece.insert(srcpos, insstate);
-			state_type &insst = piece[srcpos];
-			insst.next2 = static_cast<std::ptrdiff_t>(dstpos - srcpos);
-		}
+		for (state_size_type indx = 0; indx < piece.size(); newpiece[newpos[indx]] = piece[indx], ++indx);
+
+		newpiece.swap(piece);
+
 	}
 
 #endif	//  !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
@@ -7396,7 +7423,7 @@ private:
 
 								brs.type = st_epsilon;
 								brs.next2 = 0;
-								brs.character = meta_char::mc_escape;
+								brs.character = epsilon_type::et_fmrbckrf;
 							}
 							break;
 						}
@@ -7650,7 +7677,7 @@ private:
 		find_entrypoint();
 #endif
 
-#if !defined(SRELLDBG_NO_BRANCH_OPT2) && !defined(SRELLDBG_NO_ASTERISK_OPT)
+#if !defined(SRELLDBG_NO_BRANCH_OPT2) && !defined(SRELLDBG_NO_STATEHOOK)
 		branch_optimisation2();
 #endif
 
@@ -7806,7 +7833,7 @@ private:
 					state_type &n0 = this->NFA_states[nextno];
 					state_type &n1 = this->NFA_states[nextno + 1];
 
-					n0.reset(st_epsilon, meta_char::mc_astrsk);
+					n0.reset(st_epsilon, epsilon_type::et_ccastrsk);
 					n0.quantifier = backupeq;
 //					n0.next2 = 1;
 					n0.next2 = 2;
@@ -7925,9 +7952,6 @@ private:
 		}
 		return false;
 	}
-
-#if !defined(SRELLDBG_NO_NEXTPOS_OPT)
-#endif	//  !defined(SRELLDBG_NO_NEXTPOS_OPT)
 
 #if !defined(SRELLDBG_NO_BRANCH_OPT) || !defined(SRELLDBG_NO_BRANCH_OPT2)
 
@@ -8062,7 +8086,7 @@ private:
 	}
 #endif	//  !defined(SRELLDBG_NO_CCPOS)
 
-#if !defined(SRELLDBG_NO_BRANCH_OPT2)
+#if !defined(SRELLDBG_NO_BRANCH_OPT2) && !defined(SRELLDBG_NO_STATEHOOK)
 
 	void branch_optimisation2()
 	{
@@ -8073,7 +8097,7 @@ private:
 		{
 			const state_type &curstate = this->NFA_states[pos];
 
-			if (curstate.is_branch())
+			if (curstate.type == st_epsilon && curstate.next2 != 0 && (curstate.character == epsilon_type::et_alt || curstate.character == epsilon_type::et_hooked))	//  '|' or 'h'
 			{
 				const state_size_type next1pos = pos + curstate.next1;
 				state_size_type precharchainpos = pos;
@@ -8089,9 +8113,13 @@ private:
 						state_type &nstate2 = this->NFA_states[next2pos];
 						state_size_type next2next2pos = 0;
 
-						if (nstate2.is_branch())
+						if (nstate2.type == st_epsilon)
 						{
-							next2next2pos = next2pos + nstate2.next2;
+							if (nstate2.next2 != 0)
+							{
+								if (nstate2.character == epsilon_type::et_alt || nstate2.character == epsilon_type::et_hooked)	//  '|', 'h'
+									next2next2pos = next2pos + nstate2.next2;
+							}
 							next2next1pos += nstate2.next1;
 						}
 
@@ -8103,48 +8131,33 @@ private:
 							{
 								if (next2next2pos)	//  if (nstate2.is_branch())
 								{
-									nstate2.reset(st_epsilon);
+									nstate2.next2 = 0;
+									nstate2.character = epsilon_type::et_bo2rmvd;	//  '!'
 								}
 
-								if (postcharchainpos == 0)
-								{
-									postcharchainpos = next1pos + 1;
-									insert_at(postcharchainpos, 1);
-									this->NFA_states[next1pos].next1 = 1;
-								}
-								else
-								{
-									const state_size_type prevbranchpos = postcharchainpos;
+								const state_size_type next2next1next1pos = next2next1pos + this->NFA_states[next2next1pos].next1;
+								state_type &becomes_unused = this->NFA_states[next2next1pos];
 
-									postcharchainpos = prevbranchpos + this->NFA_states[prevbranchpos].next2;
-									insert_at(postcharchainpos, 1);
-									this->NFA_states[prevbranchpos].next2 = postcharchainpos - prevbranchpos;
-									//  Fix for bug210423. This line cannot be omitted, because
-									//  NFA_states[prevbranchpos].next2 has been incremented in insert_at().
-								}
+								postcharchainpos = postcharchainpos == 0
+									? next1pos + this->NFA_states[next1pos].next1
+									: postcharchainpos + this->NFA_states[postcharchainpos].next2;
 
-//								if (next2next1pos >= postcharchainpos)
-								++next2next1pos;
+								state_type &becomes_branch = this->NFA_states[postcharchainpos];
 
-								if (precharchainpos >= postcharchainpos)
-									++precharchainpos;
+								becomes_unused = becomes_branch;
+
+								becomes_unused.next1 = postcharchainpos + becomes_branch.next1 - next2next1pos;
+								becomes_unused.next2 = becomes_unused.next2 ? (postcharchainpos + becomes_branch.next2 - next2next1pos) : 0;
+
+								becomes_branch.reset(st_epsilon, epsilon_type::et_hooked);
+								becomes_branch.next1 = next2next1pos - postcharchainpos;
+								becomes_branch.next2 = next2next1next1pos - postcharchainpos;
 
 								state_type &prechainbranchpoint = this->NFA_states[precharchainpos];
-								if (next2next2pos)
-								{
-//									if (next2next2pos >= postcharchainpos)
-									++next2next2pos;
-									prechainbranchpoint.next2 = next2next2pos - precharchainpos;
-								}
-								else
-								{
-									prechainbranchpoint.next2 = 0;
-								}
 
-								state_type &newbranchpoint = this->NFA_states[postcharchainpos];
-								newbranchpoint.character = meta_char::mc_bar;
-//								newbranchpoint.next1 = 1;
-								newbranchpoint.next2 = next2next1pos + this->NFA_states[next2next1pos].next1 - postcharchainpos;
+								prechainbranchpoint.next2 = next2next2pos
+									? next2next2pos - precharchainpos
+									: (prechainbranchpoint.character = epsilon_type::et_bo2end, 0);	//  '?'
 							}
 							else if (relation == 1)
 							{
@@ -8170,8 +8183,10 @@ private:
 				}
 			}
 		}
+
+		reorder_piece(this->NFA_states);
 	}
-#endif	//   !defined(SRELLDBG_NO_BRANCH_OPT2)
+#endif	//   !defined(SRELLDBG_NO_BRANCH_OPT2) && !defined(SRELLDBG_NO_STATEHOOK)
 
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
 
@@ -8224,7 +8239,7 @@ private:
 			case st_epsilon:
 				if (state.next2 != 0)
 				{
-					if (state.character == meta_char::mc_astrsk)
+					if (state.character == epsilon_type::et_ccastrsk)
 					{
 						needs_rerun = true;
 						cur += state.farnext() - 1;
@@ -8341,7 +8356,7 @@ private:
 
 			if (s.type == st_epsilon)
 			{
-				if (s.character == meta_char::mc_bar || s.character == char_alnum::ch_s)
+				if (s.character == epsilon_type::et_alt || s.character == epsilon_type::et_fmrposbr)
 					return true;
 			}
 			else if (s.type == st_backreference)
@@ -8565,7 +8580,7 @@ private:
 					}
 					return false;
 				}
-				else if (s.character == meta_char::mc_astrsk && s.next2 != 0)
+				else if (s.character == epsilon_type::et_ccastrsk && s.next2 != 0)
 				{
 					if (!s.quantifier.is_greedy)
 					{
@@ -8636,7 +8651,7 @@ private:
 						return 0u;
 					}
 
-					if (state.character == meta_char::mc_escape)
+					if (state.character == epsilon_type::et_fmrbckrf)
 						return cur + 1;
 
 					if (state.character == meta_char::mc_colon)	//  (?:...)
@@ -8655,7 +8670,7 @@ private:
 					return 0u;
 				}
 
-				if (state.character == meta_char::mc_astrsk)
+				if (state.character == epsilon_type::et_ccastrsk)
 				{
 					if (cur + 1 < end)
 					{
