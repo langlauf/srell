@@ -1,3 +1,6 @@
+20230730; version 4.022:
+  * Refinement of source code and various minor fixes.
+
 20230727; version 4.021:
   * Improved the branch optimisation so that SRELL can optimise
     alternatives without inserting new additional internal states.
