@@ -1,9 +1,16 @@
+20230804; version 4.023:
+  * Unified two internal integer types to one type.
+  * Simplified several optimisations that had become less effective
+    because of the entry point selector introduced in 4.019.
+  * Improved the entry point selector.
+  * Corrected misnamed variable names.
+
 20230730; version 4.022:
   * Refinement of source code and various minor fixes.
 
 20230727; version 4.021:
   * Improved the branch optimisation so that SRELL can optimise
-    alternatives without inserting new additional internal states.
+    Alternatives without inserting new additional internal states.
 
 20230724; version 4.020:
   * Simplified the method of converting properties of strings to the
