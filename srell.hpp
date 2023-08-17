@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.023
+**  SRELL (std::regex-like library) version 4.024
 **
 **  Copyright (c) 2012-2023, Nozomu Katoo. All rights reserved.
 **
@@ -368,7 +368,7 @@ private:
 
 			st_success,                 //  0x12
 
-#if !defined(SRELLDBG_NO_NEXTPOS_OPT)
+#if defined(SRELLTEST_NEXTPOS_OPT)
 			st_move_nextpos,            //  0x13
 #endif
 
@@ -3142,7 +3142,7 @@ public:
 
 	typedef simple_array<charT> gname_string;
 	typedef typename gname_string::size_type size_type;
-	static const ui_l32 notfound = static_cast<ui_l32>(-1);
+	static const ui_l32 notfound = 0u;
 
 	groupname_mapper()
 	{
@@ -3279,8 +3279,8 @@ const ui_l32 groupname_mapper<charT>::notfound;
 struct re_quantifier
 {
 	//  atleast and atmost: for check_counter.
-	//  (Special case 1) in charcter_class, bol, eol, boundary, represents offset and length in
-	//    the array of character classes.
+	//  (Special case 1) in charcter_class, bol, eol, boundary, represents the offset and length
+	//    of the range in the array of character classes.
 	//  (Special case 2) in roundbracket_open and roundbracket_pop atleast and atmost represent
 	//    the minimum and maximum bracket numbers respectively inside the brackets itself.
 	//  (Special case 3) in repeat_in_push and repeat_in_pop atleast and atmost represent the
@@ -3295,7 +3295,6 @@ struct re_quantifier
 	ui_l32 atmost;
 
 	bool is_greedy;
-		//  (Special case 1) in backreference represents whether the backref number has been resolved or not.
 
 	void reset(const ui_l32 len = 1)
 	{
@@ -3404,8 +3403,8 @@ struct re_state
 	union
 	{
 		ui_l32 character;	//  For character.
-			//  (Special case) in [0] represents an entry point code unit if the firstchar
-			//    class consists of a single code unit; otherwise invalid_u32value.
+			//  (Special case) in [0] represents a code unit for finding an entry point if
+			//    the firstchar class consists of a single code unit; otherwise invalid_u32value.
 		ui_l32 number;	//  For character_class, brackets, counter, repeat, backreference.
 	};
 
@@ -3415,7 +3414,6 @@ struct re_state
 	{
 		std::ptrdiff_t next1;
 		re_state *next_state1;
-		//  Points to the next state.
 		//  (Special case 1) in lookaround_open points to the next of lookaround_close.
 	};
 	union
@@ -3439,156 +3437,12 @@ struct re_state
 	union
 	{
 		bool is_not;	//  For \B, (?!...) and (?<!...).
-		bool dont_push;	//  For check_counter.
 		bool icase;	//  For [0], backreference.
 		bool multiline;	//  For bol, eol.
-		ui_l32 padding_;
 	};
 
-	//  st_character,               //  0x00
-		//  char/number:        character
-		//  next1:              gen.
-		//  next2:              +1 (exit. used only when '*' or '?')
-		//  quantifiers:        -
-		//  is_not/dont_push:   -
-
-	//  st_character_class,         //  0x01
-		//  char/number:        character class number
-		//  next1:              gen.
-		//  next2:              +1 (exit. used only when '*' or '?')
-		//  quantifiers:        -
-		//  is_not/dont_push:   -
-
-	//  st_epsilon,                 //  0x02
-		//  char/number:        - (some symbols used only in compiler).
-		//  next1:              gen.
-		//  next2:              alt.
-		//  quantifiers:        -
-		//  is_not/dont_push:   -
-
-	//  st_check_counter,           //  0x03
-		//  char/number:        counter number
-		//  next1:              greedy: epsilon that may push backtracking data to decrement_counter.
-		//                      not-greedy: out-of-loop
-		//  next2:              complementary to next1
-		//  q.atleast:          gen.
-		//  q.atmost:           gen.
-		//  q.greedy:           gen.
-		//  is_not/dont_push:   - (was dont_push)
-
-	//  st_decrement_counter,       //  0x04
-		//  char/number:        counter number
-		//  next1:              0 (always treated as "not matched")
-		//  next2:              0
-		//  quantifiers:        -
-		//  is_not/dont_push:   -
-
-	//  st_save_and_reset_counter,  //  0x05
-		//  char/number:        counter number
-		//  next1:              +2 (check_counter)
-		//  next2:              +1 (restore_counter)
-		//  quantifiers:        -
-		//  is_not/dont_push:   - (was dont_push)
-
-	//  st_restore_counter,         //  0x06
-		//  char/number:        counter number
-		//  next1:              0 (always treated as "not matched")
-		//  next2:              0
-		//  quantifiers:        -
-		//  is_not/dont_push:   -
-
-	//  st_roundbracket_open,       //  0x07
-		//  char/number:        bracket number
-		//  next1:              +2 (next of roundbracket_pop, atom)
-		//  next2:              +1 (roundbracket_pop)
-		//  q.atleast:          min bracket number inside this bracket (except myself's number)
-		//  q.atmost:           max bracket number inside this bracket
-		//  q.greedy:           -
-		//  is_not/dont_push:   - (was dont_push)
-
-	//  st_roundbracket_pop,        //  0x08
-		//  char/number:        bracket number
-		//  next1:              0 (always treated as "not matched")
-		//  next2:              0
-		//  q.atleast:          min bracket number inside this bracket (i.except myself's number)
-		//  q.atmost:           max bracket number inside this bracket
-		//  q.greedy:           -
-		//  is_not/dont_push:   - (was dont_push)
-
-	//  st_roundbracket_close,      //  0x09
-		//  char/number:        bracket number
-		//  next1:              gen.
-		//  next2:              +1 (exit for 0 width loop)
-		//  quantifiers:        -
-		//  is_not/dont_push:   -
-
-	//  st_repeat_in_push,          //  0x0a
-		//  char/number:        repeat counter
-		//  next1:              +2 (next of repeat_in_pop, atom)
-		//  next2:              +1 (repeat_in_pop)
-		//  quantifiers:        -
-		//  is_not/dont_push:   -
-
-	//  st_repeat_in_pop,           //  0x0b
-		//  char/number:        repeat counter
-		//  next1:              0 (always treated as "not matched")
-		//  next2:              0
-		//  quantifiers:        -
-		//  is_not/dont_push:   -
-
-	//  st_check_0_width_repeat,    //  0x0c
-		//  char/number:        repeat counter
-		//  next1:              gen. (epsilon or check_counter)
-		//  next2:              +1 (exit for 0 width loop)
-		//  quantifiers:        -
-		//  is_not/dont_push:   -
-
-	//  st_backreference,           //  0x0d
-		//  char/number:        bracket number
-		//  next1:              gen.
-		//  next2:              +1 (exit for 0 width match)
-		//  quantifiers:        -
-		//  is_not/dont_push:   icase
-
-	//  st_lookaround_open,         //  0x0e
-		//  char/number:        -
-		//  next1:              next of lookaround_close (to where jumps after lookaround assertion)
-		//  next2:              +2 (the contents of brackets)
-		//  q.atleast:          <fixed-width> number of chars to be rewound (for (?<=...) (?<!...))
-		//                      <variable-width> 0: lookahead, 1: lookbehind, 2: mprewinder.
-		//  q.atmost:           -
-		//  q.greedy:           -
-		//  is_not/dont_push:   not
-
-	//  st_bol,                     //  0x0f
-		//  char/number:        character class number of newline
-		//  next1/next2:        -
-		//  quantifiers:        -
-		//  is_not/dont_push:   -
-
-	//  st_eol,                     //  0x10
-		//  char/number:        character class number of newline
-		//  next1/next2:        -
-		//  quantifiers:        -
-		//  is_not/dont_push:   -
-
-	//  st_boundary,                //  0x11
-		//  char/number:        character class number of \w
-		//  next1/next2:        -
-		//  quantifiers:        -
-		//  is_not/dont_push:   not
-
-	//  st_success,                 //  0x12
-		//  char/number:        -
-		//  next1/next2:        -
-		//  quantifiers:        -
-		//  is_not/dont_push:   -
-
-	//  st_move_nextpos,            //  0x13
-		//  char/number:        -
-		//  next1/next2:        -
-		//  quantifiers:        -
-		//  is_not/dont_push:   -
+	//  Used only in compiler.
+	bool backrefnumber_unresolved;
 
 	void reset(const re_state_type t = st_character, const ui_l32 c = char_ctrl::cc_nul)
 	{
@@ -6846,7 +6700,7 @@ private:
 			this->throw_error(regex_constants::error_escape);
 
 		brastate.number = static_cast<ui_l32>(backrefno);
-		brastate.quantifier.is_greedy = true;
+		brastate.backrefnumber_unresolved = false;
 
 		return backreference_postprocess(brastate, cvars);
 	}
@@ -6874,10 +6728,10 @@ private:
 		brastate.number = this->namedcaptures[groupname];
 
 		if (brastate.number != groupname_mapper<charT>::notfound)
-			brastate.quantifier.is_greedy = true;
+			brastate.backrefnumber_unresolved = false;
 		else
 		{
-			brastate.quantifier.is_greedy = false;
+			brastate.backrefnumber_unresolved = true;
 			brastate.number = static_cast<ui_l32>(cvars.unresolved_gnames.size());
 			cvars.unresolved_gnames.push_back(groupname, brastate.number);
 		}
@@ -7279,7 +7133,7 @@ private:
 				const ui_l32 &backrefno = brs.number;
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
-				if (!brs.quantifier.is_greedy)
+				if (brs.backrefnumber_unresolved)
 				{
 					if (backrefno >= cvars.unresolved_gnames.size())
 						return false;	//  Internal error.
@@ -7289,7 +7143,7 @@ private:
 					if (backrefno == groupname_mapper<charT>::notfound)
 						return false;
 
-					brs.quantifier.is_greedy = true;
+					brs.backrefnumber_unresolved = false;
 				}
 #endif
 
@@ -7654,15 +7508,11 @@ private:
 						estate2.next1 = 1;
 						estate2.next2 = 0;
 						estate2.character = char_ctrl::cc_nul;
-						if (estate2.quantifier.is_infinity())
-						{
+
+						if (corccstate.next1 < 0)
 							corccstate.next1 = 0;
-							corccstate.next2 = nextno - pos;
-						}
-						else	//  ? or {0,1}
-						{
-							corccstate.next2 = nextno - pos;
-						}
+
+						corccstate.next2 = nextno - pos;
 					}
 				}
 				continue;
@@ -8606,9 +8456,7 @@ private:
 						else if (!charatomseq_begin->is_same_character_or_charclass(repatom))
 							return charatomseq_endpos;
 
-						++cur;
-						charatomseq_endpos = cur + 1;
-						continue;
+						return cur + state.farnext();
 					}
 					return 0u;
 				}
@@ -8716,6 +8564,11 @@ private:
 				cur += state.next1;
 				continue;
 			}
+			else if (state.type == st_roundbracket_close)
+			{
+				cur += state.next2;
+				continue;
+			}
 			else if (state.type == st_backreference || state.type == st_lookaround_open)
 				break;
 
@@ -8731,10 +8584,11 @@ private:
 				break;
 
 			const ui_l32 cpnum = nextcc.total_codepoints();
+			const bool has_obstacle = has_obstacle_to_reverse(cur, boundary);
 
 			if (betterpos != 0u)
 			{
-				if (bp_cpnum > cpnum || (bp_cpnum == cpnum && betterpos == 1u))
+				if (bp_cpnum > cpnum || (bp_cpnum == cpnum && charcount == 1u))
 				{
 					betterpos = cur;
 					bp_cpnum = cpnum;
@@ -8748,7 +8602,7 @@ private:
 				++charcount;
 			}
 
-			if (has_obstacle_to_reverse(cur, boundary))
+			if (has_obstacle)
 				break;
 
 			cur = boundary;
@@ -10285,9 +10139,9 @@ private:
 		for (;;)
 		{
 			START:
-			const state_type &current_NFA = *sstate.nth.in_NFA_states;
+			const state_type &curNFAst = *sstate.nth.in_NFA_states;
 
-			switch (current_NFA.type)
+			switch (curNFAst.type)
 			{
 			case st_character:
 
@@ -10307,15 +10161,15 @@ private:
 #endif
 						const ui_l32 uchar = casehelper_type::canonicalise(utf_traits::codepoint_inc(sstate.nth.in_string, sstate.srchend));
 						RETRY_CF:
-						const state_type &current_NFA2 = *sstate.nth.in_NFA_states;
+						const state_type &curNFAst2 = *sstate.nth.in_NFA_states;
 
-						if (current_NFA2.character == uchar)
+						if (curNFAst2.character == uchar)
 							goto MATCHED;
 
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
-						if (current_NFA2.next_state2)
+						if (curNFAst2.next_state2)
 						{
-							sstate.nth.in_NFA_states = current_NFA2.next_state2;
+							sstate.nth.in_NFA_states = curNFAst2.next_state2;
 
 							if (sstate.nth.in_NFA_states->type == st_character)
 								goto RETRY_CF;
@@ -10326,9 +10180,9 @@ private:
 #endif
 					}
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
-					else if (current_NFA.next_state2)
+					else if (curNFAst.next_state2)
 					{
-						sstate.nth.in_NFA_states = current_NFA.next_state2;
+						sstate.nth.in_NFA_states = curNFAst.next_state2;
 						continue;
 					}
 #endif
@@ -10342,15 +10196,15 @@ private:
 #endif
 						const ui_l32 uchar = casehelper_type::canonicalise(utf_traits::dec_codepoint(sstate.nth.in_string, sstate.lblim));
 						RETRY_CB:
-						const state_type &current_NFA2 = *sstate.nth.in_NFA_states;
+						const state_type &curNFAst2 = *sstate.nth.in_NFA_states;
 
-						if (current_NFA2.character == uchar)
+						if (curNFAst2.character == uchar)
 							goto MATCHED;
 
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
-						if (current_NFA2.next_state2)
+						if (curNFAst2.next_state2)
 						{
-							sstate.nth.in_NFA_states = current_NFA2.next_state2;
+							sstate.nth.in_NFA_states = curNFAst2.next_state2;
 
 							if (sstate.nth.in_NFA_states->type == st_character)
 								goto RETRY_CB;
@@ -10361,9 +10215,9 @@ private:
 #endif
 					}
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
-					else if (current_NFA.next_state2)
+					else if (curNFAst.next_state2)
 					{
-						sstate.nth.in_NFA_states = current_NFA.next_state2;
+						sstate.nth.in_NFA_states = curNFAst.next_state2;
 						continue;
 					}
 #endif
@@ -10388,19 +10242,19 @@ private:
 #endif
 						const ui_l32 uchar = utf_traits::codepoint_inc(sstate.nth.in_string, sstate.srchend);
 //						RETRY_CCF:
-						const state_type &current_NFA2 = *sstate.nth.in_NFA_states;
+						const state_type &curNFAst2 = *sstate.nth.in_NFA_states;
 
 #if !defined(SRELLDBG_NO_CCPOS)
-						if (this->character_class.is_included(current_NFA2.quantifier.atleast, current_NFA2.quantifier.atmost, uchar))
+						if (this->character_class.is_included(curNFAst2.quantifier.atleast, curNFAst2.quantifier.atmost, uchar))
 #else
-						if (this->character_class.is_included(current_NFA2.number, uchar))
+						if (this->character_class.is_included(curNFAst2.number, uchar))
 #endif
 							goto MATCHED;
 
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
-						if (current_NFA2.next_state2)
+						if (curNFAst2.next_state2)
 						{
-							sstate.nth.in_NFA_states = current_NFA2.next_state2;
+							sstate.nth.in_NFA_states = curNFAst2.next_state2;
 
 //							if (sstate.nth.in_NFA_states->type == st_character_class)
 //								goto RETRY_CCF;
@@ -10411,9 +10265,9 @@ private:
 #endif
 					}
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
-					else if (current_NFA.next_state2)
+					else if (curNFAst.next_state2)
 					{
-						sstate.nth.in_NFA_states = current_NFA.next_state2;
+						sstate.nth.in_NFA_states = curNFAst.next_state2;
 						continue;
 					}
 #endif
@@ -10427,19 +10281,19 @@ private:
 #endif
 						const ui_l32 uchar = utf_traits::dec_codepoint(sstate.nth.in_string, sstate.lblim);
 //						RETRY_CCB:
-						const state_type &current_NFA2 = *sstate.nth.in_NFA_states;
+						const state_type &curNFAst2 = *sstate.nth.in_NFA_states;
 
 #if !defined(SRELLDBG_NO_CCPOS)
-						if (this->character_class.is_included(current_NFA2.quantifier.atleast, current_NFA2.quantifier.atmost, uchar))
+						if (this->character_class.is_included(curNFAst2.quantifier.atleast, curNFAst2.quantifier.atmost, uchar))
 #else
-						if (this->character_class.is_included(current_NFA2.number, uchar))
+						if (this->character_class.is_included(curNFAst2.number, uchar))
 #endif
 							goto MATCHED;
 
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
-						if (current_NFA2.next_state2)
+						if (curNFAst2.next_state2)
 						{
-							sstate.nth.in_NFA_states = current_NFA2.next_state2;
+							sstate.nth.in_NFA_states = curNFAst2.next_state2;
 
 //							if (sstate.nth.in_NFA_states->type == st_character_class)
 //								goto RETRY_CCB;
@@ -10450,9 +10304,9 @@ private:
 #endif
 					}
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
-					else if (current_NFA.next_state2)
+					else if (curNFAst.next_state2)
 					{
-						sstate.nth.in_NFA_states = current_NFA.next_state2;
+						sstate.nth.in_NFA_states = curNFAst.next_state2;
 						continue;
 					}
 #endif
@@ -10462,62 +10316,62 @@ private:
 			case st_epsilon:
 
 #if defined(SRELLDBG_NO_SKIP_EPSILON)
-				if (current_NFA.next_state2)
+				if (curNFAst.next_state2)
 #endif
 				{
 					sstate.bt_stack.push_back(sstate.nth);	//	sstate.push();
 				}
 
-				sstate.nth.in_NFA_states = current_NFA.next_state1;
+				sstate.nth.in_NFA_states = curNFAst.next_state1;
 				continue;
 
 			default:
-				switch (current_NFA.type)
+				switch (curNFAst.type)
 				{
 
 			case st_check_counter:
 				{
-					const ui_l32 counter = sstate.counter[current_NFA.number];
+					const ui_l32 counter = sstate.counter[curNFAst.number];
 
-					if (counter < current_NFA.quantifier.atmost)
+					if (counter < curNFAst.quantifier.atmost)
 					{
-						++sstate.counter[current_NFA.number];
+						++sstate.counter[curNFAst.number];
 
 						LOOP_WITHOUT_INCREMENT:
 
-						if (counter >= current_NFA.quantifier.atleast)
+						if (counter >= curNFAst.quantifier.atleast)
 						{
 							sstate.bt_stack.push_back(sstate.nth);
-							sstate.nth.in_NFA_states = current_NFA.next_state1;
+							sstate.nth.in_NFA_states = curNFAst.next_state1;
 						}
 						else
 						{
 							sstate.nth.in_NFA_states
-								= current_NFA.quantifier.is_greedy
-								? current_NFA.next_state1
-								: current_NFA.next_state2;
+								= curNFAst.quantifier.is_greedy
+								? curNFAst.next_state1
+								: curNFAst.next_state2;
 						}
 					}
 					else
 					{
-						if (current_NFA.quantifier.is_infinity())
+						if (curNFAst.quantifier.is_infinity())
 							goto LOOP_WITHOUT_INCREMENT;
 
 						sstate.nth.in_NFA_states
-							= current_NFA.quantifier.is_greedy
-							? current_NFA.next_state2
-							: current_NFA.next_state1;
+							= curNFAst.quantifier.is_greedy
+							? curNFAst.next_state2
+							: curNFAst.next_state1;
 					}
 				}
 				continue;
 
 			case st_decrement_counter:
-				--sstate.counter[current_NFA.number];
+				--sstate.counter[curNFAst.number];
 				goto NOT_MATCHED;
 
 			case st_save_and_reset_counter:
 				{
-					counter_type &c = sstate.counter[current_NFA.number];
+					counter_type &c = sstate.counter[curNFAst.number];
 
 					sstate.counter_stack.push_back(c);
 					sstate.bt_stack.push_back(sstate.nth);
@@ -10526,13 +10380,13 @@ private:
 				goto MATCHED;
 
 			case st_restore_counter:
-				sstate.counter[current_NFA.number] = sstate.counter_stack.back();
+				sstate.counter[curNFAst.number] = sstate.counter_stack.back();
 				sstate.counter_stack.pop_back();
 				goto NOT_MATCHED;
 
 			case st_roundbracket_open:	//  '(':
 				{
-					submatch_type &bracket = sstate.bracket[current_NFA.number];
+					submatch_type &bracket = sstate.bracket[curNFAst.number];
 
 					sstate.capture_stack.push_back(bracket.core);
 
@@ -10552,7 +10406,7 @@ private:
 
 					++bracket.counter;
 
-					for (ui_l32 brno = current_NFA.quantifier.atleast; brno <= current_NFA.quantifier.atmost; ++brno)
+					for (ui_l32 brno = curNFAst.quantifier.atleast; brno <= curNFAst.quantifier.atmost; ++brno)
 					{
 						submatch_type &inner_bracket = sstate.bracket[brno];
 
@@ -10570,7 +10424,7 @@ private:
 
 			case st_roundbracket_pop:	//  '/':
 				{
-					for (ui_l32 brno = current_NFA.quantifier.atmost; brno >= current_NFA.quantifier.atleast; --brno)
+					for (ui_l32 brno = curNFAst.quantifier.atmost; brno >= curNFAst.quantifier.atleast; --brno)
 					{
 						submatch_type &inner_bracket = sstate.bracket[brno];
 
@@ -10580,7 +10434,7 @@ private:
 						sstate.capture_stack.pop_back();
 					}
 
-					submatch_type &bracket = sstate.bracket[current_NFA.number];
+					submatch_type &bracket = sstate.bracket[curNFAst.number];
 
 					bracket.core = sstate.capture_stack.back();
 					sstate.capture_stack.pop_back();
@@ -10590,32 +10444,32 @@ private:
 
 			case st_roundbracket_close:	//  ')':
 				{
-					submatch_type &bracket = sstate.bracket[current_NFA.number];
+					submatch_type &bracket = sstate.bracket[curNFAst.number];
 					submatchcore_type &brc = bracket.core;
 
 					if ((!reverse ? brc.open_at : brc.close_at) != sstate.nth.in_string)
 					{
-						sstate.nth.in_NFA_states = current_NFA.next_state1;
+						sstate.nth.in_NFA_states = curNFAst.next_state1;
 					}
 					else	//  0 width match, breaks from the loop.
 					{
-						if (current_NFA.next_state1->type != st_check_counter)
+						if (curNFAst.next_state1->type != st_check_counter)
 						{
 							if (bracket.counter > 1)
 								goto NOT_MATCHED;	//  ECMAScript spec 15.10.2.5, note 4.
 
-							sstate.nth.in_NFA_states = current_NFA.next_state2;
+							sstate.nth.in_NFA_states = curNFAst.next_state2;
 								//  Accepts 0 width match and exits.
 						}
 						else
 						{
 							//  A pair with check_counter.
-							const counter_type counter = sstate.counter[current_NFA.next_state1->number];
+							const counter_type counter = sstate.counter[curNFAst.next_state1->number];
 
-							if (counter > current_NFA.next_state1->quantifier.atleast)
+							if (counter > curNFAst.next_state1->quantifier.atleast)
 								goto NOT_MATCHED;	//  Takes a captured string in the previous loop.
 
-							sstate.nth.in_NFA_states = current_NFA.next_state1;
+							sstate.nth.in_NFA_states = curNFAst.next_state1;
 								//  Accepts 0 width match and continues.
 						}
 					}
@@ -10639,12 +10493,12 @@ private:
 
 			case st_repeat_in_push:
 				{
-					position_type &r = sstate.repeat[current_NFA.number];
+					position_type &r = sstate.repeat[curNFAst.number];
 
 					sstate.repeat_stack.push_back(r);
 					r = sstate.nth.in_string;
 
-					for (ui_l32 brno = current_NFA.quantifier.atleast; brno <= current_NFA.quantifier.atmost; ++brno)
+					for (ui_l32 brno = curNFAst.quantifier.atleast; brno <= curNFAst.quantifier.atmost; ++brno)
 					{
 						submatch_type &inner_bracket = sstate.bracket[brno];
 
@@ -10659,7 +10513,7 @@ private:
 				goto MATCHED;
 
 			case st_repeat_in_pop:
-				for (ui_l32 brno = current_NFA.quantifier.atmost; brno >= current_NFA.quantifier.atleast; --brno)
+				for (ui_l32 brno = curNFAst.quantifier.atmost; brno >= curNFAst.quantifier.atleast; --brno)
 				{
 					submatch_type &inner_bracket = sstate.bracket[brno];
 
@@ -10669,25 +10523,25 @@ private:
 					sstate.capture_stack.pop_back();
 				}
 
-				sstate.repeat[current_NFA.number] = sstate.repeat_stack.back();
+				sstate.repeat[curNFAst.number] = sstate.repeat_stack.back();
 				sstate.repeat_stack.pop_back();
 				goto NOT_MATCHED;
 
 			case st_check_0_width_repeat:
-				if (sstate.nth.in_string != sstate.repeat[current_NFA.number])
+				if (sstate.nth.in_string != sstate.repeat[curNFAst.number])
 					goto MATCHED;
 
-				sstate.nth.in_NFA_states = current_NFA.next_state2;
+				sstate.nth.in_NFA_states = curNFAst.next_state2;
 				continue;
 
 			case st_backreference:	//  '\\':
 				{
-					const submatch_type &bracket = sstate.bracket[current_NFA.number];
+					const submatch_type &bracket = sstate.bracket[curNFAst.number];
 
 					if (bracket.counter == 0)	//  Undefined.
 					{
 						ESCAPE_FROM_ZERO_WIDTH_MATCH:
-						sstate.nth.in_NFA_states = current_NFA.next_state2;
+						sstate.nth.in_NFA_states = curNFAst.next_state2;
 						continue;
 					}
 					else
@@ -10711,7 +10565,7 @@ private:
 							{
 								BidirectionalIterator backrefpos = brc.open_at;
 
-								if (!current_NFA.icase)
+								if (!curNFAst.icase)
 								{
 									for (; backrefpos != brc.close_at;)
 									{
@@ -10739,7 +10593,7 @@ private:
 							{
 								BidirectionalIterator backrefpos = brc.close_at;
 
-								if (!current_NFA.icase)
+								if (!curNFAst.icase)
 								{
 									for (; backrefpos != brc.open_at;)
 									{
@@ -10789,7 +10643,7 @@ private:
 					sstate.btstack_size = sstate.bt_stack.size();
 
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
-					if (current_NFA.quantifier.atleast >= 2)
+					if (curNFAst.quantifier.atleast >= 2)
 					{
 						sstate.repeat_stack.push_back(sstate.lblim);
 						sstate.lblim = sstate.srchbegin;
@@ -10798,9 +10652,9 @@ private:
 
 #if defined(SRELL_FIXEDWIDTHLOOKBEHIND)
 
-//					if (current_NFA.reverse)
+//					if (curNFAst.reverse)
 					{
-						for (ui_l32 i = 0; i < current_NFA.quantifier.atleast; ++i)
+						for (ui_l32 i = 0; i < curNFAst.quantifier.atleast; ++i)
 						{
 							if (!sstate.is_at_lookbehindlimit())
 							{
@@ -10812,10 +10666,10 @@ private:
 						}
 					}
 #endif
-					sstate.nth.in_NFA_states = current_NFA.next_state2;
+					sstate.nth.in_NFA_states = curNFAst.next_state2;
 
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
-					is_matched = current_NFA.quantifier.atleast == 0 ? run_automaton<icase, false>(sstate /* , true */) : run_automaton<icase, true>(sstate /* , true */);
+					is_matched = curNFAst.quantifier.atleast == 0 ? run_automaton<icase, false>(sstate /* , true */) : run_automaton<icase, true>(sstate /* , true */);
 #else
 					is_matched = run_automaton<icase, false>(sstate /* , true */);
 #endif
@@ -10826,7 +10680,7 @@ private:
 					{
 
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
-						if (current_NFA.quantifier.atleast >= 2)
+						if (curNFAst.quantifier.atleast >= 2)
 						{
 							sstate.lblim = sstate.repeat_stack[backup_bottom.repeatstack_size];
 							if (is_matched)
@@ -10835,11 +10689,11 @@ private:
 #endif
 
 #if defined(SRELL_ENABLE_GT)
-						if (current_NFA.character != meta_char::mc_gt)	//  '>'
+						if (curNFAst.character != meta_char::mc_gt)	//  '>'
 #endif
 						{
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
-							if (current_NFA.quantifier.atleast < 3)
+							if (curNFAst.quantifier.atleast < 3)
 #endif
 								sstate.nth.in_string = orgpos;
 						}
@@ -10850,17 +10704,17 @@ private:
 						sstate.counter_stack.resize(backup_bottom.counterstack_size);
 						sstate.repeat_stack.resize(backup_bottom.repeatstack_size);
 
-						is_matched ^= current_NFA.is_not;
+						is_matched ^= curNFAst.is_not;
 					}
 				}
 				if (is_matched)
 				{
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
-					if (current_NFA.quantifier.atleast == 3)
+					if (curNFAst.quantifier.atleast == 3)
 						sstate.nth.in_NFA_states = this->NFA_states[0].next_state2;
 					else
 #endif
-						sstate.nth.in_NFA_states = current_NFA.next_state1;
+						sstate.nth.in_NFA_states = curNFAst.next_state1;
 					continue;
 				}
 
@@ -10895,12 +10749,12 @@ private:
 						goto MATCHED;
 				}
 					//  !sstate.is_at_lookbehindlimit() || sstate.match_prev_avail_flag()
-				else if (current_NFA.multiline)
+				else if (curNFAst.multiline)
 				{
 					const ui_l32 prevchar = utf_traits::prevcodepoint(sstate.nth.in_string, sstate.reallblim);
 
 #if !defined(SRELLDBG_NO_CCPOS)
-					if (this->character_class.is_included(current_NFA.quantifier.atleast, current_NFA.quantifier.atmost, prevchar))
+					if (this->character_class.is_included(curNFAst.quantifier.atleast, curNFAst.quantifier.atmost, prevchar))
 #else
 					if (this->character_class.is_included(re_character_class::newline, prevchar))
 #endif
@@ -10914,12 +10768,12 @@ private:
 					if (!sstate.match_not_eol_flag())
 						goto MATCHED;
 				}
-				else if (current_NFA.multiline)
+				else if (curNFAst.multiline)
 				{
 					const ui_l32 nextchar = utf_traits::codepoint(sstate.nth.in_string, sstate.srchend);
 
 #if !defined(SRELLDBG_NO_CCPOS)
-					if (this->character_class.is_included(current_NFA.quantifier.atleast, current_NFA.quantifier.atmost, nextchar))
+					if (this->character_class.is_included(curNFAst.quantifier.atleast, curNFAst.quantifier.atmost, nextchar))
 #else
 					if (this->character_class.is_included(re_character_class::newline, nextchar))
 #endif
@@ -10928,8 +10782,8 @@ private:
 				goto NOT_MATCHED;
 
 			case st_boundary:	//  '\b' '\B'
-				is_matched = current_NFA.is_not;
-//				is_matched = current_NFA.character == char_alnum::ch_B;
+				is_matched = curNFAst.is_not;
+//				is_matched = curNFAst.character == char_alnum::ch_B;
 
 				//  First, suppose the previous character is not \w but \W.
 
@@ -10941,9 +10795,9 @@ private:
 				else
 				{
 #if !defined(SRELLDBG_NO_CCPOS)
-					if (this->character_class.is_included(current_NFA.quantifier.atleast, current_NFA.quantifier.atmost, utf_traits::codepoint(sstate.nth.in_string, sstate.srchend)))
+					if (this->character_class.is_included(curNFAst.quantifier.atleast, curNFAst.quantifier.atmost, utf_traits::codepoint(sstate.nth.in_string, sstate.srchend)))
 #else
-					if (this->character_class.is_included(current_NFA.number, utf_traits::codepoint(sstate.nth.in_string, sstate.srchend)))
+					if (this->character_class.is_included(curNFAst.number, utf_traits::codepoint(sstate.nth.in_string, sstate.srchend)))
 #endif
 					{
 						is_matched = !is_matched;
@@ -10964,9 +10818,9 @@ private:
 				{
 					//  !sstate.is_at_lookbehindlimit() || sstate.match_prev_avail_flag()
 #if !defined(SRELLDBG_NO_CCPOS)
-					if (this->character_class.is_included(current_NFA.quantifier.atleast, current_NFA.quantifier.atmost, utf_traits::prevcodepoint(sstate.nth.in_string, sstate.reallblim)))
+					if (this->character_class.is_included(curNFAst.quantifier.atleast, curNFAst.quantifier.atmost, utf_traits::prevcodepoint(sstate.nth.in_string, sstate.reallblim)))
 #else
-					if (this->character_class.is_included(current_NFA.number, utf_traits::prevcodepoint(sstate.nth.in_string, sstate.reallblim)))
+					if (this->character_class.is_included(curNFAst.number, utf_traits::prevcodepoint(sstate.nth.in_string, sstate.reallblim)))
 #endif
 					{
 						is_matched = !is_matched;
@@ -10994,7 +10848,7 @@ private:
 
 				goto NOT_MATCHED;
 
-#if !defined(SRELLDBG_NO_NEXTPOS_OPT)
+#if defined(SRELLTEST_NEXTPOS_OPT)
 			case st_move_nextpos:
 #if !defined(SRELLDBG_NO_1STCHRCLS) && !defined(SRELLDBG_NO_BITSET)
 				sstate.nextpos = sstate.nth.in_string;

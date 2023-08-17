@@ -1,3 +1,8 @@
+20230817; version 4.024:
+  * Commented out the code for an optimisation that had become unused
+    since 4.019.
+  * Various minor improvements and fixes.
+
 20230804; version 4.023:
   * Unified two internal integer types to one type.
   * Simplified several optimisations that had become less effective
