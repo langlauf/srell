@@ -1,3 +1,9 @@
+20230819; version 4.025:
+  * To avoid movzx, changed the type to hold a flag in the internal
+    representation from bool to an integer type.
+  * Repleaced names of member variables in structs that are used
+    frequently in the automaton with shorter names.
+
 20230817; version 4.024:
   * Commented out the code for an optimisation that had become unused
     since 4.019.
