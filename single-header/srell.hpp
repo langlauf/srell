@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.025
+**  SRELL (std::regex-like library) version 4.026
 **
 **  Copyright (c) 2012-2023, Nozomu Katoo. All rights reserved.
 **
@@ -14822,6 +14822,11 @@ struct re_state
 		return is_noncapturinggroup() && quantifier.is_valid();
 	}
 
+	bool is_any_bracket_open() const
+	{
+		return type == st_roundbracket_open || (type == st_epsilon && char_num == epsilon_type::et_ncgopen);
+	}
+
 	bool is_branch() const
 	{
 		return type == st_epsilon && next2 != 0 && char_num == epsilon_type::et_alt;	//  '|'
@@ -19376,6 +19381,18 @@ private:
 					|| ((state.char_num == epsilon_type::et_default)
 						&& (is_reversible_atom(cur + state.nearnext()))))
 				{
+					const state_size_type rapos = cur + state.nearnext();
+					const state_type *repatom = &this->NFA_states[rapos];
+
+					if (repatom->type == st_repeat_in_push)
+						repatom += repatom->next1;
+
+					if (repatom->is_any_bracket_open())
+						break;	//  Optional sequence (?, *) found.
+						//  Not only at the beginning but also at any position does
+						//  an optional sequence need measures to be taken:
+						//  "2000-1-1" =~ /\d(\d+-)?\d{1,2}-\d{1,2}/
+
 					cur += state.farnext() - 1;
 					needs_rerun = true;
 					prevchar = constants::invalid_u32value;
@@ -19385,11 +19402,12 @@ private:
 
 			case st_save_and_reset_counter:
 				{
-					const state_size_type ccpos = cur + 2;	//state.next1;	//  check_counter.
-					const state_size_type rapos = ccpos + 3;	//this->NFA_states[ccpos].nearnext();
-					const state_type &repatom = this->NFA_states[rapos];
+					const state_size_type ccpos = cur + state.next1;	//  check_counter.
+					const state_type &ccstate = this->NFA_states[ccpos];
+					const state_size_type rapos = ccpos + 3;	//  ccstate.nearnext();
+					const state_type *repatom = &this->NFA_states[rapos];
 
-					if (repatom.type == st_character)
+					if (repatom->type == st_character)
 					{
 						curatompos = cur;
 						cur = rapos;
@@ -19397,9 +19415,15 @@ private:
 						goto ST_CHARACTER;
 					}
 
+					if (repatom->type == st_repeat_in_push)
+						repatom += repatom->next1;
+
+					if (ccstate.quantifier.atleast == 0 && repatom->is_any_bracket_open())
+						break;	//  Optional sequence ({0,m}) found.
+
 					if (is_reversible_atom(rapos))
 					{
-						cur = ccpos + this->NFA_states[ccpos].farnext() - 1;
+						cur = ccpos + ccstate.farnext() - 1;
 						needs_rerun = true;
 						prevchar = constants::invalid_u32value;
 						continue;
@@ -19865,6 +19889,42 @@ private:
 		return begin != charatomseq_endpos ? charatomseq_endpos : 0u;
 	}
 
+	bool check_if_optional_sequence(state_size_type pos) const
+	{
+		const state_type &fs = this->NFA_states[pos];
+
+		if (fs.type == st_epsilon)
+		{
+			if ((fs.char_num == epsilon_type::et_ccastrsk
+					|| fs.char_num == epsilon_type::et_default)
+				&& fs.next2 != 0)
+			{
+				const state_size_type rapos = pos + fs.nearnext();
+				const state_type *repatom = &this->NFA_states[rapos];
+
+				if (repatom->type == st_repeat_in_push)
+					repatom += repatom->next1;
+
+				if (repatom->is_any_bracket_open())
+					return true;
+			}
+		}
+		else if (fs.type == st_save_and_reset_counter)
+		{
+			const state_size_type ccpos = pos + fs.next1;	//  check_counter.
+			const state_type &ccstate = this->NFA_states[ccpos];
+			const state_size_type rapos = ccpos + 3;	//  ccstate.nearnext();
+			const state_type *repatom = &this->NFA_states[rapos];
+
+			if (repatom->type == st_repeat_in_push)
+				repatom += repatom->next1;
+
+			if (ccstate.quantifier.atleast == 0 && repatom->is_any_bracket_open())
+				return true;
+		}
+		return false;
+	}
+
 	bool find_better_ep(state_size_type cur)
 	{
 		state_size_type betterpos = 0u;
@@ -19909,7 +19969,7 @@ private:
 				break;
 
 			const ui_l32 cpnum = nextcc.total_codepoints();
-			const bool has_obstacle = has_obstacle_to_reverse(cur, boundary);
+			const bool has_obstacle = check_if_optional_sequence(cur) || has_obstacle_to_reverse(cur, boundary);
 
 			if (betterpos != 0u)
 			{

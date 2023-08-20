@@ -1,3 +1,7 @@
+20230820; version 4.026:
+  * Fix a bug that caused a search for /(\d+-)?\d{1,2}-\d{1,2}/ in
+    "2023-8-20" matched "23-8-20" since version 4.019.
+
 20230819; version 4.025:
   * To avoid movzx, changed the type to hold a flag in the internal
     representation from bool to an integer type.
