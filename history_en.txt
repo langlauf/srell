@@ -1,6 +1,14 @@
+20230821; version 4.027:
+  * Fixed a bug that caused the first capturing group to be empty in the
+    match result of /(?:(\d+-)?)+(\d{1,2})-(\d{1,2})/ against
+    "2023-8-21" (This bug had been existing from an early version).
+  * Fixed a bug that caused the entire match to be only "23-8-21" in the
+    same match result (This bug was introduced in 4.019 and was not
+    covered by the fix in 4.026).
+
 20230820; version 4.026:
   * Fix a bug that caused a search for /(\d+-)?\d{1,2}-\d{1,2}/ in
-    "2023-8-20" matched "23-8-20" since version 4.019.
+    "2023-8-20" matched only "23-8-20" since version 4.019.
 
 20230819; version 4.025:
   * To avoid movzx, changed the type to hold a flag in the internal

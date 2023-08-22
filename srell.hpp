@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.026
+**  SRELL (std::regex-like library) version 4.027
 **
 **  Copyright (c) 2012-2023, Nozomu Katoo. All rights reserved.
 **
@@ -3483,7 +3483,7 @@ struct re_state
 
 	bool is_noncapturinggroup() const
 	{
-		return type == st_epsilon && next2 == 0 && char_num == epsilon_type::et_ncgopen;
+		return type == st_epsilon && char_num == epsilon_type::et_ncgopen;
 	}
 
 	bool is_noncapturinggroup_begin_or_end() const
@@ -3494,11 +3494,6 @@ struct re_state
 	bool is_noncapturinggroup_containing_capturinggroup() const
 	{
 		return is_noncapturinggroup() && quantifier.is_valid();
-	}
-
-	bool is_any_bracket_open() const
-	{
-		return type == st_roundbracket_open || (type == st_epsilon && char_num == epsilon_type::et_ncgopen);
 	}
 
 	bool is_branch() const
@@ -5609,6 +5604,10 @@ private:
 #endif	//  !defined(SRELLDBG_NO_SIMPLEEQUIV)
 
 		qstate.type = st_epsilon;
+
+		if (firststate.is_noncapturinggroup() && piecesize.atleast == 0)
+			goto USE_COUNTER;
+
 		if (quantifier.is_asterisk())	//  {0,}
 		{
 			//  greedy:  1.epsilon(2|4), 2.piece, 3.LAorC0WR(1|0), 4.OutOfLoop.
@@ -5642,6 +5641,8 @@ private:
 		}
 		else
 		{
+			USE_COUNTER:
+
 			qstate.char_num = this->number_of_counters;
 			++this->number_of_counters;
 
@@ -8047,26 +8048,15 @@ private:
 							goto ST_CHARACTER;
 						}
 						prevchar = constants::invalid_u32value;
+						cur = rapos - 1;
 					}
 					continue;
 				}
 
 				if ((state.char_num == epsilon_type::et_ccastrsk)
 					|| ((state.char_num == epsilon_type::et_default)
-						&& (is_reversible_atom(cur + state.nearnext()))))
+						&& (is_reversible_atom(cur + state.nearnext(), true))))
 				{
-					const state_size_type rapos = cur + state.nearnext();
-					const state_type *repatom = &this->NFA_states[rapos];
-
-					if (repatom->type == st_repeat_in_push)
-						repatom += repatom->next1;
-
-					if (repatom->is_any_bracket_open())
-						break;	//  Optional sequence (?, *) found.
-						//  Not only at the beginning but also at any position does
-						//  an optional sequence need measures to be taken:
-						//  "2000-1-1" =~ /\d(\d+-)?\d{1,2}-\d{1,2}/
-
 					cur += state.farnext() - 1;
 					needs_rerun = true;
 					prevchar = constants::invalid_u32value;
@@ -8074,14 +8064,12 @@ private:
 				}
 				break;
 
-			case st_save_and_reset_counter:
+			case st_check_counter:
 				{
-					const state_size_type ccpos = cur + state.next1;	//  check_counter.
-					const state_type &ccstate = this->NFA_states[ccpos];
-					const state_size_type rapos = ccpos + 3;	//  ccstate.nearnext();
-					const state_type *repatom = &this->NFA_states[rapos];
+					const state_size_type rapos = cur + 3;
+					const state_type &repatom = this->NFA_states[rapos];
 
-					if (repatom->type == st_character)
+					if (repatom.type == st_character)
 					{
 						curatompos = cur;
 						cur = rapos;
@@ -8089,15 +8077,9 @@ private:
 						goto ST_CHARACTER;
 					}
 
-					if (repatom->type == st_repeat_in_push)
-						repatom += repatom->next1;
-
-					if (ccstate.quantifier.atleast == 0 && repatom->is_any_bracket_open())
-						break;	//  Optional sequence ({0,m}) found.
-
-					if (is_reversible_atom(rapos))
+					if (is_reversible_atom(rapos, state.quantifier.atleast == 0))
 					{
-						cur = ccpos + ccstate.farnext() - 1;
+						cur = cur + state.farnext() - 1;
 						needs_rerun = true;
 						prevchar = constants::invalid_u32value;
 						continue;
@@ -8105,16 +8087,22 @@ private:
 				}
 				break;
 
+			case st_save_and_reset_counter:
 			case st_repeat_in_push:
+				cur += state.next1 - 1;
+				continue;
+
+			case st_check_0_width_repeat:
+				cur += state.next2 - 1;
+				continue;
+
 			case st_backreference:
 			case st_lookaround_open:
 				break;	//  Gives up.
 
-			case st_check_counter:
-			case st_decrement_counter:
 			case st_restore_counter:
+			case st_decrement_counter:
 			case st_repeat_in_pop:
-			case st_check_0_width_repeat:
 				break;	//  NFA_states broken.
 
 			case st_roundbracket_open:
@@ -8135,17 +8123,22 @@ private:
 			: (charcount > 1 ? (create_rewinder(singlecharpos, needs_rerun), true) : false);
 	}
 
-	bool is_reversible_atom(const state_size_type pos) const
+	bool is_reversible_atom(const state_size_type pos, const bool check_optseq) const
 	{
 		const state_type &s = this->NFA_states[pos];
 		state_size_type end = 0u;
 
-		switch (s.type)
-		{
-		case st_character:
-		case st_character_class:
+		if (s.type == st_character || s.type == st_character_class)
 			return true;
 
+		if (check_optseq)
+			return false;	//  Optional sequence (?, *, {0,m}) found.
+			//  Not only at the beginning but also at any position does
+			//  an optional sequence need measures to be taken:
+			//  "2000-1-1" =~ /\d(\d+-)?\d{1,2}-\d{1,2}/
+
+		switch (s.type)
+		{
 		case st_epsilon:
 			if (s.next2 == 0 && s.char_num == epsilon_type::et_ncgopen)
 				end = skip_group(this->NFA_states, pos);
@@ -8165,12 +8158,12 @@ private:
 		default:;
 		}
 
-		return end != 0u && !has_obstacle_to_reverse(pos, end);
+		return end != 0u && !has_obstacle_to_reverse(pos, end, false);
 	}
 
-	bool has_obstacle_to_reverse(state_size_type pos, const state_size_type end) const
+	bool has_obstacle_to_reverse(state_size_type pos, const state_size_type end, const bool check_optseq) const
 	{
-		for (; pos < end; ++pos)
+		for (; pos < end;)
 		{
 			const state_type &s = this->NFA_states[pos];
 
@@ -8178,11 +8171,39 @@ private:
 			{
 				if (s.char_num == epsilon_type::et_alt)
 					return true;
+					//  The rewinder cannot support Disjunction because forward matching
+					//  and backward matching can go through different routes:
+					//  * In a forward search /(?:.|ab)c/ against "abc" matches "abc",
+					//    while in a backward search from 'c' it matches "bc".
+
+				//  Because of the same reason, the rewinder cannot support an optional
+				//  group either. Semantically, /(\d+-)?\d{1,2}-\d{1,2}/ is equivalent to
+				//  /(\d+-|)\d{1,2}-\d{1,2}/.
+				if (check_optseq)
+				{
+					if (s.char_num == epsilon_type::et_jmpinlp)
+					{
+						pos += s.next1;
+						continue;
+					}
+
+					if (s.char_num == epsilon_type::et_default && s.next2 != 0 && !this->NFA_states[pos + s.nearnext()].is_character_or_class())
+						return true;
+				}
+
 			}
 			else if (s.type == st_backreference)
 				return true;
 			else if (s.type == st_lookaround_open)
 				return true;
+			else if (check_optseq && s.type == st_check_counter)
+			{
+				if (s.quantifier.atleast == 0 && !this->NFA_states[pos + 3].is_character_or_class())
+					return true;
+				pos += 3;
+				continue;
+			}
+			++pos;
 		}
 		return false;
 	}
@@ -8563,42 +8584,6 @@ private:
 		return begin != charatomseq_endpos ? charatomseq_endpos : 0u;
 	}
 
-	bool check_if_optional_sequence(state_size_type pos) const
-	{
-		const state_type &fs = this->NFA_states[pos];
-
-		if (fs.type == st_epsilon)
-		{
-			if ((fs.char_num == epsilon_type::et_ccastrsk
-					|| fs.char_num == epsilon_type::et_default)
-				&& fs.next2 != 0)
-			{
-				const state_size_type rapos = pos + fs.nearnext();
-				const state_type *repatom = &this->NFA_states[rapos];
-
-				if (repatom->type == st_repeat_in_push)
-					repatom += repatom->next1;
-
-				if (repatom->is_any_bracket_open())
-					return true;
-			}
-		}
-		else if (fs.type == st_save_and_reset_counter)
-		{
-			const state_size_type ccpos = pos + fs.next1;	//  check_counter.
-			const state_type &ccstate = this->NFA_states[ccpos];
-			const state_size_type rapos = ccpos + 3;	//  ccstate.nearnext();
-			const state_type *repatom = &this->NFA_states[rapos];
-
-			if (repatom->type == st_repeat_in_push)
-				repatom += repatom->next1;
-
-			if (ccstate.quantifier.atleast == 0 && repatom->is_any_bracket_open())
-				return true;
-		}
-		return false;
-	}
-
 	bool find_better_ep(state_size_type cur)
 	{
 		state_size_type betterpos = 0u;
@@ -8643,7 +8628,7 @@ private:
 				break;
 
 			const ui_l32 cpnum = nextcc.total_codepoints();
-			const bool has_obstacle = check_if_optional_sequence(cur) || has_obstacle_to_reverse(cur, boundary);
+			const bool has_obstacle = has_obstacle_to_reverse(cur, boundary, true);
 
 			if (betterpos != 0u)
 			{
@@ -10584,7 +10569,18 @@ private:
 				if (sstate.ssc.iter != sstate.repeat[sstate.ssc.state->char_num])
 					goto MATCHED;
 
-				sstate.ssc.state = sstate.ssc.state->next_state2;
+				if (sstate.ssc.state->next_state1->type == st_check_counter)
+				{
+					const counter_type counter = sstate.counter[sstate.ssc.state->next_state1->char_num];
+
+					if (counter > sstate.ssc.state->next_state1->quantifier.atleast)
+						goto NOT_MATCHED;
+
+					sstate.ssc.state = sstate.ssc.state->next_state1;
+				}
+				else
+					sstate.ssc.state = sstate.ssc.state->next_state2;
+
 				continue;
 
 			case st_backreference:	//  '\\':
