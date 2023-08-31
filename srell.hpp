@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.027
+**  SRELL (std::regex-like library) version 4.028
 **
 **  Copyright (c) 2012-2023, Nozomu Katoo. All rights reserved.
 **
@@ -514,9 +514,10 @@ public:
 	static const std::size_t maxseqlen = 1;
 	static const int utftype = 0;
 
-	static const std::size_t bitsetsize = 0x100;
-	static const ui_l32 bitsetmask = 0xff;
-	static const ui_l32 cumask = 0xff;
+	static const ui_l32 charbit = (sizeof (charT) * CHAR_BIT) > 21 ? 21 : (sizeof (charT) * CHAR_BIT);
+	static const ui_l32 bitsetsize = 1 << (charbit > 16 ? 16 : charbit);
+	static const ui_l32 bitsetmask = bitsetsize - 1;
+	static const ui_l32 maxcpvalue = charbit == 21 ? 0x10ffff : ((1 << charbit) - 1);
 
 	//  *iter
 	template <typename ForwardIterator>
@@ -576,16 +577,12 @@ public:
 		return begin != end;
 	}
 };
-template <typename charT>
-	const std::size_t utf_traits_core<charT>::maxseqlen;
-template <typename charT>
-	const int utf_traits_core<charT>::utftype;
-template <typename charT>
-	const std::size_t utf_traits_core<charT>::bitsetsize;
-template <typename charT>
-	const ui_l32 utf_traits_core<charT>::bitsetmask;
-template <typename charT>
-	const ui_l32 utf_traits_core<charT>::cumask;
+template <typename charT> const std::size_t utf_traits_core<charT>::maxseqlen;
+template <typename charT> const int utf_traits_core<charT>::utftype;
+template <typename charT> const ui_l32 utf_traits_core<charT>::charbit;
+template <typename charT> const ui_l32 utf_traits_core<charT>::bitsetsize;
+template <typename charT> const ui_l32 utf_traits_core<charT>::bitsetmask;
+template <typename charT> const ui_l32 utf_traits_core<charT>::maxcpvalue;
 //  utf_traits_core
 
 //  common and utf-32.
@@ -594,18 +591,8 @@ struct utf_traits : public utf_traits_core<charT>
 {
 	static const int utftype = 32;
 
-	static const std::size_t bitsetsize = 0x10000;
-	static const ui_l32 bitsetmask = 0xffff;
-	static const ui_l32 cumask = 0x1fffff;
 };
-template <typename charT>
-	const int utf_traits<charT>::utftype;
-template <typename charT>
-	const std::size_t utf_traits<charT>::bitsetsize;
-template <typename charT>
-	const ui_l32 utf_traits<charT>::bitsetmask;
-template <typename charT>
-	const ui_l32 utf_traits<charT>::cumask;
+template <typename charT> const int utf_traits<charT>::utftype;
 //  utf_traits
 
 //  utf-8 specific.
@@ -617,6 +604,11 @@ public:
 	//  utf-8 specific.
 	static const std::size_t maxseqlen = 4;
 	static const int utftype = 8;
+
+	static const ui_l32 charbit = 8;
+	static const ui_l32 bitsetsize = 0x100;
+	static const ui_l32 bitsetmask = 0xff;
+	static const ui_l32 maxcpvalue = 0x10ffff;
 
 	template <typename ForwardIterator>
 	static ui_l32 codepoint(ForwardIterator begin, const ForwardIterator end)
@@ -862,10 +854,12 @@ public:
 		return false;
 	}
 };
-template <typename charT>
-	const std::size_t utf8_traits<charT>::maxseqlen;
-template <typename charT>
-	const int utf8_traits<charT>::utftype;
+template <typename charT> const std::size_t utf8_traits<charT>::maxseqlen;
+template <typename charT> const int utf8_traits<charT>::utftype;
+template <typename charT> const ui_l32 utf8_traits<charT>::charbit;
+template <typename charT> const ui_l32 utf8_traits<charT>::bitsetsize;
+template <typename charT> const ui_l32 utf8_traits<charT>::bitsetmask;
+template <typename charT> const ui_l32 utf8_traits<charT>::maxcpvalue;
 //  utf8_traits
 
 //  utf-16 specific.
@@ -878,9 +872,10 @@ public:
 	static const std::size_t maxseqlen = 2;
 	static const int utftype = 16;
 
-	static const std::size_t bitsetsize = 0x10000;
+	static const ui_l32 charbit = 16;
+	static const ui_l32 bitsetsize = 0x10000;
 	static const ui_l32 bitsetmask = 0xffff;
-	static const ui_l32 cumask = 0xffff;
+	static const ui_l32 maxcpvalue = 0x10ffff;
 
 	template <typename ForwardIterator>
 	static ui_l32 codepoint(ForwardIterator begin, const ForwardIterator end)
@@ -987,16 +982,12 @@ public:
 		return false;
 	}
 };
-template <typename charT>
-	const std::size_t utf16_traits<charT>::maxseqlen;
-template <typename charT>
-	const int utf16_traits<charT>::utftype;
-template <typename charT>
-	const std::size_t utf16_traits<charT>::bitsetsize;
-template <typename charT>
-	const ui_l32 utf16_traits<charT>::bitsetmask;
-template <typename charT>
-	const ui_l32 utf16_traits<charT>::cumask;
+template <typename charT> const std::size_t utf16_traits<charT>::maxseqlen;
+template <typename charT> const int utf16_traits<charT>::utftype;
+template <typename charT> const ui_l32 utf16_traits<charT>::charbit;
+template <typename charT> const ui_l32 utf16_traits<charT>::bitsetsize;
+template <typename charT> const ui_l32 utf16_traits<charT>::bitsetmask;
+template <typename charT> const ui_l32 utf16_traits<charT>::maxcpvalue;
 //  utf16_traits
 
 //  specialisation for char.
@@ -5915,15 +5906,14 @@ private:
 			}
 
 			piece.push_back(castate);
-			piecesize = castate.quantifier;
 		}
 		else
 		{
 			transform_seqdata(piece, pos);
 
-			piecesize.atleast = static_cast<ui_l32>(pos.length.first);
-			piecesize.atmost = static_cast<ui_l32>(pos.length.second);
 		}
+		piecesize.atleast = pos.length.first;
+		piecesize.atmost = pos.length.second;
 		return true;
 	}
 
@@ -7248,7 +7238,7 @@ private:
 			this->firstchar_class_bs.set_range(utf_traits::firstcodeunit(range.first) & utf_traits::bitsetmask, utf_traits::firstcodeunit(second) & utf_traits::bitsetmask);
 
 #else
-			for (ui_l32 ucp = range.first; ucp <= constants::unicode_max_codepoint; ++ucp)
+			for (ui_l32 ucp = range.first; ucp <= utf_traits::maxcpvalue; ++ucp)
 			{
 				const ui_l32 firstcu = utf_traits::firstcodeunit(ucp) & utf_traits::bitsetmask;
 

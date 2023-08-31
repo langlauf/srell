@@ -1,3 +1,8 @@
+20230831; version 4.028:
+  * Improved not to call the automaton for Unicode code point values
+    that cannot be held by a single char/wchar_t when the regex or
+    wregex type is used.
+
 20230821; version 4.027:
   * Fixed a bug that caused the first capturing group to be empty in the
     match result of /(?:(\d+-)?)+(\d{1,2})-(\d{1,2})/ against
