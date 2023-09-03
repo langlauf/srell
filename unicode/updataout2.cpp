@@ -1,5 +1,5 @@
 //
-//  updataout.cpp: version 2.002 (2022/10/30).
+//  updataout.cpp: version 2.003 (2023/09/03).
 //
 //  This is a program that generates srell_updata2.hpp from:
 //    DerivedCoreProperties.txt
@@ -129,8 +129,8 @@ static const char *const script_names[] = {	//  163 (141+7+4+4+5+2)
 	"Bopomofo:Bopo", "Brahmi:Brah", "Braille:Brai", "Buginese:Bugi",
 	"Buhid:Buhd", "Canadian_Aboriginal:Cans", "Carian:Cari", "Caucasian_Albanian:Aghb",
 	"Chakma:Cakm", "Cham:Cham", "Cherokee:Cher", "Chorasmian:Chrs",
-	"Common:Zyyy", "Coptic:Copt:Qaac", "Cypro_Minoan:Cpmn", "Cuneiform:Xsux",
-	"Cypriot:Cprt", "Cyrillic:Cyrl", "Deseret:Dsrt", "Devanagari:Deva",
+	"Common:Zyyy", "Coptic:Copt:Qaac", "Cuneiform:Xsux", "Cypriot:Cprt",
+	"Cypro_Minoan:Cpmn", "Cyrillic:Cyrl", "Deseret:Dsrt", "Devanagari:Deva",
 	"Dives_Akuru:Diak", "Dogra:Dogr", "Duployan:Dupl", "Egyptian_Hieroglyphs:Egyp",
 	"Elbasan:Elba", "Elymaic:Elym", "Ethiopic:Ethi", "Georgian:Geor",
 	"Glagolitic:Glag", "Gothic:Goth", "Grantha:Gran", "Greek:Grek",
@@ -161,7 +161,7 @@ static const char *const script_names[] = {	//  163 (141+7+4+4+5+2)
 	"Tagbanwa:Tagb", "Tai_Le:Tale", "Tai_Tham:Lana", "Tai_Viet:Tavt",
 	"Takri:Takr", "Tamil:Taml", "Tangsa:Tnsa", "Tangut:Tang",
 	"Telugu:Telu", "Thaana:Thaa", "Thai:Thai", "Tibetan:Tibt",
-	"Tifinagh:Tfng", "Tirhuta:Tirh", "Toto", "Ugaritic:Ugar",
+	"Tifinagh:Tfng", "Tirhuta:Tirh", "Toto:Toto", "Ugaritic:Ugar",
 	"Vai:Vaii", "Vithkuqi:Vith", "Wancho:Wcho", "Warang_Citi:Wara",
 	"Yezidi:Yezi", "Yi:Yiii", "Zanabazar_Square:Zanb",
 	//  ECMAScript 2019/Unicode 11:
@@ -172,7 +172,7 @@ static const char *const script_names[] = {	//  163 (141+7+4+4+5+2)
 	//  ECMAScript 2021/Unicode 13
 	//    "Chorasmian:Chrs", "Dives_Akuru:Diak", "Khitan_Small_Script:Kits", "Yezidi:Yezi",
 	//  ECMAScript 2022/Unicode 14:
-	//    "Cypro_Minoan:Cpmn", "Old_Uyghur:Ougr", "Tangsa:Tnsa", "Toto",
+	//    "Cypro_Minoan:Cpmn", "Old_Uyghur:Ougr", "Tangsa:Tnsa", "Toto:Toto",
 	//    "Vithkuqi:Vith",
 	//  ECMAScript 2023/Unicode 15:
 	//    "Kawi:Kawi", "Nag_Mundari:Nagm",
@@ -387,7 +387,7 @@ public:
 
 private:
 
-	typedef srell::regex_internal::uchar32 uchar32;
+	typedef srell::regex_internal::ui_l32 uchar32;
 	typedef srell::regex_internal::range_pairs ucprange_array;
 	typedef srell::regex_internal::range_pair ucprange;
 	typedef srell::regex_internal::range_pair_helper ucprange_helper;

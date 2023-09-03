@@ -1,3 +1,12 @@
+20230903; version 4.029:
+  * Updated unicode/updataout2.cpp to fix an issue that caused
+    compilation error because internal integer types were unified in
+    version 4.023.
+  * Recreated srell_updata2.hpp (Data for the two scripts that were
+    newly added to Unicode 15 were missing from the previous version.
+    Apparently, it was output by the previous version of
+    updataout2.cpp).
+
 20230831; version 4.028:
   * Improved not to call the automaton for Unicode code point values
     that cannot be held by a single char/wchar_t when the regex or

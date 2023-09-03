@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.028
+**  SRELL (std::regex-like library) version 4.029
 **
 **  Copyright (c) 2012-2023, Nozomu Katoo. All rights reserved.
 **
