@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.029
+**  SRELL (std::regex-like library) version 4.030
 **
 **  Copyright (c) 2012-2023, Nozomu Katoo. All rights reserved.
 **
@@ -1470,19 +1470,6 @@ public:
 		return buffer_;
 	}
 
-	int compare(size_type pos, const size_type count1, const_pointer p, const size_type count2) const
-	{
-		size_type count = count1 <= count2 ? count1 : count2;
-
-		for (; count; ++pos, ++p, --count)
-		{
-			const value_type &v = buffer_[pos];
-			if (v != *p)
-				return v < *p ? -1 : 1;
-		}
-		return count1 == count2 ? 0 : (count1 < count2 ? -1 : 1);
-	}
-
 	size_type max_size() const
 	{
 		return maxsize_;
@@ -1743,7 +1730,7 @@ private:
 		namespace ucf_constants
 		{
 
-//  ["srell_ucfdata2.hpp" ...
+//  ["srell_ucfdata2.h" ...
 //  CaseFolding-15.0.0.txt
 //  Date: 2022-02-02, 23:35:35 GMT
 //  © 2022 Unicode®, Inc.
@@ -4228,7 +4215,7 @@ const T2 unicode_casefolding<T2, T3>::rev_charsettable[] =
 	0x1E943, 0x1E921, eos	//  4300
 };
 #define SRELL_UCFDATA_VERSION 201
-//  ... "srell_ucfdata2.hpp"]
+//  ... "srell_ucfdata2.h"]
 
 		}	//  namespace ucf_constants
 
@@ -4361,7 +4348,7 @@ public:	//  For debug.
 		namespace up_constants
 		{
 
-//  ["srell_updata2.hpp" ...
+//  ["srell_updata3.h" ...
 //  UnicodeData.txt
 //
 //  PropList-15.0.0.txt
@@ -4400,6 +4387,12 @@ public:	//  For debug.
 //  Unicode and the Unicode Logo are registered trademarks of Unicode, Inc. in the U.S. and other countries.
 //  For terms of use, see https://www.unicode.org/terms_of_use.html
 //
+//  PropertyValueAliases-15.0.0.txt
+//  Date: 2022-08-05, 23:42:17 GMT
+//  © 2022 Unicode®, Inc.
+//  Unicode and the Unicode Logo are registered trademarks of Unicode, Inc. in the U.S. and other countries.
+//  For terms of use, see https://www.unicode.org/terms_of_use.html
+//
 //  Scripts-15.0.0.txt
 //  Date: 2022-04-26, 23:15:02 GMT
 //  © 2022 Unicode®, Inc.
@@ -4416,478 +4409,1643 @@ public:	//  For debug.
 enum upid_type
 {
 	upid_unknown = 0,
-	gc_Other = 1,	//  #1
-	gc_Control = 2,	//  #2
-	gc_Format = 3,	//  #3
-	gc_Unassigned = 4,	//  #4
-	gc_Private_Use = 5,	//  #5
-	gc_Surrogate = 6,	//  #6
-	gc_Letter = 7,	//  #7
-	gc_Cased_Letter = 8,	//  #8
-	gc_Lowercase_Letter = 9,	//  #9
-	gc_Titlecase_Letter = 10,	//  #10
-	gc_Uppercase_Letter = 11,	//  #11
-	gc_Modifier_Letter = 12,	//  #12
-	gc_Other_Letter = 13,	//  #13
-	gc_Mark = 14,	//  #14
-	gc_Spacing_Mark = 15,	//  #15
-	gc_Enclosing_Mark = 16,	//  #16
-	gc_Nonspacing_Mark = 17,	//  #17
-	gc_Number = 18,	//  #18
-	gc_Decimal_Number = 19,	//  #19
-	gc_Letter_Number = 20,	//  #20
-	gc_Other_Number = 21,	//  #21
-	gc_Punctuation = 22,	//  #22
-	gc_Connector_Punctuation = 23,	//  #23
-	gc_Dash_Punctuation = 24,	//  #24
-	gc_Close_Punctuation = 25,	//  #25
-	gc_Final_Punctuation = 26,	//  #26
-	gc_Initial_Punctuation = 27,	//  #27
-	gc_Other_Punctuation = 28,	//  #28
-	gc_Open_Punctuation = 29,	//  #29
-	gc_Symbol = 30,	//  #30
-	gc_Currency_Symbol = 31,	//  #31
-	gc_Modifier_Symbol = 32,	//  #32
-	gc_Math_Symbol = 33,	//  #33
-	gc_Other_Symbol = 34,	//  #34
-	gc_Separator = 35,	//  #35
-	gc_Line_Separator = 36,	//  #36
-	gc_Paragraph_Separator = 37,	//  #37
-	gc_Space_Separator = 38,	//  #38
-	bp_ASCII = 39,	//  #39
-	bp_ASCII_Hex_Digit = 40,	//  #40
-	bp_Alphabetic = 41,	//  #41
-	bp_Any = 42,	//  #42
-	bp_Assigned = 43,	//  #43
-	bp_Bidi_Control = 44,	//  #44
-	bp_Bidi_Mirrored = 45,	//  #45
-	bp_Case_Ignorable = 46,	//  #46
-	bp_Cased = 47,	//  #47
-	bp_Changes_When_Casefolded = 48,	//  #48
-	bp_Changes_When_Casemapped = 49,	//  #49
-	bp_Changes_When_Lowercased = 50,	//  #50
-	bp_Changes_When_NFKC_Casefolded = 51,	//  #51
-	bp_Changes_When_Titlecased = 52,	//  #52
-	bp_Changes_When_Uppercased = 53,	//  #53
-	bp_Dash = 54,	//  #54
-	bp_Default_Ignorable_Code_Point = 55,	//  #55
-	bp_Deprecated = 56,	//  #56
-	bp_Diacritic = 57,	//  #57
-	bp_Emoji = 58,	//  #58
-	bp_Emoji_Component = 59,	//  #59
-	bp_Emoji_Modifier = 60,	//  #60
-	bp_Emoji_Modifier_Base = 61,	//  #61
-	bp_Emoji_Presentation = 62,	//  #62
-	bp_Extended_Pictographic = 63,	//  #63
-	bp_Extender = 64,	//  #64
-	bp_Grapheme_Base = 65,	//  #65
-	bp_Grapheme_Extend = 66,	//  #66
-	bp_Hex_Digit = 67,	//  #67
-	bp_IDS_Binary_Operator = 68,	//  #68
-	bp_IDS_Trinary_Operator = 69,	//  #69
-	bp_ID_Continue = 70,	//  #70
-	bp_ID_Start = 71,	//  #71
-	bp_Ideographic = 72,	//  #72
-	bp_Join_Control = 73,	//  #73
-	bp_Logical_Order_Exception = 74,	//  #74
-	bp_Lowercase = 75,	//  #75
-	bp_Math = 76,	//  #76
-	bp_Noncharacter_Code_Point = 77,	//  #77
-	bp_Pattern_Syntax = 78,	//  #78
-	bp_Pattern_White_Space = 79,	//  #79
-	bp_Quotation_Mark = 80,	//  #80
-	bp_Radical = 81,	//  #81
-	bp_Regional_Indicator = 82,	//  #82
-	bp_Sentence_Terminal = 83,	//  #83
-	bp_Soft_Dotted = 84,	//  #84
-	bp_Terminal_Punctuation = 85,	//  #85
-	bp_Unified_Ideograph = 86,	//  #86
-	bp_Uppercase = 87,	//  #87
-	bp_Variation_Selector = 88,	//  #88
-	bp_White_Space = 89,	//  #89
-	bp_XID_Continue = 90,	//  #90
-	bp_XID_Start = 91,	//  #91
-	sc_Adlam = 92,	//  #92
-	sc_Ahom = 93,	//  #93
-	sc_Anatolian_Hieroglyphs = 94,	//  #94
-	sc_Arabic = 95,	//  #95
-	sc_Armenian = 96,	//  #96
-	sc_Avestan = 97,	//  #97
-	sc_Balinese = 98,	//  #98
-	sc_Bamum = 99,	//  #99
-	sc_Bassa_Vah = 100,	//  #100
-	sc_Batak = 101,	//  #101
-	sc_Bengali = 102,	//  #102
-	sc_Bhaiksuki = 103,	//  #103
-	sc_Bopomofo = 104,	//  #104
-	sc_Brahmi = 105,	//  #105
-	sc_Braille = 106,	//  #106
-	sc_Buginese = 107,	//  #107
-	sc_Buhid = 108,	//  #108
-	sc_Canadian_Aboriginal = 109,	//  #109
-	sc_Carian = 110,	//  #110
-	sc_Caucasian_Albanian = 111,	//  #111
-	sc_Chakma = 112,	//  #112
-	sc_Cham = 113,	//  #113
-	sc_Cherokee = 114,	//  #114
-	sc_Chorasmian = 115,	//  #115
-	sc_Common = 116,	//  #116
-	sc_Coptic = 117,	//  #117
-	sc_Cuneiform = 118,	//  #118
-	sc_Cypriot = 119,	//  #119
-	sc_Cypro_Minoan = 120,	//  #120
-	sc_Cyrillic = 121,	//  #121
-	sc_Deseret = 122,	//  #122
-	sc_Devanagari = 123,	//  #123
-	sc_Dives_Akuru = 124,	//  #124
-	sc_Dogra = 125,	//  #125
-	sc_Duployan = 126,	//  #126
-	sc_Egyptian_Hieroglyphs = 127,	//  #127
-	sc_Elbasan = 128,	//  #128
-	sc_Elymaic = 129,	//  #129
-	sc_Ethiopic = 130,	//  #130
-	sc_Georgian = 131,	//  #131
-	sc_Glagolitic = 132,	//  #132
-	sc_Gothic = 133,	//  #133
-	sc_Grantha = 134,	//  #134
-	sc_Greek = 135,	//  #135
-	sc_Gujarati = 136,	//  #136
-	sc_Gunjala_Gondi = 137,	//  #137
-	sc_Gurmukhi = 138,	//  #138
-	sc_Han = 139,	//  #139
-	sc_Hangul = 140,	//  #140
-	sc_Hanifi_Rohingya = 141,	//  #141
-	sc_Hanunoo = 142,	//  #142
-	sc_Hatran = 143,	//  #143
-	sc_Hebrew = 144,	//  #144
-	sc_Hiragana = 145,	//  #145
-	sc_Imperial_Aramaic = 146,	//  #146
-	sc_Inherited = 147,	//  #147
-	sc_Inscriptional_Pahlavi = 148,	//  #148
-	sc_Inscriptional_Parthian = 149,	//  #149
-	sc_Javanese = 150,	//  #150
-	sc_Kaithi = 151,	//  #151
-	sc_Kannada = 152,	//  #152
-	sc_Katakana = 153,	//  #153
-	sc_Kawi = 154,	//  #154
-	sc_Kayah_Li = 155,	//  #155
-	sc_Kharoshthi = 156,	//  #156
-	sc_Khitan_Small_Script = 157,	//  #157
-	sc_Khmer = 158,	//  #158
-	sc_Khojki = 159,	//  #159
-	sc_Khudawadi = 160,	//  #160
-	sc_Lao = 161,	//  #161
-	sc_Latin = 162,	//  #162
-	sc_Lepcha = 163,	//  #163
-	sc_Limbu = 164,	//  #164
-	sc_Linear_A = 165,	//  #165
-	sc_Linear_B = 166,	//  #166
-	sc_Lisu = 167,	//  #167
-	sc_Lycian = 168,	//  #168
-	sc_Lydian = 169,	//  #169
-	sc_Mahajani = 170,	//  #170
-	sc_Makasar = 171,	//  #171
-	sc_Malayalam = 172,	//  #172
-	sc_Mandaic = 173,	//  #173
-	sc_Manichaean = 174,	//  #174
-	sc_Marchen = 175,	//  #175
-	sc_Masaram_Gondi = 176,	//  #176
-	sc_Medefaidrin = 177,	//  #177
-	sc_Meetei_Mayek = 178,	//  #178
-	sc_Mende_Kikakui = 179,	//  #179
-	sc_Meroitic_Cursive = 180,	//  #180
-	sc_Meroitic_Hieroglyphs = 181,	//  #181
-	sc_Miao = 182,	//  #182
-	sc_Modi = 183,	//  #183
-	sc_Mongolian = 184,	//  #184
-	sc_Mro = 185,	//  #185
-	sc_Multani = 186,	//  #186
-	sc_Myanmar = 187,	//  #187
-	sc_Nabataean = 188,	//  #188
-	sc_Nag_Mundari = 189,	//  #189
-	sc_Nandinagari = 190,	//  #190
-	sc_New_Tai_Lue = 191,	//  #191
-	sc_Newa = 192,	//  #192
-	sc_Nko = 193,	//  #193
-	sc_Nushu = 194,	//  #194
-	sc_Nyiakeng_Puachue_Hmong = 195,	//  #195
-	sc_Ogham = 196,	//  #196
-	sc_Ol_Chiki = 197,	//  #197
-	sc_Old_Hungarian = 198,	//  #198
-	sc_Old_Italic = 199,	//  #199
-	sc_Old_North_Arabian = 200,	//  #200
-	sc_Old_Permic = 201,	//  #201
-	sc_Old_Persian = 202,	//  #202
-	sc_Old_Sogdian = 203,	//  #203
-	sc_Old_South_Arabian = 204,	//  #204
-	sc_Old_Turkic = 205,	//  #205
-	sc_Old_Uyghur = 206,	//  #206
-	sc_Oriya = 207,	//  #207
-	sc_Osage = 208,	//  #208
-	sc_Osmanya = 209,	//  #209
-	sc_Pahawh_Hmong = 210,	//  #210
-	sc_Palmyrene = 211,	//  #211
-	sc_Pau_Cin_Hau = 212,	//  #212
-	sc_Phags_Pa = 213,	//  #213
-	sc_Phoenician = 214,	//  #214
-	sc_Psalter_Pahlavi = 215,	//  #215
-	sc_Rejang = 216,	//  #216
-	sc_Runic = 217,	//  #217
-	sc_Samaritan = 218,	//  #218
-	sc_Saurashtra = 219,	//  #219
-	sc_Sharada = 220,	//  #220
-	sc_Shavian = 221,	//  #221
-	sc_Siddham = 222,	//  #222
-	sc_SignWriting = 223,	//  #223
-	sc_Sinhala = 224,	//  #224
-	sc_Sogdian = 225,	//  #225
-	sc_Sora_Sompeng = 226,	//  #226
-	sc_Soyombo = 227,	//  #227
-	sc_Sundanese = 228,	//  #228
-	sc_Syloti_Nagri = 229,	//  #229
-	sc_Syriac = 230,	//  #230
-	sc_Tagalog = 231,	//  #231
-	sc_Tagbanwa = 232,	//  #232
-	sc_Tai_Le = 233,	//  #233
-	sc_Tai_Tham = 234,	//  #234
-	sc_Tai_Viet = 235,	//  #235
-	sc_Takri = 236,	//  #236
-	sc_Tamil = 237,	//  #237
-	sc_Tangsa = 238,	//  #238
-	sc_Tangut = 239,	//  #239
-	sc_Telugu = 240,	//  #240
-	sc_Thaana = 241,	//  #241
-	sc_Thai = 242,	//  #242
-	sc_Tibetan = 243,	//  #243
-	sc_Tifinagh = 244,	//  #244
-	sc_Tirhuta = 245,	//  #245
-	sc_Toto = 246,	//  #246
-	sc_Ugaritic = 247,	//  #247
-	sc_Vai = 248,	//  #248
-	sc_Vithkuqi = 249,	//  #249
-	sc_Wancho = 250,	//  #250
-	sc_Warang_Citi = 251,	//  #251
-	sc_Yezidi = 252,	//  #252
-	sc_Yi = 253,	//  #253
-	sc_Zanabazar_Square = 254,	//  #254
-	scx_Adlam = 255,	//  #255
-	scx_Ahom = 256,	//  #93
-	scx_Anatolian_Hieroglyphs = 257,	//  #94
-	scx_Arabic = 258,	//  #256
-	scx_Armenian = 259,	//  #96
-	scx_Avestan = 260,	//  #97
-	scx_Balinese = 261,	//  #98
-	scx_Bamum = 262,	//  #99
-	scx_Bassa_Vah = 263,	//  #100
-	scx_Batak = 264,	//  #101
-	scx_Bengali = 265,	//  #257
-	scx_Bhaiksuki = 266,	//  #103
-	scx_Bopomofo = 267,	//  #258
-	scx_Brahmi = 268,	//  #105
-	scx_Braille = 269,	//  #106
-	scx_Buginese = 270,	//  #259
-	scx_Buhid = 271,	//  #260
-	scx_Canadian_Aboriginal = 272,	//  #109
-	scx_Carian = 273,	//  #110
-	scx_Caucasian_Albanian = 274,	//  #111
-	scx_Chakma = 275,	//  #261
-	scx_Cham = 276,	//  #113
-	scx_Cherokee = 277,	//  #114
-	scx_Chorasmian = 278,	//  #115
-	scx_Common = 279,	//  #262
-	scx_Coptic = 280,	//  #263
-	scx_Cuneiform = 281,	//  #118
-	scx_Cypriot = 282,	//  #264
-	scx_Cypro_Minoan = 283,	//  #265
-	scx_Cyrillic = 284,	//  #266
-	scx_Deseret = 285,	//  #122
-	scx_Devanagari = 286,	//  #267
-	scx_Dives_Akuru = 287,	//  #124
-	scx_Dogra = 288,	//  #268
-	scx_Duployan = 289,	//  #269
-	scx_Egyptian_Hieroglyphs = 290,	//  #127
-	scx_Elbasan = 291,	//  #128
-	scx_Elymaic = 292,	//  #129
-	scx_Ethiopic = 293,	//  #130
-	scx_Georgian = 294,	//  #270
-	scx_Glagolitic = 295,	//  #271
-	scx_Gothic = 296,	//  #133
-	scx_Grantha = 297,	//  #272
-	scx_Greek = 298,	//  #273
-	scx_Gujarati = 299,	//  #274
-	scx_Gunjala_Gondi = 300,	//  #275
-	scx_Gurmukhi = 301,	//  #276
-	scx_Han = 302,	//  #277
-	scx_Hangul = 303,	//  #278
-	scx_Hanifi_Rohingya = 304,	//  #279
-	scx_Hanunoo = 305,	//  #280
-	scx_Hatran = 306,	//  #143
-	scx_Hebrew = 307,	//  #144
-	scx_Hiragana = 308,	//  #281
-	scx_Imperial_Aramaic = 309,	//  #146
-	scx_Inherited = 310,	//  #282
-	scx_Inscriptional_Pahlavi = 311,	//  #148
-	scx_Inscriptional_Parthian = 312,	//  #149
-	scx_Javanese = 313,	//  #283
-	scx_Kaithi = 314,	//  #284
-	scx_Kannada = 315,	//  #285
-	scx_Katakana = 316,	//  #286
-	scx_Kawi = 317,	//  #154
-	scx_Kayah_Li = 318,	//  #287
-	scx_Kharoshthi = 319,	//  #156
-	scx_Khitan_Small_Script = 320,	//  #157
-	scx_Khmer = 321,	//  #158
-	scx_Khojki = 322,	//  #288
-	scx_Khudawadi = 323,	//  #289
-	scx_Lao = 324,	//  #161
-	scx_Latin = 325,	//  #290
-	scx_Lepcha = 326,	//  #163
-	scx_Limbu = 327,	//  #291
-	scx_Linear_A = 328,	//  #292
-	scx_Linear_B = 329,	//  #293
-	scx_Lisu = 330,	//  #167
-	scx_Lycian = 331,	//  #168
-	scx_Lydian = 332,	//  #169
-	scx_Mahajani = 333,	//  #294
-	scx_Makasar = 334,	//  #171
-	scx_Malayalam = 335,	//  #295
-	scx_Mandaic = 336,	//  #296
-	scx_Manichaean = 337,	//  #297
-	scx_Marchen = 338,	//  #175
-	scx_Masaram_Gondi = 339,	//  #298
-	scx_Medefaidrin = 340,	//  #177
-	scx_Meetei_Mayek = 341,	//  #178
-	scx_Mende_Kikakui = 342,	//  #179
-	scx_Meroitic_Cursive = 343,	//  #180
-	scx_Meroitic_Hieroglyphs = 344,	//  #181
-	scx_Miao = 345,	//  #182
-	scx_Modi = 346,	//  #299
-	scx_Mongolian = 347,	//  #300
-	scx_Mro = 348,	//  #185
-	scx_Multani = 349,	//  #301
-	scx_Myanmar = 350,	//  #302
-	scx_Nabataean = 351,	//  #188
-	scx_Nag_Mundari = 352,	//  #189
-	scx_Nandinagari = 353,	//  #303
-	scx_New_Tai_Lue = 354,	//  #191
-	scx_Newa = 355,	//  #192
-	scx_Nko = 356,	//  #304
-	scx_Nushu = 357,	//  #194
-	scx_Nyiakeng_Puachue_Hmong = 358,	//  #195
-	scx_Ogham = 359,	//  #196
-	scx_Ol_Chiki = 360,	//  #197
-	scx_Old_Hungarian = 361,	//  #198
-	scx_Old_Italic = 362,	//  #199
-	scx_Old_North_Arabian = 363,	//  #200
-	scx_Old_Permic = 364,	//  #305
-	scx_Old_Persian = 365,	//  #202
-	scx_Old_Sogdian = 366,	//  #203
-	scx_Old_South_Arabian = 367,	//  #204
-	scx_Old_Turkic = 368,	//  #205
-	scx_Old_Uyghur = 369,	//  #306
-	scx_Oriya = 370,	//  #307
-	scx_Osage = 371,	//  #208
-	scx_Osmanya = 372,	//  #209
-	scx_Pahawh_Hmong = 373,	//  #210
-	scx_Palmyrene = 374,	//  #211
-	scx_Pau_Cin_Hau = 375,	//  #212
-	scx_Phags_Pa = 376,	//  #308
-	scx_Phoenician = 377,	//  #214
-	scx_Psalter_Pahlavi = 378,	//  #309
-	scx_Rejang = 379,	//  #216
-	scx_Runic = 380,	//  #217
-	scx_Samaritan = 381,	//  #218
-	scx_Saurashtra = 382,	//  #219
-	scx_Sharada = 383,	//  #310
-	scx_Shavian = 384,	//  #221
-	scx_Siddham = 385,	//  #222
-	scx_SignWriting = 386,	//  #223
-	scx_Sinhala = 387,	//  #311
-	scx_Sogdian = 388,	//  #312
-	scx_Sora_Sompeng = 389,	//  #226
-	scx_Soyombo = 390,	//  #227
-	scx_Sundanese = 391,	//  #228
-	scx_Syloti_Nagri = 392,	//  #313
-	scx_Syriac = 393,	//  #314
-	scx_Tagalog = 394,	//  #315
-	scx_Tagbanwa = 395,	//  #316
-	scx_Tai_Le = 396,	//  #317
-	scx_Tai_Tham = 397,	//  #234
-	scx_Tai_Viet = 398,	//  #235
-	scx_Takri = 399,	//  #318
-	scx_Tamil = 400,	//  #319
-	scx_Tangsa = 401,	//  #238
-	scx_Tangut = 402,	//  #239
-	scx_Telugu = 403,	//  #320
-	scx_Thaana = 404,	//  #321
-	scx_Thai = 405,	//  #242
-	scx_Tibetan = 406,	//  #243
-	scx_Tifinagh = 407,	//  #244
-	scx_Tirhuta = 408,	//  #322
-	scx_Toto = 409,	//  #246
-	scx_Ugaritic = 410,	//  #247
-	scx_Vai = 411,	//  #248
-	scx_Vithkuqi = 412,	//  #249
-	scx_Wancho = 413,	//  #250
-	scx_Warang_Citi = 414,	//  #251
-	scx_Yezidi = 415,	//  #323
-	scx_Yi = 416,	//  #324
-	scx_Zanabazar_Square = 417,	//  #254
-	upid_max_property_number = 324,
-	bp_RGI_Emoji = 418,	//  #325
-	bp_Basic_Emoji = 419,	//  #326
-	bp_Emoji_Keycap_Sequence = 420,	//  #327
-	bp_RGI_Emoji_Modifier_Sequence = 421,	//  #328
-	bp_RGI_Emoji_Flag_Sequence = 422,	//  #329
-	bp_RGI_Emoji_Tag_Sequence = 423,	//  #330
-	bp_RGI_Emoji_ZWJ_Sequence = 424,	//  #331
-	upid_max_pos_number = 331
+	uptype_bp = 1,
+	uptype_gc = 2,
+	uptype_sc = 3,
+	uptype_scx = 4,
+	gc_Other = 5,
+	gc_Control = 6,
+	gc_Format = 7,
+	gc_Unassigned = 8,
+	gc_Private_Use = 9,
+	gc_Surrogate = 10,
+	gc_Letter = 11,
+	gc_Cased_Letter = 12,
+	gc_Lowercase_Letter = 13,
+	gc_Titlecase_Letter = 14,
+	gc_Uppercase_Letter = 15,
+	gc_Modifier_Letter = 16,
+	gc_Other_Letter = 17,
+	gc_Mark = 18,
+	gc_Spacing_Mark = 19,
+	gc_Enclosing_Mark = 20,
+	gc_Nonspacing_Mark = 21,
+	gc_Number = 22,
+	gc_Decimal_Number = 23,
+	gc_Letter_Number = 24,
+	gc_Other_Number = 25,
+	gc_Punctuation = 26,
+	gc_Connector_Punctuation = 27,
+	gc_Dash_Punctuation = 28,
+	gc_Close_Punctuation = 29,
+	gc_Final_Punctuation = 30,
+	gc_Initial_Punctuation = 31,
+	gc_Other_Punctuation = 32,
+	gc_Open_Punctuation = 33,
+	gc_Symbol = 34,
+	gc_Currency_Symbol = 35,
+	gc_Modifier_Symbol = 36,
+	gc_Math_Symbol = 37,
+	gc_Other_Symbol = 38,
+	gc_Separator = 39,
+	gc_Line_Separator = 40,
+	gc_Paragraph_Separator = 41,
+	gc_Space_Separator = 42,
+	bp_ASCII = 43,
+	bp_ASCII_Hex_Digit = 44,
+	bp_Alphabetic = 45,
+	bp_Any = 46,
+	bp_Assigned = 47,
+	bp_Bidi_Control = 48,
+	bp_Bidi_Mirrored = 49,
+	bp_Case_Ignorable = 50,
+	bp_Cased = 51,
+	bp_Changes_When_Casefolded = 52,
+	bp_Changes_When_Casemapped = 53,
+	bp_Changes_When_Lowercased = 54,
+	bp_Changes_When_NFKC_Casefolded = 55,
+	bp_Changes_When_Titlecased = 56,
+	bp_Changes_When_Uppercased = 57,
+	bp_Dash = 58,
+	bp_Default_Ignorable_Code_Point = 59,
+	bp_Deprecated = 60,
+	bp_Diacritic = 61,
+	bp_Emoji = 62,
+	bp_Emoji_Component = 63,
+	bp_Emoji_Modifier = 64,
+	bp_Emoji_Modifier_Base = 65,
+	bp_Emoji_Presentation = 66,
+	bp_Extended_Pictographic = 67,
+	bp_Extender = 68,
+	bp_Grapheme_Base = 69,
+	bp_Grapheme_Extend = 70,
+	bp_Hex_Digit = 71,
+	bp_IDS_Binary_Operator = 72,
+	bp_IDS_Trinary_Operator = 73,
+	bp_ID_Continue = 74,
+	bp_ID_Start = 75,
+	bp_Ideographic = 76,
+	bp_Join_Control = 77,
+	bp_Logical_Order_Exception = 78,
+	bp_Lowercase = 79,
+	bp_Math = 80,
+	bp_Noncharacter_Code_Point = 81,
+	bp_Pattern_Syntax = 82,
+	bp_Pattern_White_Space = 83,
+	bp_Quotation_Mark = 84,
+	bp_Radical = 85,
+	bp_Regional_Indicator = 86,
+	bp_Sentence_Terminal = 87,
+	bp_Soft_Dotted = 88,
+	bp_Terminal_Punctuation = 89,
+	bp_Unified_Ideograph = 90,
+	bp_Uppercase = 91,
+	bp_Variation_Selector = 92,
+	bp_White_Space = 93,
+	bp_XID_Continue = 94,
+	bp_XID_Start = 95,
+	sc_Common = 96,
+	sc_Latin = 97,
+	sc_Greek = 98,
+	sc_Cyrillic = 99,
+	sc_Armenian = 100,
+	sc_Hebrew = 101,
+	sc_Arabic = 102,
+	sc_Syriac = 103,
+	sc_Thaana = 104,
+	sc_Devanagari = 105,
+	sc_Bengali = 106,
+	sc_Gurmukhi = 107,
+	sc_Gujarati = 108,
+	sc_Oriya = 109,
+	sc_Tamil = 110,
+	sc_Telugu = 111,
+	sc_Kannada = 112,
+	sc_Malayalam = 113,
+	sc_Sinhala = 114,
+	sc_Thai = 115,
+	sc_Lao = 116,
+	sc_Tibetan = 117,
+	sc_Myanmar = 118,
+	sc_Georgian = 119,
+	sc_Hangul = 120,
+	sc_Ethiopic = 121,
+	sc_Cherokee = 122,
+	sc_Canadian_Aboriginal = 123,
+	sc_Ogham = 124,
+	sc_Runic = 125,
+	sc_Khmer = 126,
+	sc_Mongolian = 127,
+	sc_Hiragana = 128,
+	sc_Katakana = 129,
+	sc_Bopomofo = 130,
+	sc_Han = 131,
+	sc_Yi = 132,
+	sc_Old_Italic = 133,
+	sc_Gothic = 134,
+	sc_Deseret = 135,
+	sc_Inherited = 136,
+	sc_Tagalog = 137,
+	sc_Hanunoo = 138,
+	sc_Buhid = 139,
+	sc_Tagbanwa = 140,
+	sc_Limbu = 141,
+	sc_Tai_Le = 142,
+	sc_Linear_B = 143,
+	sc_Ugaritic = 144,
+	sc_Shavian = 145,
+	sc_Osmanya = 146,
+	sc_Cypriot = 147,
+	sc_Braille = 148,
+	sc_Buginese = 149,
+	sc_Coptic = 150,
+	sc_New_Tai_Lue = 151,
+	sc_Glagolitic = 152,
+	sc_Tifinagh = 153,
+	sc_Syloti_Nagri = 154,
+	sc_Old_Persian = 155,
+	sc_Kharoshthi = 156,
+	sc_Balinese = 157,
+	sc_Cuneiform = 158,
+	sc_Phoenician = 159,
+	sc_Phags_Pa = 160,
+	sc_Nko = 161,
+	sc_Sundanese = 162,
+	sc_Lepcha = 163,
+	sc_Ol_Chiki = 164,
+	sc_Vai = 165,
+	sc_Saurashtra = 166,
+	sc_Kayah_Li = 167,
+	sc_Rejang = 168,
+	sc_Lycian = 169,
+	sc_Carian = 170,
+	sc_Lydian = 171,
+	sc_Cham = 172,
+	sc_Tai_Tham = 173,
+	sc_Tai_Viet = 174,
+	sc_Avestan = 175,
+	sc_Egyptian_Hieroglyphs = 176,
+	sc_Samaritan = 177,
+	sc_Lisu = 178,
+	sc_Bamum = 179,
+	sc_Javanese = 180,
+	sc_Meetei_Mayek = 181,
+	sc_Imperial_Aramaic = 182,
+	sc_Old_South_Arabian = 183,
+	sc_Inscriptional_Parthian = 184,
+	sc_Inscriptional_Pahlavi = 185,
+	sc_Old_Turkic = 186,
+	sc_Kaithi = 187,
+	sc_Batak = 188,
+	sc_Brahmi = 189,
+	sc_Mandaic = 190,
+	sc_Chakma = 191,
+	sc_Meroitic_Cursive = 192,
+	sc_Meroitic_Hieroglyphs = 193,
+	sc_Miao = 194,
+	sc_Sharada = 195,
+	sc_Sora_Sompeng = 196,
+	sc_Takri = 197,
+	sc_Caucasian_Albanian = 198,
+	sc_Bassa_Vah = 199,
+	sc_Duployan = 200,
+	sc_Elbasan = 201,
+	sc_Grantha = 202,
+	sc_Pahawh_Hmong = 203,
+	sc_Khojki = 204,
+	sc_Linear_A = 205,
+	sc_Mahajani = 206,
+	sc_Manichaean = 207,
+	sc_Mende_Kikakui = 208,
+	sc_Modi = 209,
+	sc_Mro = 210,
+	sc_Old_North_Arabian = 211,
+	sc_Nabataean = 212,
+	sc_Palmyrene = 213,
+	sc_Pau_Cin_Hau = 214,
+	sc_Old_Permic = 215,
+	sc_Psalter_Pahlavi = 216,
+	sc_Siddham = 217,
+	sc_Khudawadi = 218,
+	sc_Tirhuta = 219,
+	sc_Warang_Citi = 220,
+	sc_Ahom = 221,
+	sc_Anatolian_Hieroglyphs = 222,
+	sc_Hatran = 223,
+	sc_Multani = 224,
+	sc_Old_Hungarian = 225,
+	sc_SignWriting = 226,
+	sc_Adlam = 227,
+	sc_Bhaiksuki = 228,
+	sc_Marchen = 229,
+	sc_Newa = 230,
+	sc_Osage = 231,
+	sc_Tangut = 232,
+	sc_Masaram_Gondi = 233,
+	sc_Nushu = 234,
+	sc_Soyombo = 235,
+	sc_Zanabazar_Square = 236,
+	sc_Dogra = 237,
+	sc_Gunjala_Gondi = 238,
+	sc_Makasar = 239,
+	sc_Medefaidrin = 240,
+	sc_Hanifi_Rohingya = 241,
+	sc_Sogdian = 242,
+	sc_Old_Sogdian = 243,
+	sc_Elymaic = 244,
+	sc_Nandinagari = 245,
+	sc_Nyiakeng_Puachue_Hmong = 246,
+	sc_Wancho = 247,
+	sc_Chorasmian = 248,
+	sc_Dives_Akuru = 249,
+	sc_Khitan_Small_Script = 250,
+	sc_Yezidi = 251,
+	sc_Cypro_Minoan = 252,
+	sc_Old_Uyghur = 253,
+	sc_Tangsa = 254,
+	sc_Toto = 255,
+	sc_Vithkuqi = 256,
+	sc_Kawi = 257,
+	sc_Nag_Mundari = 258,
+	scx_Common = 259,
+	scx_Latin = 260,
+	scx_Greek = 261,
+	scx_Cyrillic = 262,
+	scx_Armenian = 100,	//  #263
+	scx_Hebrew = 101,	//  #264
+	scx_Arabic = 263,	//  #265
+	scx_Syriac = 264,	//  #266
+	scx_Thaana = 265,	//  #267
+	scx_Devanagari = 266,	//  #268
+	scx_Bengali = 267,	//  #269
+	scx_Gurmukhi = 268,	//  #270
+	scx_Gujarati = 269,	//  #271
+	scx_Oriya = 270,	//  #272
+	scx_Tamil = 271,	//  #273
+	scx_Telugu = 272,	//  #274
+	scx_Kannada = 273,	//  #275
+	scx_Malayalam = 274,	//  #276
+	scx_Sinhala = 275,	//  #277
+	scx_Thai = 115,	//  #278
+	scx_Lao = 116,	//  #279
+	scx_Tibetan = 117,	//  #280
+	scx_Myanmar = 276,	//  #281
+	scx_Georgian = 277,	//  #282
+	scx_Hangul = 278,	//  #283
+	scx_Ethiopic = 121,	//  #284
+	scx_Cherokee = 122,	//  #285
+	scx_Canadian_Aboriginal = 123,	//  #286
+	scx_Ogham = 124,	//  #287
+	scx_Runic = 125,	//  #288
+	scx_Khmer = 126,	//  #289
+	scx_Mongolian = 279,	//  #290
+	scx_Hiragana = 280,	//  #291
+	scx_Katakana = 281,	//  #292
+	scx_Bopomofo = 282,	//  #293
+	scx_Han = 283,	//  #294
+	scx_Yi = 284,	//  #295
+	scx_Old_Italic = 133,	//  #296
+	scx_Gothic = 134,	//  #297
+	scx_Deseret = 135,	//  #298
+	scx_Inherited = 285,	//  #299
+	scx_Tagalog = 286,	//  #300
+	scx_Hanunoo = 287,	//  #301
+	scx_Buhid = 288,	//  #302
+	scx_Tagbanwa = 289,	//  #303
+	scx_Limbu = 290,	//  #304
+	scx_Tai_Le = 291,	//  #305
+	scx_Linear_B = 292,	//  #306
+	scx_Ugaritic = 144,	//  #307
+	scx_Shavian = 145,	//  #308
+	scx_Osmanya = 146,	//  #309
+	scx_Cypriot = 293,	//  #310
+	scx_Braille = 148,	//  #311
+	scx_Buginese = 294,	//  #312
+	scx_Coptic = 295,	//  #313
+	scx_New_Tai_Lue = 151,	//  #314
+	scx_Glagolitic = 296,	//  #315
+	scx_Tifinagh = 153,	//  #316
+	scx_Syloti_Nagri = 297,	//  #317
+	scx_Old_Persian = 155,	//  #318
+	scx_Kharoshthi = 156,	//  #319
+	scx_Balinese = 157,	//  #320
+	scx_Cuneiform = 158,	//  #321
+	scx_Phoenician = 159,	//  #322
+	scx_Phags_Pa = 298,	//  #323
+	scx_Nko = 299,	//  #324
+	scx_Sundanese = 162,	//  #325
+	scx_Lepcha = 163,	//  #326
+	scx_Ol_Chiki = 164,	//  #327
+	scx_Vai = 165,	//  #328
+	scx_Saurashtra = 166,	//  #329
+	scx_Kayah_Li = 300,	//  #330
+	scx_Rejang = 168,	//  #331
+	scx_Lycian = 169,	//  #332
+	scx_Carian = 170,	//  #333
+	scx_Lydian = 171,	//  #334
+	scx_Cham = 172,	//  #335
+	scx_Tai_Tham = 173,	//  #336
+	scx_Tai_Viet = 174,	//  #337
+	scx_Avestan = 175,	//  #338
+	scx_Egyptian_Hieroglyphs = 176,	//  #339
+	scx_Samaritan = 177,	//  #340
+	scx_Lisu = 178,	//  #341
+	scx_Bamum = 179,	//  #342
+	scx_Javanese = 301,	//  #343
+	scx_Meetei_Mayek = 181,	//  #344
+	scx_Imperial_Aramaic = 182,	//  #345
+	scx_Old_South_Arabian = 183,	//  #346
+	scx_Inscriptional_Parthian = 184,	//  #347
+	scx_Inscriptional_Pahlavi = 185,	//  #348
+	scx_Old_Turkic = 186,	//  #349
+	scx_Kaithi = 302,	//  #350
+	scx_Batak = 188,	//  #351
+	scx_Brahmi = 189,	//  #352
+	scx_Mandaic = 303,	//  #353
+	scx_Chakma = 304,	//  #354
+	scx_Meroitic_Cursive = 192,	//  #355
+	scx_Meroitic_Hieroglyphs = 193,	//  #356
+	scx_Miao = 194,	//  #357
+	scx_Sharada = 305,	//  #358
+	scx_Sora_Sompeng = 196,	//  #359
+	scx_Takri = 306,	//  #360
+	scx_Caucasian_Albanian = 198,	//  #361
+	scx_Bassa_Vah = 199,	//  #362
+	scx_Duployan = 307,	//  #363
+	scx_Elbasan = 201,	//  #364
+	scx_Grantha = 308,	//  #365
+	scx_Pahawh_Hmong = 203,	//  #366
+	scx_Khojki = 309,	//  #367
+	scx_Linear_A = 310,	//  #368
+	scx_Mahajani = 311,	//  #369
+	scx_Manichaean = 312,	//  #370
+	scx_Mende_Kikakui = 208,	//  #371
+	scx_Modi = 313,	//  #372
+	scx_Mro = 210,	//  #373
+	scx_Old_North_Arabian = 211,	//  #374
+	scx_Nabataean = 212,	//  #375
+	scx_Palmyrene = 213,	//  #376
+	scx_Pau_Cin_Hau = 214,	//  #377
+	scx_Old_Permic = 314,	//  #378
+	scx_Psalter_Pahlavi = 315,	//  #379
+	scx_Siddham = 217,	//  #380
+	scx_Khudawadi = 316,	//  #381
+	scx_Tirhuta = 317,	//  #382
+	scx_Warang_Citi = 220,	//  #383
+	scx_Ahom = 221,	//  #384
+	scx_Anatolian_Hieroglyphs = 222,	//  #385
+	scx_Hatran = 223,	//  #386
+	scx_Multani = 318,	//  #387
+	scx_Old_Hungarian = 225,	//  #388
+	scx_SignWriting = 226,	//  #389
+	scx_Adlam = 319,	//  #390
+	scx_Bhaiksuki = 228,	//  #391
+	scx_Marchen = 229,	//  #392
+	scx_Newa = 230,	//  #393
+	scx_Osage = 231,	//  #394
+	scx_Tangut = 232,	//  #395
+	scx_Masaram_Gondi = 320,	//  #396
+	scx_Nushu = 234,	//  #397
+	scx_Soyombo = 235,	//  #398
+	scx_Zanabazar_Square = 236,	//  #399
+	scx_Dogra = 321,	//  #400
+	scx_Gunjala_Gondi = 322,	//  #401
+	scx_Makasar = 239,	//  #402
+	scx_Medefaidrin = 240,	//  #403
+	scx_Hanifi_Rohingya = 323,	//  #404
+	scx_Sogdian = 324,	//  #405
+	scx_Old_Sogdian = 243,	//  #406
+	scx_Elymaic = 244,	//  #407
+	scx_Nandinagari = 325,	//  #408
+	scx_Nyiakeng_Puachue_Hmong = 246,	//  #409
+	scx_Wancho = 247,	//  #410
+	scx_Chorasmian = 248,	//  #411
+	scx_Dives_Akuru = 249,	//  #412
+	scx_Khitan_Small_Script = 250,	//  #413
+	scx_Yezidi = 326,	//  #414
+	scx_Cypro_Minoan = 327,	//  #415
+	scx_Old_Uyghur = 328,	//  #416
+	scx_Tangsa = 254,	//  #417
+	scx_Toto = 255,	//  #418
+	scx_Vithkuqi = 256,	//  #419
+	scx_Kawi = 257,	//  #420
+	scx_Nag_Mundari = 258,	//  #421
+	upid_max_property_number = 328,
+	bp_RGI_Emoji = 329,	//  #422
+	bp_Basic_Emoji = 330,	//  #423
+	bp_Emoji_Keycap_Sequence = 331,	//  #424
+	bp_RGI_Emoji_Modifier_Sequence = 332,	//  #425
+	bp_RGI_Emoji_Flag_Sequence = 333,	//  #426
+	bp_RGI_Emoji_Tag_Sequence = 334,	//  #427
+	bp_RGI_Emoji_ZWJ_Sequence = 335,	//  #428
+	upid_max_pos_number = 335
 };
 
-enum up_type
-{
-	uptype_unknown = 0,
-	uptype_binary = 1,
-	uptype_general_category = 2,
-	uptype_script = 3,
-	uptype_script_extensions = 4
-};
-
-template <typename T3, typename T4, typename T5, typename T6>
+template <typename T3, typename T4, typename T5>
 struct unicode_property_data
 {
-	static const T3 propertynametable[];
-	static const T4 rangetable[];
-	static const T5 rangenumbertable[];
-	static const T6 positiontable[];
+	static const T3 propertynumbertable[];
+	static const T4 positiontable[];
+	static const T5 rangetable[];
 };
 
-template <typename T3, typename T4, typename T5, typename T6>
-const T3 unicode_property_data<T3, T4, T5, T6>::propertynametable[] =
+template <typename T3, typename T4, typename T5>
+const T3 unicode_property_data<T3, T4, T5>::propertynumbertable[] =
 {
-	"*",	//  #0:unknown
-	"*",	//  #1:binary
-	"General_Category:gc",	//  #2
-	"Script:sc",	//  #3
-	"Script_Extensions:scx",	//  #4
-	""
+	{ "", 6 },
+	{ "\x47\x65\x6E\x65\x72\x61\x6C\x5F\x43\x61\x74\x65\x67\x6F\x72\x79", 2 },
+	{ "\x53\x63\x72\x69\x70\x74", 3 },
+	{ "\x53\x63\x72\x69\x70\x74\x5F\x45\x78\x74\x65\x6E\x73\x69\x6F\x6E\x73", 4 },
+	{ "\x67\x63", 2 },
+	{ "\x73\x63", 3 },
+	{ "\x73\x63\x78", 4 },
+	//  gc: 80
+	{ "\x43", 5 },
+	{ "\x43\x61\x73\x65\x64\x5F\x4C\x65\x74\x74\x65\x72", 12 },
+	{ "\x43\x63", 6 },
+	{ "\x43\x66", 7 },
+	{ "\x43\x6C\x6F\x73\x65\x5F\x50\x75\x6E\x63\x74\x75\x61\x74\x69\x6F\x6E", 29 },
+	{ "\x43\x6E", 8 },
+	{ "\x43\x6F", 9 },
+	{ "\x43\x6F\x6D\x62\x69\x6E\x69\x6E\x67\x5F\x4D\x61\x72\x6B", 18 },
+	{ "\x43\x6F\x6E\x6E\x65\x63\x74\x6F\x72\x5F\x50\x75\x6E\x63\x74\x75\x61\x74\x69\x6F\x6E", 27 },
+	{ "\x43\x6F\x6E\x74\x72\x6F\x6C", 6 },
+	{ "\x43\x73", 10 },
+	{ "\x43\x75\x72\x72\x65\x6E\x63\x79\x5F\x53\x79\x6D\x62\x6F\x6C", 35 },
+	{ "\x44\x61\x73\x68\x5F\x50\x75\x6E\x63\x74\x75\x61\x74\x69\x6F\x6E", 28 },
+	{ "\x44\x65\x63\x69\x6D\x61\x6C\x5F\x4E\x75\x6D\x62\x65\x72", 23 },
+	{ "\x45\x6E\x63\x6C\x6F\x73\x69\x6E\x67\x5F\x4D\x61\x72\x6B", 20 },
+	{ "\x46\x69\x6E\x61\x6C\x5F\x50\x75\x6E\x63\x74\x75\x61\x74\x69\x6F\x6E", 30 },
+	{ "\x46\x6F\x72\x6D\x61\x74", 7 },
+	{ "\x49\x6E\x69\x74\x69\x61\x6C\x5F\x50\x75\x6E\x63\x74\x75\x61\x74\x69\x6F\x6E", 31 },
+	{ "\x4C", 11 },
+	{ "\x4C\x43", 12 },
+	{ "\x4C\x65\x74\x74\x65\x72", 11 },
+	{ "\x4C\x65\x74\x74\x65\x72\x5F\x4E\x75\x6D\x62\x65\x72", 24 },
+	{ "\x4C\x69\x6E\x65\x5F\x53\x65\x70\x61\x72\x61\x74\x6F\x72", 40 },
+	{ "\x4C\x6C", 13 },
+	{ "\x4C\x6D", 16 },
+	{ "\x4C\x6F", 17 },
+	{ "\x4C\x6F\x77\x65\x72\x63\x61\x73\x65\x5F\x4C\x65\x74\x74\x65\x72", 13 },
+	{ "\x4C\x74", 14 },
+	{ "\x4C\x75", 15 },
+	{ "\x4D", 18 },
+	{ "\x4D\x61\x72\x6B", 18 },
+	{ "\x4D\x61\x74\x68\x5F\x53\x79\x6D\x62\x6F\x6C", 37 },
+	{ "\x4D\x63", 19 },
+	{ "\x4D\x65", 20 },
+	{ "\x4D\x6E", 21 },
+	{ "\x4D\x6F\x64\x69\x66\x69\x65\x72\x5F\x4C\x65\x74\x74\x65\x72", 16 },
+	{ "\x4D\x6F\x64\x69\x66\x69\x65\x72\x5F\x53\x79\x6D\x62\x6F\x6C", 36 },
+	{ "\x4E", 22 },
+	{ "\x4E\x64", 23 },
+	{ "\x4E\x6C", 24 },
+	{ "\x4E\x6F", 25 },
+	{ "\x4E\x6F\x6E\x73\x70\x61\x63\x69\x6E\x67\x5F\x4D\x61\x72\x6B", 21 },
+	{ "\x4E\x75\x6D\x62\x65\x72", 22 },
+	{ "\x4F\x70\x65\x6E\x5F\x50\x75\x6E\x63\x74\x75\x61\x74\x69\x6F\x6E", 33 },
+	{ "\x4F\x74\x68\x65\x72", 5 },
+	{ "\x4F\x74\x68\x65\x72\x5F\x4C\x65\x74\x74\x65\x72", 17 },
+	{ "\x4F\x74\x68\x65\x72\x5F\x4E\x75\x6D\x62\x65\x72", 25 },
+	{ "\x4F\x74\x68\x65\x72\x5F\x50\x75\x6E\x63\x74\x75\x61\x74\x69\x6F\x6E", 32 },
+	{ "\x4F\x74\x68\x65\x72\x5F\x53\x79\x6D\x62\x6F\x6C", 38 },
+	{ "\x50", 26 },
+	{ "\x50\x61\x72\x61\x67\x72\x61\x70\x68\x5F\x53\x65\x70\x61\x72\x61\x74\x6F\x72", 41 },
+	{ "\x50\x63", 27 },
+	{ "\x50\x64", 28 },
+	{ "\x50\x65", 29 },
+	{ "\x50\x66", 30 },
+	{ "\x50\x69", 31 },
+	{ "\x50\x6F", 32 },
+	{ "\x50\x72\x69\x76\x61\x74\x65\x5F\x55\x73\x65", 9 },
+	{ "\x50\x73", 33 },
+	{ "\x50\x75\x6E\x63\x74\x75\x61\x74\x69\x6F\x6E", 26 },
+	{ "\x53", 34 },
+	{ "\x53\x63", 35 },
+	{ "\x53\x65\x70\x61\x72\x61\x74\x6F\x72", 39 },
+	{ "\x53\x6B", 36 },
+	{ "\x53\x6D", 37 },
+	{ "\x53\x6F", 38 },
+	{ "\x53\x70\x61\x63\x65\x5F\x53\x65\x70\x61\x72\x61\x74\x6F\x72", 42 },
+	{ "\x53\x70\x61\x63\x69\x6E\x67\x5F\x4D\x61\x72\x6B", 19 },
+	{ "\x53\x75\x72\x72\x6F\x67\x61\x74\x65", 10 },
+	{ "\x53\x79\x6D\x62\x6F\x6C", 34 },
+	{ "\x54\x69\x74\x6C\x65\x63\x61\x73\x65\x5F\x4C\x65\x74\x74\x65\x72", 14 },
+	{ "\x55\x6E\x61\x73\x73\x69\x67\x6E\x65\x64", 8 },
+	{ "\x55\x70\x70\x65\x72\x63\x61\x73\x65\x5F\x4C\x65\x74\x74\x65\x72", 15 },
+	{ "\x5A", 39 },
+	{ "\x5A\x6C", 40 },
+	{ "\x5A\x70", 41 },
+	{ "\x5A\x73", 42 },
+	{ "\x63\x6E\x74\x72\x6C", 6 },
+	{ "\x64\x69\x67\x69\x74", 23 },
+	{ "\x70\x75\x6E\x63\x74", 26 },
+	//  bp: 105
+	{ "\x41\x48\x65\x78", 44 },
+	{ "\x41\x53\x43\x49\x49", 43 },
+	{ "\x41\x53\x43\x49\x49\x5F\x48\x65\x78\x5F\x44\x69\x67\x69\x74", 44 },
+	{ "\x41\x6C\x70\x68\x61", 45 },
+	{ "\x41\x6C\x70\x68\x61\x62\x65\x74\x69\x63", 45 },
+	{ "\x41\x6E\x79", 46 },
+	{ "\x41\x73\x73\x69\x67\x6E\x65\x64", 47 },
+	{ "\x42\x61\x73\x69\x63\x5F\x45\x6D\x6F\x6A\x69", 330 },
+	{ "\x42\x69\x64\x69\x5F\x43", 48 },
+	{ "\x42\x69\x64\x69\x5F\x43\x6F\x6E\x74\x72\x6F\x6C", 48 },
+	{ "\x42\x69\x64\x69\x5F\x4D", 49 },
+	{ "\x42\x69\x64\x69\x5F\x4D\x69\x72\x72\x6F\x72\x65\x64", 49 },
+	{ "\x43\x49", 50 },
+	{ "\x43\x57\x43\x46", 52 },
+	{ "\x43\x57\x43\x4D", 53 },
+	{ "\x43\x57\x4B\x43\x46", 55 },
+	{ "\x43\x57\x4C", 54 },
+	{ "\x43\x57\x54", 56 },
+	{ "\x43\x57\x55", 57 },
+	{ "\x43\x61\x73\x65\x5F\x49\x67\x6E\x6F\x72\x61\x62\x6C\x65", 50 },
+	{ "\x43\x61\x73\x65\x64", 51 },
+	{ "\x43\x68\x61\x6E\x67\x65\x73\x5F\x57\x68\x65\x6E\x5F\x43\x61\x73\x65\x66\x6F\x6C\x64\x65\x64", 52 },
+	{ "\x43\x68\x61\x6E\x67\x65\x73\x5F\x57\x68\x65\x6E\x5F\x43\x61\x73\x65\x6D\x61\x70\x70\x65\x64", 53 },
+	{ "\x43\x68\x61\x6E\x67\x65\x73\x5F\x57\x68\x65\x6E\x5F\x4C\x6F\x77\x65\x72\x63\x61\x73\x65\x64", 54 },
+	{ "\x43\x68\x61\x6E\x67\x65\x73\x5F\x57\x68\x65\x6E\x5F\x4E\x46\x4B\x43\x5F\x43\x61\x73\x65\x66\x6F\x6C\x64\x65\x64", 55 },
+	{ "\x43\x68\x61\x6E\x67\x65\x73\x5F\x57\x68\x65\x6E\x5F\x54\x69\x74\x6C\x65\x63\x61\x73\x65\x64", 56 },
+	{ "\x43\x68\x61\x6E\x67\x65\x73\x5F\x57\x68\x65\x6E\x5F\x55\x70\x70\x65\x72\x63\x61\x73\x65\x64", 57 },
+	{ "\x44\x49", 59 },
+	{ "\x44\x61\x73\x68", 58 },
+	{ "\x44\x65\x66\x61\x75\x6C\x74\x5F\x49\x67\x6E\x6F\x72\x61\x62\x6C\x65\x5F\x43\x6F\x64\x65\x5F\x50\x6F\x69\x6E\x74", 59 },
+	{ "\x44\x65\x70", 60 },
+	{ "\x44\x65\x70\x72\x65\x63\x61\x74\x65\x64", 60 },
+	{ "\x44\x69\x61", 61 },
+	{ "\x44\x69\x61\x63\x72\x69\x74\x69\x63", 61 },
+	{ "\x45\x42\x61\x73\x65", 65 },
+	{ "\x45\x43\x6F\x6D\x70", 63 },
+	{ "\x45\x4D\x6F\x64", 64 },
+	{ "\x45\x50\x72\x65\x73", 66 },
+	{ "\x45\x6D\x6F\x6A\x69", 62 },
+	{ "\x45\x6D\x6F\x6A\x69\x5F\x43\x6F\x6D\x70\x6F\x6E\x65\x6E\x74", 63 },
+	{ "\x45\x6D\x6F\x6A\x69\x5F\x4B\x65\x79\x63\x61\x70\x5F\x53\x65\x71\x75\x65\x6E\x63\x65", 331 },
+	{ "\x45\x6D\x6F\x6A\x69\x5F\x4D\x6F\x64\x69\x66\x69\x65\x72", 64 },
+	{ "\x45\x6D\x6F\x6A\x69\x5F\x4D\x6F\x64\x69\x66\x69\x65\x72\x5F\x42\x61\x73\x65", 65 },
+	{ "\x45\x6D\x6F\x6A\x69\x5F\x50\x72\x65\x73\x65\x6E\x74\x61\x74\x69\x6F\x6E", 66 },
+	{ "\x45\x78\x74", 68 },
+	{ "\x45\x78\x74\x50\x69\x63\x74", 67 },
+	{ "\x45\x78\x74\x65\x6E\x64\x65\x64\x5F\x50\x69\x63\x74\x6F\x67\x72\x61\x70\x68\x69\x63", 67 },
+	{ "\x45\x78\x74\x65\x6E\x64\x65\x72", 68 },
+	{ "\x47\x72\x5F\x42\x61\x73\x65", 69 },
+	{ "\x47\x72\x5F\x45\x78\x74", 70 },
+	{ "\x47\x72\x61\x70\x68\x65\x6D\x65\x5F\x42\x61\x73\x65", 69 },
+	{ "\x47\x72\x61\x70\x68\x65\x6D\x65\x5F\x45\x78\x74\x65\x6E\x64", 70 },
+	{ "\x48\x65\x78", 71 },
+	{ "\x48\x65\x78\x5F\x44\x69\x67\x69\x74", 71 },
+	{ "\x49\x44\x43", 74 },
+	{ "\x49\x44\x53", 75 },
+	{ "\x49\x44\x53\x42", 72 },
+	{ "\x49\x44\x53\x54", 73 },
+	{ "\x49\x44\x53\x5F\x42\x69\x6E\x61\x72\x79\x5F\x4F\x70\x65\x72\x61\x74\x6F\x72", 72 },
+	{ "\x49\x44\x53\x5F\x54\x72\x69\x6E\x61\x72\x79\x5F\x4F\x70\x65\x72\x61\x74\x6F\x72", 73 },
+	{ "\x49\x44\x5F\x43\x6F\x6E\x74\x69\x6E\x75\x65", 74 },
+	{ "\x49\x44\x5F\x53\x74\x61\x72\x74", 75 },
+	{ "\x49\x64\x65\x6F", 76 },
+	{ "\x49\x64\x65\x6F\x67\x72\x61\x70\x68\x69\x63", 76 },
+	{ "\x4A\x6F\x69\x6E\x5F\x43", 77 },
+	{ "\x4A\x6F\x69\x6E\x5F\x43\x6F\x6E\x74\x72\x6F\x6C", 77 },
+	{ "\x4C\x4F\x45", 78 },
+	{ "\x4C\x6F\x67\x69\x63\x61\x6C\x5F\x4F\x72\x64\x65\x72\x5F\x45\x78\x63\x65\x70\x74\x69\x6F\x6E", 78 },
+	{ "\x4C\x6F\x77\x65\x72", 79 },
+	{ "\x4C\x6F\x77\x65\x72\x63\x61\x73\x65", 79 },
+	{ "\x4D\x61\x74\x68", 80 },
+	{ "\x4E\x43\x68\x61\x72", 81 },
+	{ "\x4E\x6F\x6E\x63\x68\x61\x72\x61\x63\x74\x65\x72\x5F\x43\x6F\x64\x65\x5F\x50\x6F\x69\x6E\x74", 81 },
+	{ "\x50\x61\x74\x5F\x53\x79\x6E", 82 },
+	{ "\x50\x61\x74\x5F\x57\x53", 83 },
+	{ "\x50\x61\x74\x74\x65\x72\x6E\x5F\x53\x79\x6E\x74\x61\x78", 82 },
+	{ "\x50\x61\x74\x74\x65\x72\x6E\x5F\x57\x68\x69\x74\x65\x5F\x53\x70\x61\x63\x65", 83 },
+	{ "\x51\x4D\x61\x72\x6B", 84 },
+	{ "\x51\x75\x6F\x74\x61\x74\x69\x6F\x6E\x5F\x4D\x61\x72\x6B", 84 },
+	{ "\x52\x47\x49\x5F\x45\x6D\x6F\x6A\x69", 329 },
+	{ "\x52\x47\x49\x5F\x45\x6D\x6F\x6A\x69\x5F\x46\x6C\x61\x67\x5F\x53\x65\x71\x75\x65\x6E\x63\x65", 333 },
+	{ "\x52\x47\x49\x5F\x45\x6D\x6F\x6A\x69\x5F\x4D\x6F\x64\x69\x66\x69\x65\x72\x5F\x53\x65\x71\x75\x65\x6E\x63\x65", 332 },
+	{ "\x52\x47\x49\x5F\x45\x6D\x6F\x6A\x69\x5F\x54\x61\x67\x5F\x53\x65\x71\x75\x65\x6E\x63\x65", 334 },
+	{ "\x52\x47\x49\x5F\x45\x6D\x6F\x6A\x69\x5F\x5A\x57\x4A\x5F\x53\x65\x71\x75\x65\x6E\x63\x65", 335 },
+	{ "\x52\x49", 86 },
+	{ "\x52\x61\x64\x69\x63\x61\x6C", 85 },
+	{ "\x52\x65\x67\x69\x6F\x6E\x61\x6C\x5F\x49\x6E\x64\x69\x63\x61\x74\x6F\x72", 86 },
+	{ "\x53\x44", 88 },
+	{ "\x53\x54\x65\x72\x6D", 87 },
+	{ "\x53\x65\x6E\x74\x65\x6E\x63\x65\x5F\x54\x65\x72\x6D\x69\x6E\x61\x6C", 87 },
+	{ "\x53\x6F\x66\x74\x5F\x44\x6F\x74\x74\x65\x64", 88 },
+	{ "\x54\x65\x72\x6D", 89 },
+	{ "\x54\x65\x72\x6D\x69\x6E\x61\x6C\x5F\x50\x75\x6E\x63\x74\x75\x61\x74\x69\x6F\x6E", 89 },
+	{ "\x55\x49\x64\x65\x6F", 90 },
+	{ "\x55\x6E\x69\x66\x69\x65\x64\x5F\x49\x64\x65\x6F\x67\x72\x61\x70\x68", 90 },
+	{ "\x55\x70\x70\x65\x72", 91 },
+	{ "\x55\x70\x70\x65\x72\x63\x61\x73\x65", 91 },
+	{ "\x56\x53", 92 },
+	{ "\x56\x61\x72\x69\x61\x74\x69\x6F\x6E\x5F\x53\x65\x6C\x65\x63\x74\x6F\x72", 92 },
+	{ "\x57\x68\x69\x74\x65\x5F\x53\x70\x61\x63\x65", 93 },
+	{ "\x58\x49\x44\x43", 94 },
+	{ "\x58\x49\x44\x53", 95 },
+	{ "\x58\x49\x44\x5F\x43\x6F\x6E\x74\x69\x6E\x75\x65", 94 },
+	{ "\x58\x49\x44\x5F\x53\x74\x61\x72\x74", 95 },
+	{ "\x73\x70\x61\x63\x65", 93 },
+	//  sc: 320
+	{ "\x41\x64\x6C\x61\x6D", 227 },
+	{ "\x41\x64\x6C\x6D", 227 },
+	{ "\x41\x67\x68\x62", 198 },
+	{ "\x41\x68\x6F\x6D", 221 },
+	{ "\x41\x6E\x61\x74\x6F\x6C\x69\x61\x6E\x5F\x48\x69\x65\x72\x6F\x67\x6C\x79\x70\x68\x73", 222 },
+	{ "\x41\x72\x61\x62", 102 },
+	{ "\x41\x72\x61\x62\x69\x63", 102 },
+	{ "\x41\x72\x6D\x65\x6E\x69\x61\x6E", 100 },
+	{ "\x41\x72\x6D\x69", 182 },
+	{ "\x41\x72\x6D\x6E", 100 },
+	{ "\x41\x76\x65\x73\x74\x61\x6E", 175 },
+	{ "\x41\x76\x73\x74", 175 },
+	{ "\x42\x61\x6C\x69", 157 },
+	{ "\x42\x61\x6C\x69\x6E\x65\x73\x65", 157 },
+	{ "\x42\x61\x6D\x75", 179 },
+	{ "\x42\x61\x6D\x75\x6D", 179 },
+	{ "\x42\x61\x73\x73", 199 },
+	{ "\x42\x61\x73\x73\x61\x5F\x56\x61\x68", 199 },
+	{ "\x42\x61\x74\x61\x6B", 188 },
+	{ "\x42\x61\x74\x6B", 188 },
+	{ "\x42\x65\x6E\x67", 106 },
+	{ "\x42\x65\x6E\x67\x61\x6C\x69", 106 },
+	{ "\x42\x68\x61\x69\x6B\x73\x75\x6B\x69", 228 },
+	{ "\x42\x68\x6B\x73", 228 },
+	{ "\x42\x6F\x70\x6F", 130 },
+	{ "\x42\x6F\x70\x6F\x6D\x6F\x66\x6F", 130 },
+	{ "\x42\x72\x61\x68", 189 },
+	{ "\x42\x72\x61\x68\x6D\x69", 189 },
+	{ "\x42\x72\x61\x69", 148 },
+	{ "\x42\x72\x61\x69\x6C\x6C\x65", 148 },
+	{ "\x42\x75\x67\x69", 149 },
+	{ "\x42\x75\x67\x69\x6E\x65\x73\x65", 149 },
+	{ "\x42\x75\x68\x64", 139 },
+	{ "\x42\x75\x68\x69\x64", 139 },
+	{ "\x43\x61\x6B\x6D", 191 },
+	{ "\x43\x61\x6E\x61\x64\x69\x61\x6E\x5F\x41\x62\x6F\x72\x69\x67\x69\x6E\x61\x6C", 123 },
+	{ "\x43\x61\x6E\x73", 123 },
+	{ "\x43\x61\x72\x69", 170 },
+	{ "\x43\x61\x72\x69\x61\x6E", 170 },
+	{ "\x43\x61\x75\x63\x61\x73\x69\x61\x6E\x5F\x41\x6C\x62\x61\x6E\x69\x61\x6E", 198 },
+	{ "\x43\x68\x61\x6B\x6D\x61", 191 },
+	{ "\x43\x68\x61\x6D", 172 },
+	{ "\x43\x68\x65\x72", 122 },
+	{ "\x43\x68\x65\x72\x6F\x6B\x65\x65", 122 },
+	{ "\x43\x68\x6F\x72\x61\x73\x6D\x69\x61\x6E", 248 },
+	{ "\x43\x68\x72\x73", 248 },
+	{ "\x43\x6F\x6D\x6D\x6F\x6E", 96 },
+	{ "\x43\x6F\x70\x74", 150 },
+	{ "\x43\x6F\x70\x74\x69\x63", 150 },
+	{ "\x43\x70\x6D\x6E", 252 },
+	{ "\x43\x70\x72\x74", 147 },
+	{ "\x43\x75\x6E\x65\x69\x66\x6F\x72\x6D", 158 },
+	{ "\x43\x79\x70\x72\x69\x6F\x74", 147 },
+	{ "\x43\x79\x70\x72\x6F\x5F\x4D\x69\x6E\x6F\x61\x6E", 252 },
+	{ "\x43\x79\x72\x69\x6C\x6C\x69\x63", 99 },
+	{ "\x43\x79\x72\x6C", 99 },
+	{ "\x44\x65\x73\x65\x72\x65\x74", 135 },
+	{ "\x44\x65\x76\x61", 105 },
+	{ "\x44\x65\x76\x61\x6E\x61\x67\x61\x72\x69", 105 },
+	{ "\x44\x69\x61\x6B", 249 },
+	{ "\x44\x69\x76\x65\x73\x5F\x41\x6B\x75\x72\x75", 249 },
+	{ "\x44\x6F\x67\x72", 237 },
+	{ "\x44\x6F\x67\x72\x61", 237 },
+	{ "\x44\x73\x72\x74", 135 },
+	{ "\x44\x75\x70\x6C", 200 },
+	{ "\x44\x75\x70\x6C\x6F\x79\x61\x6E", 200 },
+	{ "\x45\x67\x79\x70", 176 },
+	{ "\x45\x67\x79\x70\x74\x69\x61\x6E\x5F\x48\x69\x65\x72\x6F\x67\x6C\x79\x70\x68\x73", 176 },
+	{ "\x45\x6C\x62\x61", 201 },
+	{ "\x45\x6C\x62\x61\x73\x61\x6E", 201 },
+	{ "\x45\x6C\x79\x6D", 244 },
+	{ "\x45\x6C\x79\x6D\x61\x69\x63", 244 },
+	{ "\x45\x74\x68\x69", 121 },
+	{ "\x45\x74\x68\x69\x6F\x70\x69\x63", 121 },
+	{ "\x47\x65\x6F\x72", 119 },
+	{ "\x47\x65\x6F\x72\x67\x69\x61\x6E", 119 },
+	{ "\x47\x6C\x61\x67", 152 },
+	{ "\x47\x6C\x61\x67\x6F\x6C\x69\x74\x69\x63", 152 },
+	{ "\x47\x6F\x6E\x67", 238 },
+	{ "\x47\x6F\x6E\x6D", 233 },
+	{ "\x47\x6F\x74\x68", 134 },
+	{ "\x47\x6F\x74\x68\x69\x63", 134 },
+	{ "\x47\x72\x61\x6E", 202 },
+	{ "\x47\x72\x61\x6E\x74\x68\x61", 202 },
+	{ "\x47\x72\x65\x65\x6B", 98 },
+	{ "\x47\x72\x65\x6B", 98 },
+	{ "\x47\x75\x6A\x61\x72\x61\x74\x69", 108 },
+	{ "\x47\x75\x6A\x72", 108 },
+	{ "\x47\x75\x6E\x6A\x61\x6C\x61\x5F\x47\x6F\x6E\x64\x69", 238 },
+	{ "\x47\x75\x72\x6D\x75\x6B\x68\x69", 107 },
+	{ "\x47\x75\x72\x75", 107 },
+	{ "\x48\x61\x6E", 131 },
+	{ "\x48\x61\x6E\x67", 120 },
+	{ "\x48\x61\x6E\x67\x75\x6C", 120 },
+	{ "\x48\x61\x6E\x69", 131 },
+	{ "\x48\x61\x6E\x69\x66\x69\x5F\x52\x6F\x68\x69\x6E\x67\x79\x61", 241 },
+	{ "\x48\x61\x6E\x6F", 138 },
+	{ "\x48\x61\x6E\x75\x6E\x6F\x6F", 138 },
+	{ "\x48\x61\x74\x72", 223 },
+	{ "\x48\x61\x74\x72\x61\x6E", 223 },
+	{ "\x48\x65\x62\x72", 101 },
+	{ "\x48\x65\x62\x72\x65\x77", 101 },
+	{ "\x48\x69\x72\x61", 128 },
+	{ "\x48\x69\x72\x61\x67\x61\x6E\x61", 128 },
+	{ "\x48\x6C\x75\x77", 222 },
+	{ "\x48\x6D\x6E\x67", 203 },
+	{ "\x48\x6D\x6E\x70", 246 },
+	{ "\x48\x75\x6E\x67", 225 },
+	{ "\x49\x6D\x70\x65\x72\x69\x61\x6C\x5F\x41\x72\x61\x6D\x61\x69\x63", 182 },
+	{ "\x49\x6E\x68\x65\x72\x69\x74\x65\x64", 136 },
+	{ "\x49\x6E\x73\x63\x72\x69\x70\x74\x69\x6F\x6E\x61\x6C\x5F\x50\x61\x68\x6C\x61\x76\x69", 185 },
+	{ "\x49\x6E\x73\x63\x72\x69\x70\x74\x69\x6F\x6E\x61\x6C\x5F\x50\x61\x72\x74\x68\x69\x61\x6E", 184 },
+	{ "\x49\x74\x61\x6C", 133 },
+	{ "\x4A\x61\x76\x61", 180 },
+	{ "\x4A\x61\x76\x61\x6E\x65\x73\x65", 180 },
+	{ "\x4B\x61\x69\x74\x68\x69", 187 },
+	{ "\x4B\x61\x6C\x69", 167 },
+	{ "\x4B\x61\x6E\x61", 129 },
+	{ "\x4B\x61\x6E\x6E\x61\x64\x61", 112 },
+	{ "\x4B\x61\x74\x61\x6B\x61\x6E\x61", 129 },
+	{ "\x4B\x61\x77\x69", 257 },
+	{ "\x4B\x61\x79\x61\x68\x5F\x4C\x69", 167 },
+	{ "\x4B\x68\x61\x72", 156 },
+	{ "\x4B\x68\x61\x72\x6F\x73\x68\x74\x68\x69", 156 },
+	{ "\x4B\x68\x69\x74\x61\x6E\x5F\x53\x6D\x61\x6C\x6C\x5F\x53\x63\x72\x69\x70\x74", 250 },
+	{ "\x4B\x68\x6D\x65\x72", 126 },
+	{ "\x4B\x68\x6D\x72", 126 },
+	{ "\x4B\x68\x6F\x6A", 204 },
+	{ "\x4B\x68\x6F\x6A\x6B\x69", 204 },
+	{ "\x4B\x68\x75\x64\x61\x77\x61\x64\x69", 218 },
+	{ "\x4B\x69\x74\x73", 250 },
+	{ "\x4B\x6E\x64\x61", 112 },
+	{ "\x4B\x74\x68\x69", 187 },
+	{ "\x4C\x61\x6E\x61", 173 },
+	{ "\x4C\x61\x6F", 116 },
+	{ "\x4C\x61\x6F\x6F", 116 },
+	{ "\x4C\x61\x74\x69\x6E", 97 },
+	{ "\x4C\x61\x74\x6E", 97 },
+	{ "\x4C\x65\x70\x63", 163 },
+	{ "\x4C\x65\x70\x63\x68\x61", 163 },
+	{ "\x4C\x69\x6D\x62", 141 },
+	{ "\x4C\x69\x6D\x62\x75", 141 },
+	{ "\x4C\x69\x6E\x61", 205 },
+	{ "\x4C\x69\x6E\x62", 143 },
+	{ "\x4C\x69\x6E\x65\x61\x72\x5F\x41", 205 },
+	{ "\x4C\x69\x6E\x65\x61\x72\x5F\x42", 143 },
+	{ "\x4C\x69\x73\x75", 178 },
+	{ "\x4C\x79\x63\x69", 169 },
+	{ "\x4C\x79\x63\x69\x61\x6E", 169 },
+	{ "\x4C\x79\x64\x69", 171 },
+	{ "\x4C\x79\x64\x69\x61\x6E", 171 },
+	{ "\x4D\x61\x68\x61\x6A\x61\x6E\x69", 206 },
+	{ "\x4D\x61\x68\x6A", 206 },
+	{ "\x4D\x61\x6B\x61", 239 },
+	{ "\x4D\x61\x6B\x61\x73\x61\x72", 239 },
+	{ "\x4D\x61\x6C\x61\x79\x61\x6C\x61\x6D", 113 },
+	{ "\x4D\x61\x6E\x64", 190 },
+	{ "\x4D\x61\x6E\x64\x61\x69\x63", 190 },
+	{ "\x4D\x61\x6E\x69", 207 },
+	{ "\x4D\x61\x6E\x69\x63\x68\x61\x65\x61\x6E", 207 },
+	{ "\x4D\x61\x72\x63", 229 },
+	{ "\x4D\x61\x72\x63\x68\x65\x6E", 229 },
+	{ "\x4D\x61\x73\x61\x72\x61\x6D\x5F\x47\x6F\x6E\x64\x69", 233 },
+	{ "\x4D\x65\x64\x65\x66\x61\x69\x64\x72\x69\x6E", 240 },
+	{ "\x4D\x65\x64\x66", 240 },
+	{ "\x4D\x65\x65\x74\x65\x69\x5F\x4D\x61\x79\x65\x6B", 181 },
+	{ "\x4D\x65\x6E\x64", 208 },
+	{ "\x4D\x65\x6E\x64\x65\x5F\x4B\x69\x6B\x61\x6B\x75\x69", 208 },
+	{ "\x4D\x65\x72\x63", 192 },
+	{ "\x4D\x65\x72\x6F", 193 },
+	{ "\x4D\x65\x72\x6F\x69\x74\x69\x63\x5F\x43\x75\x72\x73\x69\x76\x65", 192 },
+	{ "\x4D\x65\x72\x6F\x69\x74\x69\x63\x5F\x48\x69\x65\x72\x6F\x67\x6C\x79\x70\x68\x73", 193 },
+	{ "\x4D\x69\x61\x6F", 194 },
+	{ "\x4D\x6C\x79\x6D", 113 },
+	{ "\x4D\x6F\x64\x69", 209 },
+	{ "\x4D\x6F\x6E\x67", 127 },
+	{ "\x4D\x6F\x6E\x67\x6F\x6C\x69\x61\x6E", 127 },
+	{ "\x4D\x72\x6F", 210 },
+	{ "\x4D\x72\x6F\x6F", 210 },
+	{ "\x4D\x74\x65\x69", 181 },
+	{ "\x4D\x75\x6C\x74", 224 },
+	{ "\x4D\x75\x6C\x74\x61\x6E\x69", 224 },
+	{ "\x4D\x79\x61\x6E\x6D\x61\x72", 118 },
+	{ "\x4D\x79\x6D\x72", 118 },
+	{ "\x4E\x61\x62\x61\x74\x61\x65\x61\x6E", 212 },
+	{ "\x4E\x61\x67\x5F\x4D\x75\x6E\x64\x61\x72\x69", 258 },
+	{ "\x4E\x61\x67\x6D", 258 },
+	{ "\x4E\x61\x6E\x64", 245 },
+	{ "\x4E\x61\x6E\x64\x69\x6E\x61\x67\x61\x72\x69", 245 },
+	{ "\x4E\x61\x72\x62", 211 },
+	{ "\x4E\x62\x61\x74", 212 },
+	{ "\x4E\x65\x77\x5F\x54\x61\x69\x5F\x4C\x75\x65", 151 },
+	{ "\x4E\x65\x77\x61", 230 },
+	{ "\x4E\x6B\x6F", 161 },
+	{ "\x4E\x6B\x6F\x6F", 161 },
+	{ "\x4E\x73\x68\x75", 234 },
+	{ "\x4E\x75\x73\x68\x75", 234 },
+	{ "\x4E\x79\x69\x61\x6B\x65\x6E\x67\x5F\x50\x75\x61\x63\x68\x75\x65\x5F\x48\x6D\x6F\x6E\x67", 246 },
+	{ "\x4F\x67\x61\x6D", 124 },
+	{ "\x4F\x67\x68\x61\x6D", 124 },
+	{ "\x4F\x6C\x5F\x43\x68\x69\x6B\x69", 164 },
+	{ "\x4F\x6C\x63\x6B", 164 },
+	{ "\x4F\x6C\x64\x5F\x48\x75\x6E\x67\x61\x72\x69\x61\x6E", 225 },
+	{ "\x4F\x6C\x64\x5F\x49\x74\x61\x6C\x69\x63", 133 },
+	{ "\x4F\x6C\x64\x5F\x4E\x6F\x72\x74\x68\x5F\x41\x72\x61\x62\x69\x61\x6E", 211 },
+	{ "\x4F\x6C\x64\x5F\x50\x65\x72\x6D\x69\x63", 215 },
+	{ "\x4F\x6C\x64\x5F\x50\x65\x72\x73\x69\x61\x6E", 155 },
+	{ "\x4F\x6C\x64\x5F\x53\x6F\x67\x64\x69\x61\x6E", 243 },
+	{ "\x4F\x6C\x64\x5F\x53\x6F\x75\x74\x68\x5F\x41\x72\x61\x62\x69\x61\x6E", 183 },
+	{ "\x4F\x6C\x64\x5F\x54\x75\x72\x6B\x69\x63", 186 },
+	{ "\x4F\x6C\x64\x5F\x55\x79\x67\x68\x75\x72", 253 },
+	{ "\x4F\x72\x69\x79\x61", 109 },
+	{ "\x4F\x72\x6B\x68", 186 },
+	{ "\x4F\x72\x79\x61", 109 },
+	{ "\x4F\x73\x61\x67\x65", 231 },
+	{ "\x4F\x73\x67\x65", 231 },
+	{ "\x4F\x73\x6D\x61", 146 },
+	{ "\x4F\x73\x6D\x61\x6E\x79\x61", 146 },
+	{ "\x4F\x75\x67\x72", 253 },
+	{ "\x50\x61\x68\x61\x77\x68\x5F\x48\x6D\x6F\x6E\x67", 203 },
+	{ "\x50\x61\x6C\x6D", 213 },
+	{ "\x50\x61\x6C\x6D\x79\x72\x65\x6E\x65", 213 },
+	{ "\x50\x61\x75\x5F\x43\x69\x6E\x5F\x48\x61\x75", 214 },
+	{ "\x50\x61\x75\x63", 214 },
+	{ "\x50\x65\x72\x6D", 215 },
+	{ "\x50\x68\x61\x67", 160 },
+	{ "\x50\x68\x61\x67\x73\x5F\x50\x61", 160 },
+	{ "\x50\x68\x6C\x69", 185 },
+	{ "\x50\x68\x6C\x70", 216 },
+	{ "\x50\x68\x6E\x78", 159 },
+	{ "\x50\x68\x6F\x65\x6E\x69\x63\x69\x61\x6E", 159 },
+	{ "\x50\x6C\x72\x64", 194 },
+	{ "\x50\x72\x74\x69", 184 },
+	{ "\x50\x73\x61\x6C\x74\x65\x72\x5F\x50\x61\x68\x6C\x61\x76\x69", 216 },
+	{ "\x51\x61\x61\x63", 150 },
+	{ "\x51\x61\x61\x69", 136 },
+	{ "\x52\x65\x6A\x61\x6E\x67", 168 },
+	{ "\x52\x6A\x6E\x67", 168 },
+	{ "\x52\x6F\x68\x67", 241 },
+	{ "\x52\x75\x6E\x69\x63", 125 },
+	{ "\x52\x75\x6E\x72", 125 },
+	{ "\x53\x61\x6D\x61\x72\x69\x74\x61\x6E", 177 },
+	{ "\x53\x61\x6D\x72", 177 },
+	{ "\x53\x61\x72\x62", 183 },
+	{ "\x53\x61\x75\x72", 166 },
+	{ "\x53\x61\x75\x72\x61\x73\x68\x74\x72\x61", 166 },
+	{ "\x53\x67\x6E\x77", 226 },
+	{ "\x53\x68\x61\x72\x61\x64\x61", 195 },
+	{ "\x53\x68\x61\x76\x69\x61\x6E", 145 },
+	{ "\x53\x68\x61\x77", 145 },
+	{ "\x53\x68\x72\x64", 195 },
+	{ "\x53\x69\x64\x64", 217 },
+	{ "\x53\x69\x64\x64\x68\x61\x6D", 217 },
+	{ "\x53\x69\x67\x6E\x57\x72\x69\x74\x69\x6E\x67", 226 },
+	{ "\x53\x69\x6E\x64", 218 },
+	{ "\x53\x69\x6E\x68", 114 },
+	{ "\x53\x69\x6E\x68\x61\x6C\x61", 114 },
+	{ "\x53\x6F\x67\x64", 242 },
+	{ "\x53\x6F\x67\x64\x69\x61\x6E", 242 },
+	{ "\x53\x6F\x67\x6F", 243 },
+	{ "\x53\x6F\x72\x61", 196 },
+	{ "\x53\x6F\x72\x61\x5F\x53\x6F\x6D\x70\x65\x6E\x67", 196 },
+	{ "\x53\x6F\x79\x6F", 235 },
+	{ "\x53\x6F\x79\x6F\x6D\x62\x6F", 235 },
+	{ "\x53\x75\x6E\x64", 162 },
+	{ "\x53\x75\x6E\x64\x61\x6E\x65\x73\x65", 162 },
+	{ "\x53\x79\x6C\x6F", 154 },
+	{ "\x53\x79\x6C\x6F\x74\x69\x5F\x4E\x61\x67\x72\x69", 154 },
+	{ "\x53\x79\x72\x63", 103 },
+	{ "\x53\x79\x72\x69\x61\x63", 103 },
+	{ "\x54\x61\x67\x61\x6C\x6F\x67", 137 },
+	{ "\x54\x61\x67\x62", 140 },
+	{ "\x54\x61\x67\x62\x61\x6E\x77\x61", 140 },
+	{ "\x54\x61\x69\x5F\x4C\x65", 142 },
+	{ "\x54\x61\x69\x5F\x54\x68\x61\x6D", 173 },
+	{ "\x54\x61\x69\x5F\x56\x69\x65\x74", 174 },
+	{ "\x54\x61\x6B\x72", 197 },
+	{ "\x54\x61\x6B\x72\x69", 197 },
+	{ "\x54\x61\x6C\x65", 142 },
+	{ "\x54\x61\x6C\x75", 151 },
+	{ "\x54\x61\x6D\x69\x6C", 110 },
+	{ "\x54\x61\x6D\x6C", 110 },
+	{ "\x54\x61\x6E\x67", 232 },
+	{ "\x54\x61\x6E\x67\x73\x61", 254 },
+	{ "\x54\x61\x6E\x67\x75\x74", 232 },
+	{ "\x54\x61\x76\x74", 174 },
+	{ "\x54\x65\x6C\x75", 111 },
+	{ "\x54\x65\x6C\x75\x67\x75", 111 },
+	{ "\x54\x66\x6E\x67", 153 },
+	{ "\x54\x67\x6C\x67", 137 },
+	{ "\x54\x68\x61\x61", 104 },
+	{ "\x54\x68\x61\x61\x6E\x61", 104 },
+	{ "\x54\x68\x61\x69", 115 },
+	{ "\x54\x69\x62\x65\x74\x61\x6E", 117 },
+	{ "\x54\x69\x62\x74", 117 },
+	{ "\x54\x69\x66\x69\x6E\x61\x67\x68", 153 },
+	{ "\x54\x69\x72\x68", 219 },
+	{ "\x54\x69\x72\x68\x75\x74\x61", 219 },
+	{ "\x54\x6E\x73\x61", 254 },
+	{ "\x54\x6F\x74\x6F", 255 },
+	{ "\x55\x67\x61\x72", 144 },
+	{ "\x55\x67\x61\x72\x69\x74\x69\x63", 144 },
+	{ "\x56\x61\x69", 165 },
+	{ "\x56\x61\x69\x69", 165 },
+	{ "\x56\x69\x74\x68", 256 },
+	{ "\x56\x69\x74\x68\x6B\x75\x71\x69", 256 },
+	{ "\x57\x61\x6E\x63\x68\x6F", 247 },
+	{ "\x57\x61\x72\x61", 220 },
+	{ "\x57\x61\x72\x61\x6E\x67\x5F\x43\x69\x74\x69", 220 },
+	{ "\x57\x63\x68\x6F", 247 },
+	{ "\x58\x70\x65\x6F", 155 },
+	{ "\x58\x73\x75\x78", 158 },
+	{ "\x59\x65\x7A\x69", 251 },
+	{ "\x59\x65\x7A\x69\x64\x69", 251 },
+	{ "\x59\x69", 132 },
+	{ "\x59\x69\x69\x69", 132 },
+	{ "\x5A\x61\x6E\x61\x62\x61\x7A\x61\x72\x5F\x53\x71\x75\x61\x72\x65", 236 },
+	{ "\x5A\x61\x6E\x62", 236 },
+	{ "\x5A\x69\x6E\x68", 136 },
+	{ "\x5A\x79\x79\x79", 96 },
+	//  scx: 320
+	{ "\x41\x64\x6C\x61\x6D", 319 },
+	{ "\x41\x64\x6C\x6D", 319 },
+	{ "\x41\x67\x68\x62", 198 },
+	{ "\x41\x68\x6F\x6D", 221 },
+	{ "\x41\x6E\x61\x74\x6F\x6C\x69\x61\x6E\x5F\x48\x69\x65\x72\x6F\x67\x6C\x79\x70\x68\x73", 222 },
+	{ "\x41\x72\x61\x62", 263 },
+	{ "\x41\x72\x61\x62\x69\x63", 263 },
+	{ "\x41\x72\x6D\x65\x6E\x69\x61\x6E", 100 },
+	{ "\x41\x72\x6D\x69", 182 },
+	{ "\x41\x72\x6D\x6E", 100 },
+	{ "\x41\x76\x65\x73\x74\x61\x6E", 175 },
+	{ "\x41\x76\x73\x74", 175 },
+	{ "\x42\x61\x6C\x69", 157 },
+	{ "\x42\x61\x6C\x69\x6E\x65\x73\x65", 157 },
+	{ "\x42\x61\x6D\x75", 179 },
+	{ "\x42\x61\x6D\x75\x6D", 179 },
+	{ "\x42\x61\x73\x73", 199 },
+	{ "\x42\x61\x73\x73\x61\x5F\x56\x61\x68", 199 },
+	{ "\x42\x61\x74\x61\x6B", 188 },
+	{ "\x42\x61\x74\x6B", 188 },
+	{ "\x42\x65\x6E\x67", 267 },
+	{ "\x42\x65\x6E\x67\x61\x6C\x69", 267 },
+	{ "\x42\x68\x61\x69\x6B\x73\x75\x6B\x69", 228 },
+	{ "\x42\x68\x6B\x73", 228 },
+	{ "\x42\x6F\x70\x6F", 282 },
+	{ "\x42\x6F\x70\x6F\x6D\x6F\x66\x6F", 282 },
+	{ "\x42\x72\x61\x68", 189 },
+	{ "\x42\x72\x61\x68\x6D\x69", 189 },
+	{ "\x42\x72\x61\x69", 148 },
+	{ "\x42\x72\x61\x69\x6C\x6C\x65", 148 },
+	{ "\x42\x75\x67\x69", 294 },
+	{ "\x42\x75\x67\x69\x6E\x65\x73\x65", 294 },
+	{ "\x42\x75\x68\x64", 288 },
+	{ "\x42\x75\x68\x69\x64", 288 },
+	{ "\x43\x61\x6B\x6D", 304 },
+	{ "\x43\x61\x6E\x61\x64\x69\x61\x6E\x5F\x41\x62\x6F\x72\x69\x67\x69\x6E\x61\x6C", 123 },
+	{ "\x43\x61\x6E\x73", 123 },
+	{ "\x43\x61\x72\x69", 170 },
+	{ "\x43\x61\x72\x69\x61\x6E", 170 },
+	{ "\x43\x61\x75\x63\x61\x73\x69\x61\x6E\x5F\x41\x6C\x62\x61\x6E\x69\x61\x6E", 198 },
+	{ "\x43\x68\x61\x6B\x6D\x61", 304 },
+	{ "\x43\x68\x61\x6D", 172 },
+	{ "\x43\x68\x65\x72", 122 },
+	{ "\x43\x68\x65\x72\x6F\x6B\x65\x65", 122 },
+	{ "\x43\x68\x6F\x72\x61\x73\x6D\x69\x61\x6E", 248 },
+	{ "\x43\x68\x72\x73", 248 },
+	{ "\x43\x6F\x6D\x6D\x6F\x6E", 259 },
+	{ "\x43\x6F\x70\x74", 295 },
+	{ "\x43\x6F\x70\x74\x69\x63", 295 },
+	{ "\x43\x70\x6D\x6E", 327 },
+	{ "\x43\x70\x72\x74", 293 },
+	{ "\x43\x75\x6E\x65\x69\x66\x6F\x72\x6D", 158 },
+	{ "\x43\x79\x70\x72\x69\x6F\x74", 293 },
+	{ "\x43\x79\x70\x72\x6F\x5F\x4D\x69\x6E\x6F\x61\x6E", 327 },
+	{ "\x43\x79\x72\x69\x6C\x6C\x69\x63", 262 },
+	{ "\x43\x79\x72\x6C", 262 },
+	{ "\x44\x65\x73\x65\x72\x65\x74", 135 },
+	{ "\x44\x65\x76\x61", 266 },
+	{ "\x44\x65\x76\x61\x6E\x61\x67\x61\x72\x69", 266 },
+	{ "\x44\x69\x61\x6B", 249 },
+	{ "\x44\x69\x76\x65\x73\x5F\x41\x6B\x75\x72\x75", 249 },
+	{ "\x44\x6F\x67\x72", 321 },
+	{ "\x44\x6F\x67\x72\x61", 321 },
+	{ "\x44\x73\x72\x74", 135 },
+	{ "\x44\x75\x70\x6C", 307 },
+	{ "\x44\x75\x70\x6C\x6F\x79\x61\x6E", 307 },
+	{ "\x45\x67\x79\x70", 176 },
+	{ "\x45\x67\x79\x70\x74\x69\x61\x6E\x5F\x48\x69\x65\x72\x6F\x67\x6C\x79\x70\x68\x73", 176 },
+	{ "\x45\x6C\x62\x61", 201 },
+	{ "\x45\x6C\x62\x61\x73\x61\x6E", 201 },
+	{ "\x45\x6C\x79\x6D", 244 },
+	{ "\x45\x6C\x79\x6D\x61\x69\x63", 244 },
+	{ "\x45\x74\x68\x69", 121 },
+	{ "\x45\x74\x68\x69\x6F\x70\x69\x63", 121 },
+	{ "\x47\x65\x6F\x72", 277 },
+	{ "\x47\x65\x6F\x72\x67\x69\x61\x6E", 277 },
+	{ "\x47\x6C\x61\x67", 296 },
+	{ "\x47\x6C\x61\x67\x6F\x6C\x69\x74\x69\x63", 296 },
+	{ "\x47\x6F\x6E\x67", 322 },
+	{ "\x47\x6F\x6E\x6D", 320 },
+	{ "\x47\x6F\x74\x68", 134 },
+	{ "\x47\x6F\x74\x68\x69\x63", 134 },
+	{ "\x47\x72\x61\x6E", 308 },
+	{ "\x47\x72\x61\x6E\x74\x68\x61", 308 },
+	{ "\x47\x72\x65\x65\x6B", 261 },
+	{ "\x47\x72\x65\x6B", 261 },
+	{ "\x47\x75\x6A\x61\x72\x61\x74\x69", 269 },
+	{ "\x47\x75\x6A\x72", 269 },
+	{ "\x47\x75\x6E\x6A\x61\x6C\x61\x5F\x47\x6F\x6E\x64\x69", 322 },
+	{ "\x47\x75\x72\x6D\x75\x6B\x68\x69", 268 },
+	{ "\x47\x75\x72\x75", 268 },
+	{ "\x48\x61\x6E", 283 },
+	{ "\x48\x61\x6E\x67", 278 },
+	{ "\x48\x61\x6E\x67\x75\x6C", 278 },
+	{ "\x48\x61\x6E\x69", 283 },
+	{ "\x48\x61\x6E\x69\x66\x69\x5F\x52\x6F\x68\x69\x6E\x67\x79\x61", 323 },
+	{ "\x48\x61\x6E\x6F", 287 },
+	{ "\x48\x61\x6E\x75\x6E\x6F\x6F", 287 },
+	{ "\x48\x61\x74\x72", 223 },
+	{ "\x48\x61\x74\x72\x61\x6E", 223 },
+	{ "\x48\x65\x62\x72", 101 },
+	{ "\x48\x65\x62\x72\x65\x77", 101 },
+	{ "\x48\x69\x72\x61", 280 },
+	{ "\x48\x69\x72\x61\x67\x61\x6E\x61", 280 },
+	{ "\x48\x6C\x75\x77", 222 },
+	{ "\x48\x6D\x6E\x67", 203 },
+	{ "\x48\x6D\x6E\x70", 246 },
+	{ "\x48\x75\x6E\x67", 225 },
+	{ "\x49\x6D\x70\x65\x72\x69\x61\x6C\x5F\x41\x72\x61\x6D\x61\x69\x63", 182 },
+	{ "\x49\x6E\x68\x65\x72\x69\x74\x65\x64", 285 },
+	{ "\x49\x6E\x73\x63\x72\x69\x70\x74\x69\x6F\x6E\x61\x6C\x5F\x50\x61\x68\x6C\x61\x76\x69", 185 },
+	{ "\x49\x6E\x73\x63\x72\x69\x70\x74\x69\x6F\x6E\x61\x6C\x5F\x50\x61\x72\x74\x68\x69\x61\x6E", 184 },
+	{ "\x49\x74\x61\x6C", 133 },
+	{ "\x4A\x61\x76\x61", 301 },
+	{ "\x4A\x61\x76\x61\x6E\x65\x73\x65", 301 },
+	{ "\x4B\x61\x69\x74\x68\x69", 302 },
+	{ "\x4B\x61\x6C\x69", 300 },
+	{ "\x4B\x61\x6E\x61", 281 },
+	{ "\x4B\x61\x6E\x6E\x61\x64\x61", 273 },
+	{ "\x4B\x61\x74\x61\x6B\x61\x6E\x61", 281 },
+	{ "\x4B\x61\x77\x69", 257 },
+	{ "\x4B\x61\x79\x61\x68\x5F\x4C\x69", 300 },
+	{ "\x4B\x68\x61\x72", 156 },
+	{ "\x4B\x68\x61\x72\x6F\x73\x68\x74\x68\x69", 156 },
+	{ "\x4B\x68\x69\x74\x61\x6E\x5F\x53\x6D\x61\x6C\x6C\x5F\x53\x63\x72\x69\x70\x74", 250 },
+	{ "\x4B\x68\x6D\x65\x72", 126 },
+	{ "\x4B\x68\x6D\x72", 126 },
+	{ "\x4B\x68\x6F\x6A", 309 },
+	{ "\x4B\x68\x6F\x6A\x6B\x69", 309 },
+	{ "\x4B\x68\x75\x64\x61\x77\x61\x64\x69", 316 },
+	{ "\x4B\x69\x74\x73", 250 },
+	{ "\x4B\x6E\x64\x61", 273 },
+	{ "\x4B\x74\x68\x69", 302 },
+	{ "\x4C\x61\x6E\x61", 173 },
+	{ "\x4C\x61\x6F", 116 },
+	{ "\x4C\x61\x6F\x6F", 116 },
+	{ "\x4C\x61\x74\x69\x6E", 260 },
+	{ "\x4C\x61\x74\x6E", 260 },
+	{ "\x4C\x65\x70\x63", 163 },
+	{ "\x4C\x65\x70\x63\x68\x61", 163 },
+	{ "\x4C\x69\x6D\x62", 290 },
+	{ "\x4C\x69\x6D\x62\x75", 290 },
+	{ "\x4C\x69\x6E\x61", 310 },
+	{ "\x4C\x69\x6E\x62", 292 },
+	{ "\x4C\x69\x6E\x65\x61\x72\x5F\x41", 310 },
+	{ "\x4C\x69\x6E\x65\x61\x72\x5F\x42", 292 },
+	{ "\x4C\x69\x73\x75", 178 },
+	{ "\x4C\x79\x63\x69", 169 },
+	{ "\x4C\x79\x63\x69\x61\x6E", 169 },
+	{ "\x4C\x79\x64\x69", 171 },
+	{ "\x4C\x79\x64\x69\x61\x6E", 171 },
+	{ "\x4D\x61\x68\x61\x6A\x61\x6E\x69", 311 },
+	{ "\x4D\x61\x68\x6A", 311 },
+	{ "\x4D\x61\x6B\x61", 239 },
+	{ "\x4D\x61\x6B\x61\x73\x61\x72", 239 },
+	{ "\x4D\x61\x6C\x61\x79\x61\x6C\x61\x6D", 274 },
+	{ "\x4D\x61\x6E\x64", 303 },
+	{ "\x4D\x61\x6E\x64\x61\x69\x63", 303 },
+	{ "\x4D\x61\x6E\x69", 312 },
+	{ "\x4D\x61\x6E\x69\x63\x68\x61\x65\x61\x6E", 312 },
+	{ "\x4D\x61\x72\x63", 229 },
+	{ "\x4D\x61\x72\x63\x68\x65\x6E", 229 },
+	{ "\x4D\x61\x73\x61\x72\x61\x6D\x5F\x47\x6F\x6E\x64\x69", 320 },
+	{ "\x4D\x65\x64\x65\x66\x61\x69\x64\x72\x69\x6E", 240 },
+	{ "\x4D\x65\x64\x66", 240 },
+	{ "\x4D\x65\x65\x74\x65\x69\x5F\x4D\x61\x79\x65\x6B", 181 },
+	{ "\x4D\x65\x6E\x64", 208 },
+	{ "\x4D\x65\x6E\x64\x65\x5F\x4B\x69\x6B\x61\x6B\x75\x69", 208 },
+	{ "\x4D\x65\x72\x63", 192 },
+	{ "\x4D\x65\x72\x6F", 193 },
+	{ "\x4D\x65\x72\x6F\x69\x74\x69\x63\x5F\x43\x75\x72\x73\x69\x76\x65", 192 },
+	{ "\x4D\x65\x72\x6F\x69\x74\x69\x63\x5F\x48\x69\x65\x72\x6F\x67\x6C\x79\x70\x68\x73", 193 },
+	{ "\x4D\x69\x61\x6F", 194 },
+	{ "\x4D\x6C\x79\x6D", 274 },
+	{ "\x4D\x6F\x64\x69", 313 },
+	{ "\x4D\x6F\x6E\x67", 279 },
+	{ "\x4D\x6F\x6E\x67\x6F\x6C\x69\x61\x6E", 279 },
+	{ "\x4D\x72\x6F", 210 },
+	{ "\x4D\x72\x6F\x6F", 210 },
+	{ "\x4D\x74\x65\x69", 181 },
+	{ "\x4D\x75\x6C\x74", 318 },
+	{ "\x4D\x75\x6C\x74\x61\x6E\x69", 318 },
+	{ "\x4D\x79\x61\x6E\x6D\x61\x72", 276 },
+	{ "\x4D\x79\x6D\x72", 276 },
+	{ "\x4E\x61\x62\x61\x74\x61\x65\x61\x6E", 212 },
+	{ "\x4E\x61\x67\x5F\x4D\x75\x6E\x64\x61\x72\x69", 258 },
+	{ "\x4E\x61\x67\x6D", 258 },
+	{ "\x4E\x61\x6E\x64", 325 },
+	{ "\x4E\x61\x6E\x64\x69\x6E\x61\x67\x61\x72\x69", 325 },
+	{ "\x4E\x61\x72\x62", 211 },
+	{ "\x4E\x62\x61\x74", 212 },
+	{ "\x4E\x65\x77\x5F\x54\x61\x69\x5F\x4C\x75\x65", 151 },
+	{ "\x4E\x65\x77\x61", 230 },
+	{ "\x4E\x6B\x6F", 299 },
+	{ "\x4E\x6B\x6F\x6F", 299 },
+	{ "\x4E\x73\x68\x75", 234 },
+	{ "\x4E\x75\x73\x68\x75", 234 },
+	{ "\x4E\x79\x69\x61\x6B\x65\x6E\x67\x5F\x50\x75\x61\x63\x68\x75\x65\x5F\x48\x6D\x6F\x6E\x67", 246 },
+	{ "\x4F\x67\x61\x6D", 124 },
+	{ "\x4F\x67\x68\x61\x6D", 124 },
+	{ "\x4F\x6C\x5F\x43\x68\x69\x6B\x69", 164 },
+	{ "\x4F\x6C\x63\x6B", 164 },
+	{ "\x4F\x6C\x64\x5F\x48\x75\x6E\x67\x61\x72\x69\x61\x6E", 225 },
+	{ "\x4F\x6C\x64\x5F\x49\x74\x61\x6C\x69\x63", 133 },
+	{ "\x4F\x6C\x64\x5F\x4E\x6F\x72\x74\x68\x5F\x41\x72\x61\x62\x69\x61\x6E", 211 },
+	{ "\x4F\x6C\x64\x5F\x50\x65\x72\x6D\x69\x63", 314 },
+	{ "\x4F\x6C\x64\x5F\x50\x65\x72\x73\x69\x61\x6E", 155 },
+	{ "\x4F\x6C\x64\x5F\x53\x6F\x67\x64\x69\x61\x6E", 243 },
+	{ "\x4F\x6C\x64\x5F\x53\x6F\x75\x74\x68\x5F\x41\x72\x61\x62\x69\x61\x6E", 183 },
+	{ "\x4F\x6C\x64\x5F\x54\x75\x72\x6B\x69\x63", 186 },
+	{ "\x4F\x6C\x64\x5F\x55\x79\x67\x68\x75\x72", 328 },
+	{ "\x4F\x72\x69\x79\x61", 270 },
+	{ "\x4F\x72\x6B\x68", 186 },
+	{ "\x4F\x72\x79\x61", 270 },
+	{ "\x4F\x73\x61\x67\x65", 231 },
+	{ "\x4F\x73\x67\x65", 231 },
+	{ "\x4F\x73\x6D\x61", 146 },
+	{ "\x4F\x73\x6D\x61\x6E\x79\x61", 146 },
+	{ "\x4F\x75\x67\x72", 328 },
+	{ "\x50\x61\x68\x61\x77\x68\x5F\x48\x6D\x6F\x6E\x67", 203 },
+	{ "\x50\x61\x6C\x6D", 213 },
+	{ "\x50\x61\x6C\x6D\x79\x72\x65\x6E\x65", 213 },
+	{ "\x50\x61\x75\x5F\x43\x69\x6E\x5F\x48\x61\x75", 214 },
+	{ "\x50\x61\x75\x63", 214 },
+	{ "\x50\x65\x72\x6D", 314 },
+	{ "\x50\x68\x61\x67", 298 },
+	{ "\x50\x68\x61\x67\x73\x5F\x50\x61", 298 },
+	{ "\x50\x68\x6C\x69", 185 },
+	{ "\x50\x68\x6C\x70", 315 },
+	{ "\x50\x68\x6E\x78", 159 },
+	{ "\x50\x68\x6F\x65\x6E\x69\x63\x69\x61\x6E", 159 },
+	{ "\x50\x6C\x72\x64", 194 },
+	{ "\x50\x72\x74\x69", 184 },
+	{ "\x50\x73\x61\x6C\x74\x65\x72\x5F\x50\x61\x68\x6C\x61\x76\x69", 315 },
+	{ "\x51\x61\x61\x63", 295 },
+	{ "\x51\x61\x61\x69", 285 },
+	{ "\x52\x65\x6A\x61\x6E\x67", 168 },
+	{ "\x52\x6A\x6E\x67", 168 },
+	{ "\x52\x6F\x68\x67", 323 },
+	{ "\x52\x75\x6E\x69\x63", 125 },
+	{ "\x52\x75\x6E\x72", 125 },
+	{ "\x53\x61\x6D\x61\x72\x69\x74\x61\x6E", 177 },
+	{ "\x53\x61\x6D\x72", 177 },
+	{ "\x53\x61\x72\x62", 183 },
+	{ "\x53\x61\x75\x72", 166 },
+	{ "\x53\x61\x75\x72\x61\x73\x68\x74\x72\x61", 166 },
+	{ "\x53\x67\x6E\x77", 226 },
+	{ "\x53\x68\x61\x72\x61\x64\x61", 305 },
+	{ "\x53\x68\x61\x76\x69\x61\x6E", 145 },
+	{ "\x53\x68\x61\x77", 145 },
+	{ "\x53\x68\x72\x64", 305 },
+	{ "\x53\x69\x64\x64", 217 },
+	{ "\x53\x69\x64\x64\x68\x61\x6D", 217 },
+	{ "\x53\x69\x67\x6E\x57\x72\x69\x74\x69\x6E\x67", 226 },
+	{ "\x53\x69\x6E\x64", 316 },
+	{ "\x53\x69\x6E\x68", 275 },
+	{ "\x53\x69\x6E\x68\x61\x6C\x61", 275 },
+	{ "\x53\x6F\x67\x64", 324 },
+	{ "\x53\x6F\x67\x64\x69\x61\x6E", 324 },
+	{ "\x53\x6F\x67\x6F", 243 },
+	{ "\x53\x6F\x72\x61", 196 },
+	{ "\x53\x6F\x72\x61\x5F\x53\x6F\x6D\x70\x65\x6E\x67", 196 },
+	{ "\x53\x6F\x79\x6F", 235 },
+	{ "\x53\x6F\x79\x6F\x6D\x62\x6F", 235 },
+	{ "\x53\x75\x6E\x64", 162 },
+	{ "\x53\x75\x6E\x64\x61\x6E\x65\x73\x65", 162 },
+	{ "\x53\x79\x6C\x6F", 297 },
+	{ "\x53\x79\x6C\x6F\x74\x69\x5F\x4E\x61\x67\x72\x69", 297 },
+	{ "\x53\x79\x72\x63", 264 },
+	{ "\x53\x79\x72\x69\x61\x63", 264 },
+	{ "\x54\x61\x67\x61\x6C\x6F\x67", 286 },
+	{ "\x54\x61\x67\x62", 289 },
+	{ "\x54\x61\x67\x62\x61\x6E\x77\x61", 289 },
+	{ "\x54\x61\x69\x5F\x4C\x65", 291 },
+	{ "\x54\x61\x69\x5F\x54\x68\x61\x6D", 173 },
+	{ "\x54\x61\x69\x5F\x56\x69\x65\x74", 174 },
+	{ "\x54\x61\x6B\x72", 306 },
+	{ "\x54\x61\x6B\x72\x69", 306 },
+	{ "\x54\x61\x6C\x65", 291 },
+	{ "\x54\x61\x6C\x75", 151 },
+	{ "\x54\x61\x6D\x69\x6C", 271 },
+	{ "\x54\x61\x6D\x6C", 271 },
+	{ "\x54\x61\x6E\x67", 232 },
+	{ "\x54\x61\x6E\x67\x73\x61", 254 },
+	{ "\x54\x61\x6E\x67\x75\x74", 232 },
+	{ "\x54\x61\x76\x74", 174 },
+	{ "\x54\x65\x6C\x75", 272 },
+	{ "\x54\x65\x6C\x75\x67\x75", 272 },
+	{ "\x54\x66\x6E\x67", 153 },
+	{ "\x54\x67\x6C\x67", 286 },
+	{ "\x54\x68\x61\x61", 265 },
+	{ "\x54\x68\x61\x61\x6E\x61", 265 },
+	{ "\x54\x68\x61\x69", 115 },
+	{ "\x54\x69\x62\x65\x74\x61\x6E", 117 },
+	{ "\x54\x69\x62\x74", 117 },
+	{ "\x54\x69\x66\x69\x6E\x61\x67\x68", 153 },
+	{ "\x54\x69\x72\x68", 317 },
+	{ "\x54\x69\x72\x68\x75\x74\x61", 317 },
+	{ "\x54\x6E\x73\x61", 254 },
+	{ "\x54\x6F\x74\x6F", 255 },
+	{ "\x55\x67\x61\x72", 144 },
+	{ "\x55\x67\x61\x72\x69\x74\x69\x63", 144 },
+	{ "\x56\x61\x69", 165 },
+	{ "\x56\x61\x69\x69", 165 },
+	{ "\x56\x69\x74\x68", 256 },
+	{ "\x56\x69\x74\x68\x6B\x75\x71\x69", 256 },
+	{ "\x57\x61\x6E\x63\x68\x6F", 247 },
+	{ "\x57\x61\x72\x61", 220 },
+	{ "\x57\x61\x72\x61\x6E\x67\x5F\x43\x69\x74\x69", 220 },
+	{ "\x57\x63\x68\x6F", 247 },
+	{ "\x58\x70\x65\x6F", 155 },
+	{ "\x58\x73\x75\x78", 158 },
+	{ "\x59\x65\x7A\x69", 326 },
+	{ "\x59\x65\x7A\x69\x64\x69", 326 },
+	{ "\x59\x69", 284 },
+	{ "\x59\x69\x69\x69", 284 },
+	{ "\x5A\x61\x6E\x61\x62\x61\x7A\x61\x72\x5F\x53\x71\x75\x61\x72\x65", 236 },
+	{ "\x5A\x61\x6E\x62", 236 },
+	{ "\x5A\x69\x6E\x68", 285 },
+	{ "\x5A\x79\x79\x79", 259 }
 };
 
-template <typename T3, typename T4, typename T5, typename T6>
-const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
+template <typename T3, typename T4, typename T5>
+const T4 unicode_property_data<T3, T4, T5>::positiontable[] =
 {
-	//  #1 (0+734): gc=Other:C
+	{ 0, 0 },	//  #0 unknown
+	{ 86, 105 },	//  #1 binary
+	{ 6, 80 },	//  #2 General_Category:gc
+	{ 191, 320 },	//  #3 Script:sc
+	{ 511, 320 },	//  #4 Script_Extensions:scx
+	{ 0, 734 },	//  #5 gc=Other:C
+	{ 0, 2 },	//  #6 gc=Control:Cc:cntrl
+	{ 2, 21 },	//  #7 gc=Format:Cf
+	{ 23, 707 },	//  #8 gc=Unassigned:Cn
+	{ 730, 3 },	//  #9 gc=Private_Use:Co
+	{ 733, 1 },	//  #10 gc=Surrogate:Cs
+	{ 734, 1895 },	//  #11 gc=Letter:L
+	{ 734, 1314 },	//  #12 gc=Cased_Letter:LC
+	{ 734, 658 },	//  #13 gc=Lowercase_Letter:Ll
+	{ 1392, 10 },	//  #14 gc=Titlecase_Letter:Lt
+	{ 1402, 646 },	//  #15 gc=Uppercase_Letter:Lu
+	{ 2048, 71 },	//  #16 gc=Modifier_Letter:Lm
+	{ 2119, 510 },	//  #17 gc=Other_Letter:Lo
+	{ 2629, 533 },	//  #18 gc=Mark:M:Combining_Mark
+	{ 2629, 182 },	//  #19 gc=Spacing_Mark:Mc
+	{ 2811, 5 },	//  #20 gc=Enclosing_Mark:Me
+	{ 2816, 346 },	//  #21 gc=Nonspacing_Mark:Mn
+	{ 3162, 148 },	//  #22 gc=Number:N
+	{ 3162, 64 },	//  #23 gc=Decimal_Number:Nd:digit
+	{ 3226, 12 },	//  #24 gc=Letter_Number:Nl
+	{ 3238, 72 },	//  #25 gc=Other_Number:No
+	{ 3310, 388 },	//  #26 gc=Punctuation:P:punct
+	{ 3310, 6 },	//  #27 gc=Connector_Punctuation:Pc
+	{ 3316, 19 },	//  #28 gc=Dash_Punctuation:Pd
+	{ 3335, 76 },	//  #29 gc=Close_Punctuation:Pe
+	{ 3411, 10 },	//  #30 gc=Final_Punctuation:Pf
+	{ 3421, 11 },	//  #31 gc=Initial_Punctuation:Pi
+	{ 3432, 187 },	//  #32 gc=Other_Punctuation:Po
+	{ 3619, 79 },	//  #33 gc=Open_Punctuation:Ps
+	{ 3698, 300 },	//  #34 gc=Symbol:S
+	{ 3698, 21 },	//  #35 gc=Currency_Symbol:Sc
+	{ 3719, 31 },	//  #36 gc=Modifier_Symbol:Sk
+	{ 3750, 64 },	//  #37 gc=Math_Symbol:Sm
+	{ 3814, 184 },	//  #38 gc=Other_Symbol:So
+	{ 3998, 9 },	//  #39 gc=Separator:Z
+	{ 3998, 1 },	//  #40 gc=Line_Separator:Zl
+	{ 3999, 1 },	//  #41 gc=Paragraph_Separator:Zp
+	{ 4000, 7 },	//  #42 gc=Space_Separator:Zs
+	{ 4007, 1 },	//  #43 bp=ASCII
+	{ 4008, 3 },	//  #44 bp=ASCII_Hex_Digit:AHex
+	{ 4011, 732 },	//  #45 bp=Alphabetic:Alpha
+	{ 4743, 1 },	//  #46 bp=Any
+	{ 4744, 0 },	//  #47 bp=Assigned
+	{ 4744, 4 },	//  #48 bp=Bidi_Control:Bidi_C
+	{ 4748, 114 },	//  #49 bp=Bidi_Mirrored:Bidi_M
+	{ 4862, 437 },	//  #50 bp=Case_Ignorable:CI
+	{ 5299, 157 },	//  #51 bp=Cased
+	{ 5456, 622 },	//  #52 bp=Changes_When_Casefolded:CWCF
+	{ 6078, 131 },	//  #53 bp=Changes_When_Casemapped:CWCM
+	{ 6209, 609 },	//  #54 bp=Changes_When_Lowercased:CWL
+	{ 6818, 839 },	//  #55 bp=Changes_When_NFKC_Casefolded:CWKCF
+	{ 7657, 626 },	//  #56 bp=Changes_When_Titlecased:CWT
+	{ 8283, 627 },	//  #57 bp=Changes_When_Uppercased:CWU
+	{ 8910, 23 },	//  #58 bp=Dash
+	{ 8933, 17 },	//  #59 bp=Default_Ignorable_Code_Point:DI
+	{ 8950, 8 },	//  #60 bp=Deprecated:Dep
+	{ 8958, 195 },	//  #61 bp=Diacritic:Dia
+	{ 9153, 151 },	//  #62 bp=Emoji
+	{ 9304, 10 },	//  #63 bp=Emoji_Component:EComp
+	{ 9314, 1 },	//  #64 bp=Emoji_Modifier:EMod
+	{ 9315, 40 },	//  #65 bp=Emoji_Modifier_Base:EBase
+	{ 9355, 81 },	//  #66 bp=Emoji_Presentation:EPres
+	{ 9436, 78 },	//  #67 bp=Extended_Pictographic:ExtPict
+	{ 9514, 33 },	//  #68 bp=Extender:Ext
+	{ 9547, 875 },	//  #69 bp=Grapheme_Base:Gr_Base
+	{ 10422, 363 },	//  #70 bp=Grapheme_Extend:Gr_Ext
+	{ 10785, 6 },	//  #71 bp=Hex_Digit:Hex
+	{ 10791, 2 },	//  #72 bp=IDS_Binary_Operator:IDSB
+	{ 10793, 1 },	//  #73 bp=IDS_Trinary_Operator:IDST
+	{ 10794, 768 },	//  #74 bp=ID_Continue:IDC
+	{ 11562, 659 },	//  #75 bp=ID_Start:IDS
+	{ 12221, 20 },	//  #76 bp=Ideographic:Ideo
+	{ 12241, 1 },	//  #77 bp=Join_Control:Join_C
+	{ 12242, 7 },	//  #78 bp=Logical_Order_Exception:LOE
+	{ 12249, 671 },	//  #79 bp=Lowercase:Lower
+	{ 12920, 138 },	//  #80 bp=Math
+	{ 13058, 18 },	//  #81 bp=Noncharacter_Code_Point:NChar
+	{ 13076, 28 },	//  #82 bp=Pattern_Syntax:Pat_Syn
+	{ 13104, 5 },	//  #83 bp=Pattern_White_Space:Pat_WS
+	{ 13109, 13 },	//  #84 bp=Quotation_Mark:QMark
+	{ 13122, 3 },	//  #85 bp=Radical
+	{ 13125, 1 },	//  #86 bp=Regional_Indicator:RI
+	{ 13126, 80 },	//  #87 bp=Sentence_Terminal:STerm
+	{ 13206, 34 },	//  #88 bp=Soft_Dotted:SD
+	{ 13240, 108 },	//  #89 bp=Terminal_Punctuation:Term
+	{ 13348, 16 },	//  #90 bp=Unified_Ideograph:UIdeo
+	{ 13364, 651 },	//  #91 bp=Uppercase:Upper
+	{ 14015, 4 },	//  #92 bp=Variation_Selector:VS
+	{ 14019, 10 },	//  #93 bp=White_Space:space
+	{ 14029, 775 },	//  #94 bp=XID_Continue:XIDC
+	{ 14804, 666 },	//  #95 bp=XID_Start:XIDS
+	{ 15470, 173 },	//  #96 sc=Common:Zyyy
+	{ 15643, 39 },	//  #97 sc=Latin:Latn
+	{ 15682, 36 },	//  #98 sc=Greek:Grek
+	{ 15718, 10 },	//  #99 sc=Cyrillic:Cyrl
+	{ 15728, 4 },	//  #100 sc=Armenian:Armn scx=Armenian:Armn
+	{ 15732, 9 },	//  #101 sc=Hebrew:Hebr scx=Hebrew:Hebr
+	{ 15741, 58 },	//  #102 sc=Arabic:Arab
+	{ 15799, 4 },	//  #103 sc=Syriac:Syrc
+	{ 15803, 1 },	//  #104 sc=Thaana:Thaa
+	{ 15804, 5 },	//  #105 sc=Devanagari:Deva
+	{ 15809, 14 },	//  #106 sc=Bengali:Beng
+	{ 15823, 16 },	//  #107 sc=Gurmukhi:Guru
+	{ 15839, 14 },	//  #108 sc=Gujarati:Gujr
+	{ 15853, 14 },	//  #109 sc=Oriya:Orya
+	{ 15867, 18 },	//  #110 sc=Tamil:Taml
+	{ 15885, 13 },	//  #111 sc=Telugu:Telu
+	{ 15898, 13 },	//  #112 sc=Kannada:Knda
+	{ 15911, 7 },	//  #113 sc=Malayalam:Mlym
+	{ 15918, 13 },	//  #114 sc=Sinhala:Sinh
+	{ 15931, 2 },	//  #115 sc=Thai:Thai scx=Thai:Thai
+	{ 15933, 11 },	//  #116 sc=Lao:Laoo scx=Lao:Laoo
+	{ 15944, 7 },	//  #117 sc=Tibetan:Tibt scx=Tibetan:Tibt
+	{ 15951, 3 },	//  #118 sc=Myanmar:Mymr
+	{ 15954, 10 },	//  #119 sc=Georgian:Geor
+	{ 15964, 14 },	//  #120 sc=Hangul:Hang
+	{ 15978, 36 },	//  #121 sc=Ethiopic:Ethi scx=Ethiopic:Ethi
+	{ 16014, 3 },	//  #122 sc=Cherokee:Cher scx=Cherokee:Cher
+	{ 16017, 3 },	//  #123 sc=Canadian_Aboriginal:Cans scx=Canadian_Aboriginal:Cans
+	{ 16020, 1 },	//  #124 sc=Ogham:Ogam scx=Ogham:Ogam
+	{ 16021, 2 },	//  #125 sc=Runic:Runr scx=Runic:Runr
+	{ 16023, 4 },	//  #126 sc=Khmer:Khmr scx=Khmer:Khmr
+	{ 16027, 6 },	//  #127 sc=Mongolian:Mong
+	{ 16033, 6 },	//  #128 sc=Hiragana:Hira
+	{ 16039, 14 },	//  #129 sc=Katakana:Kana
+	{ 16053, 3 },	//  #130 sc=Bopomofo:Bopo
+	{ 16056, 21 },	//  #131 sc=Han:Hani
+	{ 16077, 2 },	//  #132 sc=Yi:Yiii
+	{ 16079, 2 },	//  #133 sc=Old_Italic:Ital scx=Old_Italic:Ital
+	{ 16081, 1 },	//  #134 sc=Gothic:Goth scx=Gothic:Goth
+	{ 16082, 1 },	//  #135 sc=Deseret:Dsrt scx=Deseret:Dsrt
+	{ 16083, 29 },	//  #136 sc=Inherited:Zinh:Qaai
+	{ 16112, 2 },	//  #137 sc=Tagalog:Tglg
+	{ 16114, 1 },	//  #138 sc=Hanunoo:Hano
+	{ 16115, 1 },	//  #139 sc=Buhid:Buhd
+	{ 16116, 3 },	//  #140 sc=Tagbanwa:Tagb
+	{ 16119, 5 },	//  #141 sc=Limbu:Limb
+	{ 16124, 2 },	//  #142 sc=Tai_Le:Tale
+	{ 16126, 7 },	//  #143 sc=Linear_B:Linb
+	{ 16133, 2 },	//  #144 sc=Ugaritic:Ugar scx=Ugaritic:Ugar
+	{ 16135, 1 },	//  #145 sc=Shavian:Shaw scx=Shavian:Shaw
+	{ 16136, 2 },	//  #146 sc=Osmanya:Osma scx=Osmanya:Osma
+	{ 16138, 6 },	//  #147 sc=Cypriot:Cprt
+	{ 16144, 1 },	//  #148 sc=Braille:Brai scx=Braille:Brai
+	{ 16145, 2 },	//  #149 sc=Buginese:Bugi
+	{ 16147, 3 },	//  #150 sc=Coptic:Copt:Qaac
+	{ 16150, 4 },	//  #151 sc=New_Tai_Lue:Talu scx=New_Tai_Lue:Talu
+	{ 16154, 6 },	//  #152 sc=Glagolitic:Glag
+	{ 16160, 3 },	//  #153 sc=Tifinagh:Tfng scx=Tifinagh:Tfng
+	{ 16163, 1 },	//  #154 sc=Syloti_Nagri:Sylo
+	{ 16164, 2 },	//  #155 sc=Old_Persian:Xpeo scx=Old_Persian:Xpeo
+	{ 16166, 8 },	//  #156 sc=Kharoshthi:Khar scx=Kharoshthi:Khar
+	{ 16174, 2 },	//  #157 sc=Balinese:Bali scx=Balinese:Bali
+	{ 16176, 4 },	//  #158 sc=Cuneiform:Xsux scx=Cuneiform:Xsux
+	{ 16180, 2 },	//  #159 sc=Phoenician:Phnx scx=Phoenician:Phnx
+	{ 16182, 1 },	//  #160 sc=Phags_Pa:Phag
+	{ 16183, 2 },	//  #161 sc=Nko:Nkoo
+	{ 16185, 2 },	//  #162 sc=Sundanese:Sund scx=Sundanese:Sund
+	{ 16187, 3 },	//  #163 sc=Lepcha:Lepc scx=Lepcha:Lepc
+	{ 16190, 1 },	//  #164 sc=Ol_Chiki:Olck scx=Ol_Chiki:Olck
+	{ 16191, 1 },	//  #165 sc=Vai:Vaii scx=Vai:Vaii
+	{ 16192, 2 },	//  #166 sc=Saurashtra:Saur scx=Saurashtra:Saur
+	{ 16194, 2 },	//  #167 sc=Kayah_Li:Kali
+	{ 16196, 2 },	//  #168 sc=Rejang:Rjng scx=Rejang:Rjng
+	{ 16198, 1 },	//  #169 sc=Lycian:Lyci scx=Lycian:Lyci
+	{ 16199, 1 },	//  #170 sc=Carian:Cari scx=Carian:Cari
+	{ 16200, 2 },	//  #171 sc=Lydian:Lydi scx=Lydian:Lydi
+	{ 16202, 4 },	//  #172 sc=Cham:Cham scx=Cham:Cham
+	{ 16206, 5 },	//  #173 sc=Tai_Tham:Lana scx=Tai_Tham:Lana
+	{ 16211, 2 },	//  #174 sc=Tai_Viet:Tavt scx=Tai_Viet:Tavt
+	{ 16213, 2 },	//  #175 sc=Avestan:Avst scx=Avestan:Avst
+	{ 16215, 1 },	//  #176 sc=Egyptian_Hieroglyphs:Egyp scx=Egyptian_Hieroglyphs:Egyp
+	{ 16216, 2 },	//  #177 sc=Samaritan:Samr scx=Samaritan:Samr
+	{ 16218, 2 },	//  #178 sc=Lisu:Lisu scx=Lisu:Lisu
+	{ 16220, 2 },	//  #179 sc=Bamum:Bamu scx=Bamum:Bamu
+	{ 16222, 3 },	//  #180 sc=Javanese:Java
+	{ 16225, 3 },	//  #181 sc=Meetei_Mayek:Mtei scx=Meetei_Mayek:Mtei
+	{ 16228, 2 },	//  #182 sc=Imperial_Aramaic:Armi scx=Imperial_Aramaic:Armi
+	{ 16230, 1 },	//  #183 sc=Old_South_Arabian:Sarb scx=Old_South_Arabian:Sarb
+	{ 16231, 2 },	//  #184 sc=Inscriptional_Parthian:Prti scx=Inscriptional_Parthian:Prti
+	{ 16233, 2 },	//  #185 sc=Inscriptional_Pahlavi:Phli scx=Inscriptional_Pahlavi:Phli
+	{ 16235, 1 },	//  #186 sc=Old_Turkic:Orkh scx=Old_Turkic:Orkh
+	{ 16236, 2 },	//  #187 sc=Kaithi:Kthi
+	{ 16238, 2 },	//  #188 sc=Batak:Batk scx=Batak:Batk
+	{ 16240, 3 },	//  #189 sc=Brahmi:Brah scx=Brahmi:Brah
+	{ 16243, 2 },	//  #190 sc=Mandaic:Mand
+	{ 16245, 2 },	//  #191 sc=Chakma:Cakm
+	{ 16247, 3 },	//  #192 sc=Meroitic_Cursive:Merc scx=Meroitic_Cursive:Merc
+	{ 16250, 1 },	//  #193 sc=Meroitic_Hieroglyphs:Mero scx=Meroitic_Hieroglyphs:Mero
+	{ 16251, 3 },	//  #194 sc=Miao:Plrd scx=Miao:Plrd
+	{ 16254, 1 },	//  #195 sc=Sharada:Shrd
+	{ 16255, 2 },	//  #196 sc=Sora_Sompeng:Sora scx=Sora_Sompeng:Sora
+	{ 16257, 2 },	//  #197 sc=Takri:Takr
+	{ 16259, 2 },	//  #198 sc=Caucasian_Albanian:Aghb scx=Caucasian_Albanian:Aghb
+	{ 16261, 2 },	//  #199 sc=Bassa_Vah:Bass scx=Bassa_Vah:Bass
+	{ 16263, 5 },	//  #200 sc=Duployan:Dupl
+	{ 16268, 1 },	//  #201 sc=Elbasan:Elba scx=Elbasan:Elba
+	{ 16269, 15 },	//  #202 sc=Grantha:Gran
+	{ 16284, 5 },	//  #203 sc=Pahawh_Hmong:Hmng scx=Pahawh_Hmong:Hmng
+	{ 16289, 2 },	//  #204 sc=Khojki:Khoj
+	{ 16291, 3 },	//  #205 sc=Linear_A:Lina
+	{ 16294, 1 },	//  #206 sc=Mahajani:Mahj
+	{ 16295, 2 },	//  #207 sc=Manichaean:Mani
+	{ 16297, 2 },	//  #208 sc=Mende_Kikakui:Mend scx=Mende_Kikakui:Mend
+	{ 16299, 2 },	//  #209 sc=Modi:Modi
+	{ 16301, 3 },	//  #210 sc=Mro:Mroo scx=Mro:Mroo
+	{ 16304, 1 },	//  #211 sc=Old_North_Arabian:Narb scx=Old_North_Arabian:Narb
+	{ 16305, 2 },	//  #212 sc=Nabataean:Nbat scx=Nabataean:Nbat
+	{ 16307, 1 },	//  #213 sc=Palmyrene:Palm scx=Palmyrene:Palm
+	{ 16308, 1 },	//  #214 sc=Pau_Cin_Hau:Pauc scx=Pau_Cin_Hau:Pauc
+	{ 16309, 1 },	//  #215 sc=Old_Permic:Perm
+	{ 16310, 3 },	//  #216 sc=Psalter_Pahlavi:Phlp
+	{ 16313, 2 },	//  #217 sc=Siddham:Sidd scx=Siddham:Sidd
+	{ 16315, 2 },	//  #218 sc=Khudawadi:Sind
+	{ 16317, 2 },	//  #219 sc=Tirhuta:Tirh
+	{ 16319, 2 },	//  #220 sc=Warang_Citi:Wara scx=Warang_Citi:Wara
+	{ 16321, 3 },	//  #221 sc=Ahom:Ahom scx=Ahom:Ahom
+	{ 16324, 1 },	//  #222 sc=Anatolian_Hieroglyphs:Hluw scx=Anatolian_Hieroglyphs:Hluw
+	{ 16325, 3 },	//  #223 sc=Hatran:Hatr scx=Hatran:Hatr
+	{ 16328, 5 },	//  #224 sc=Multani:Mult
+	{ 16333, 3 },	//  #225 sc=Old_Hungarian:Hung scx=Old_Hungarian:Hung
+	{ 16336, 3 },	//  #226 sc=SignWriting:Sgnw scx=SignWriting:Sgnw
+	{ 16339, 3 },	//  #227 sc=Adlam:Adlm
+	{ 16342, 4 },	//  #228 sc=Bhaiksuki:Bhks scx=Bhaiksuki:Bhks
+	{ 16346, 3 },	//  #229 sc=Marchen:Marc scx=Marchen:Marc
+	{ 16349, 2 },	//  #230 sc=Newa:Newa scx=Newa:Newa
+	{ 16351, 2 },	//  #231 sc=Osage:Osge scx=Osage:Osge
+	{ 16353, 4 },	//  #232 sc=Tangut:Tang scx=Tangut:Tang
+	{ 16357, 7 },	//  #233 sc=Masaram_Gondi:Gonm
+	{ 16364, 2 },	//  #234 sc=Nushu:Nshu scx=Nushu:Nshu
+	{ 16366, 1 },	//  #235 sc=Soyombo:Soyo scx=Soyombo:Soyo
+	{ 16367, 1 },	//  #236 sc=Zanabazar_Square:Zanb scx=Zanabazar_Square:Zanb
+	{ 16368, 1 },	//  #237 sc=Dogra:Dogr
+	{ 16369, 6 },	//  #238 sc=Gunjala_Gondi:Gong
+	{ 16375, 1 },	//  #239 sc=Makasar:Maka scx=Makasar:Maka
+	{ 16376, 1 },	//  #240 sc=Medefaidrin:Medf scx=Medefaidrin:Medf
+	{ 16377, 2 },	//  #241 sc=Hanifi_Rohingya:Rohg
+	{ 16379, 1 },	//  #242 sc=Sogdian:Sogd
+	{ 16380, 1 },	//  #243 sc=Old_Sogdian:Sogo scx=Old_Sogdian:Sogo
+	{ 16381, 1 },	//  #244 sc=Elymaic:Elym scx=Elymaic:Elym
+	{ 16382, 3 },	//  #245 sc=Nandinagari:Nand
+	{ 16385, 4 },	//  #246 sc=Nyiakeng_Puachue_Hmong:Hmnp scx=Nyiakeng_Puachue_Hmong:Hmnp
+	{ 16389, 2 },	//  #247 sc=Wancho:Wcho scx=Wancho:Wcho
+	{ 16391, 1 },	//  #248 sc=Chorasmian:Chrs scx=Chorasmian:Chrs
+	{ 16392, 8 },	//  #249 sc=Dives_Akuru:Diak scx=Dives_Akuru:Diak
+	{ 16400, 2 },	//  #250 sc=Khitan_Small_Script:Kits scx=Khitan_Small_Script:Kits
+	{ 16402, 3 },	//  #251 sc=Yezidi:Yezi
+	{ 16405, 1 },	//  #252 sc=Cypro_Minoan:Cpmn
+	{ 16406, 1 },	//  #253 sc=Old_Uyghur:Ougr
+	{ 16407, 2 },	//  #254 sc=Tangsa:Tnsa scx=Tangsa:Tnsa
+	{ 16409, 1 },	//  #255 sc=Toto:Toto scx=Toto:Toto
+	{ 16410, 8 },	//  #256 sc=Vithkuqi:Vith scx=Vithkuqi:Vith
+	{ 16418, 3 },	//  #257 sc=Kawi:Kawi scx=Kawi:Kawi
+	{ 16421, 1 },	//  #258 sc=Nag_Mundari:Nagm scx=Nag_Mundari:Nagm
+	{ 16422, 147 },	//  #259 scx=Common:Zyyy
+	{ 16569, 47 },	//  #260 scx=Latin:Latn
+	{ 16616, 38 },	//  #261 scx=Greek:Grek
+	{ 16654, 11 },	//  #262 scx=Cyrillic:Cyrl
+	{ 16665, 52 },	//  #263 scx=Arabic:Arab
+	{ 16717, 12 },	//  #264 scx=Syriac:Syrc
+	{ 16729, 7 },	//  #265 scx=Thaana:Thaa
+	{ 16736, 8 },	//  #266 scx=Devanagari:Deva
+	{ 16744, 26 },	//  #267 scx=Bengali:Beng
+	{ 16770, 19 },	//  #268 scx=Gurmukhi:Guru
+	{ 16789, 17 },	//  #269 scx=Gujarati:Gujr
+	{ 16806, 18 },	//  #270 scx=Oriya:Orya
+	{ 16824, 25 },	//  #271 scx=Tamil:Taml
+	{ 16849, 17 },	//  #272 scx=Telugu:Telu
+	{ 16866, 21 },	//  #273 scx=Kannada:Knda
+	{ 16887, 11 },	//  #274 scx=Malayalam:Mlym
+	{ 16898, 14 },	//  #275 scx=Sinhala:Sinh
+	{ 16912, 4 },	//  #276 scx=Myanmar:Mymr
+	{ 16916, 9 },	//  #277 scx=Georgian:Geor
+	{ 16925, 21 },	//  #278 scx=Hangul:Hang
+	{ 16946, 5 },	//  #279 scx=Mongolian:Mong
+	{ 16951, 17 },	//  #280 scx=Hiragana:Hira
+	{ 16968, 20 },	//  #281 scx=Katakana:Kana
+	{ 16988, 12 },	//  #282 scx=Bopomofo:Bopo
+	{ 17000, 38 },	//  #283 scx=Han:Hani
+	{ 17038, 7 },	//  #284 scx=Yi:Yiii
+	{ 17045, 20 },	//  #285 scx=Inherited:Zinh:Qaai
+	{ 17065, 3 },	//  #286 scx=Tagalog:Tglg
+	{ 17068, 1 },	//  #287 scx=Hanunoo:Hano
+	{ 17069, 2 },	//  #288 scx=Buhid:Buhd
+	{ 17071, 4 },	//  #289 scx=Tagbanwa:Tagb
+	{ 17075, 6 },	//  #290 scx=Limbu:Limb
+	{ 17081, 3 },	//  #291 scx=Tai_Le:Tale
+	{ 17084, 10 },	//  #292 scx=Linear_B:Linb
+	{ 17094, 9 },	//  #293 scx=Cypriot:Cprt
+	{ 17103, 3 },	//  #294 scx=Buginese:Bugi
+	{ 17106, 4 },	//  #295 scx=Coptic:Copt:Qaac
+	{ 17110, 10 },	//  #296 scx=Glagolitic:Glag
+	{ 17120, 3 },	//  #297 scx=Syloti_Nagri:Sylo
+	{ 17123, 3 },	//  #298 scx=Phags_Pa:Phag
+	{ 17126, 6 },	//  #299 scx=Nko:Nkoo
+	{ 17132, 1 },	//  #300 scx=Kayah_Li:Kali
+	{ 17133, 3 },	//  #301 scx=Javanese:Java
+	{ 17136, 4 },	//  #302 scx=Kaithi:Kthi
+	{ 17140, 3 },	//  #303 scx=Mandaic:Mand
+	{ 17143, 4 },	//  #304 scx=Chakma:Cakm
+	{ 17147, 6 },	//  #305 scx=Sharada:Shrd
+	{ 17153, 4 },	//  #306 scx=Takri:Takr
+	{ 17157, 5 },	//  #307 scx=Duployan:Dupl
+	{ 17162, 25 },	//  #308 scx=Grantha:Gran
+	{ 17187, 4 },	//  #309 scx=Khojki:Khoj
+	{ 17191, 4 },	//  #310 scx=Linear_A:Lina
+	{ 17195, 3 },	//  #311 scx=Mahajani:Mahj
+	{ 17198, 3 },	//  #312 scx=Manichaean:Mani
+	{ 17201, 3 },	//  #313 scx=Modi:Modi
+	{ 17204, 2 },	//  #314 scx=Old_Permic:Perm
+	{ 17206, 4 },	//  #315 scx=Psalter_Pahlavi:Phlp
+	{ 17210, 4 },	//  #316 scx=Khudawadi:Sind
+	{ 17214, 6 },	//  #317 scx=Tirhuta:Tirh
+	{ 17220, 6 },	//  #318 scx=Multani:Mult
+	{ 17226, 5 },	//  #319 scx=Adlam:Adlm
+	{ 17231, 8 },	//  #320 scx=Masaram_Gondi:Gonm
+	{ 17239, 3 },	//  #321 scx=Dogra:Dogr
+	{ 17242, 7 },	//  #322 scx=Gunjala_Gondi:Gong
+	{ 17249, 7 },	//  #323 scx=Hanifi_Rohingya:Rohg
+	{ 17256, 2 },	//  #324 scx=Sogdian:Sogd
+	{ 17258, 9 },	//  #325 scx=Nandinagari:Nand
+	{ 17267, 7 },	//  #326 scx=Yezidi:Yezi
+	{ 17274, 2 },	//  #327 scx=Cypro_Minoan:Cpmn
+	{ 17276, 3 },	//  #328 scx=Old_Uyghur:Ougr
+	{ 17279, 6318 },	//  #329 bp=RGI_Emoji
+	{ 17279, 669 },	//  #330 bp=Basic_Emoji
+	{ 17948, 24 },	//  #331 bp=Emoji_Keycap_Sequence
+	{ 17972, 983 },	//  #332 bp=RGI_Emoji_Modifier_Sequence
+	{ 18955, 387 },	//  #333 bp=RGI_Emoji_Flag_Sequence
+	{ 19342, 12 },	//  #334 bp=RGI_Emoji_Tag_Sequence
+	{ 19354, 4243 }	//  #335 bp=RGI_Emoji_ZWJ_Sequence
+};
+
+template <typename T3, typename T4, typename T5>
+const T5 unicode_property_data<T3, T4, T5>::rangetable[] =
+{
+	//  #5 (0+734): gc=Other:C
 	//  Cc:2 + Cf:21 + Cn:707 + Co:3 + Cs:1
-	//  #2 (0+2): gc=Control:Cc:cntrl
+	//  #6 (0+2): gc=Control:Cc:cntrl
 	0x0000, 0x001F, 0x007F, 0x009F,
-	//  #3 (2+21): gc=Format:Cf
+	//  #7 (2+21): gc=Format:Cf
 	0x00AD, 0x00AD, 0x0600, 0x0605, 0x061C, 0x061C, 0x06DD, 0x06DD,
 	0x070F, 0x070F, 0x0890, 0x0891, 0x08E2, 0x08E2, 0x180E, 0x180E,
 	0x200B, 0x200F, 0x202A, 0x202E, 0x2060, 0x2064, 0x2066, 0x206F,
 	0xFEFF, 0xFEFF, 0xFFF9, 0xFFFB, 0x110BD, 0x110BD, 0x110CD, 0x110CD,
 	0x13430, 0x1343F, 0x1BCA0, 0x1BCA3, 0x1D173, 0x1D17A, 0xE0001, 0xE0001,
 	0xE0020, 0xE007F,
-	//  #4 (23+707): gc=Unassigned:Cn
+	//  #8 (23+707): gc=Unassigned:Cn
 	0x0378, 0x0379, 0x0380, 0x0383, 0x038B, 0x038B, 0x038D, 0x038D,
 	0x03A2, 0x03A2, 0x0530, 0x0530, 0x0557, 0x0558, 0x058B, 0x058C,
 	0x0590, 0x0590, 0x05C8, 0x05CF, 0x05EB, 0x05EE, 0x05F5, 0x05FF,
@@ -5065,15 +6223,15 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x2B81E, 0x2B81F, 0x2CEA2, 0x2CEAF, 0x2EBE1, 0x2F7FF, 0x2FA1E, 0x2FFFF,
 	0x3134B, 0x3134F, 0x323B0, 0xE0000, 0xE0002, 0xE001F, 0xE0080, 0xE00FF,
 	0xE01F0, 0xEFFFF, 0xFFFFE, 0xFFFFF, 0x10FFFE, 0x10FFFF,
-	//  #5 (730+3): gc=Private_Use:Co
+	//  #9 (730+3): gc=Private_Use:Co
 	0xE000, 0xF8FF, 0xF0000, 0xFFFFD, 0x100000, 0x10FFFD,
-	//  #6 (733+1): gc=Surrogate:Cs
+	//  #10 (733+1): gc=Surrogate:Cs
 	0xD800, 0xDFFF,
-	//  #7 (734+1895): gc=Letter:L
+	//  #11 (734+1895): gc=Letter:L
 	//  Ll:658 + Lt:10 + Lu:646 + Lm:71 + Lo:510
-	//  #8 (734+1314): gc=Cased_Letter:LC
+	//  #12 (734+1314): gc=Cased_Letter:LC
 	//  Ll:658 + Lt:10 + Lu:646
-	//  #9 (734+658): gc=Lowercase_Letter:Ll
+	//  #13 (734+658): gc=Lowercase_Letter:Ll
 	0x0061, 0x007A, 0x00B5, 0x00B5, 0x00DF, 0x00F6, 0x00F8, 0x00FF,
 	0x0101, 0x0101, 0x0103, 0x0103, 0x0105, 0x0105, 0x0107, 0x0107,
 	0x0109, 0x0109, 0x010B, 0x010B, 0x010D, 0x010D, 0x010F, 0x010F,
@@ -5239,11 +6397,11 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1D750, 0x1D755, 0x1D770, 0x1D788, 0x1D78A, 0x1D78F, 0x1D7AA, 0x1D7C2,
 	0x1D7C4, 0x1D7C9, 0x1D7CB, 0x1D7CB, 0x1DF00, 0x1DF09, 0x1DF0B, 0x1DF1E,
 	0x1DF25, 0x1DF2A, 0x1E922, 0x1E943,
-	//  #10 (1392+10): gc=Titlecase_Letter:Lt
+	//  #14 (1392+10): gc=Titlecase_Letter:Lt
 	0x01C5, 0x01C5, 0x01C8, 0x01C8, 0x01CB, 0x01CB, 0x01F2, 0x01F2,
 	0x1F88, 0x1F8F, 0x1F98, 0x1F9F, 0x1FA8, 0x1FAF, 0x1FBC, 0x1FBC,
 	0x1FCC, 0x1FCC, 0x1FFC, 0x1FFC,
-	//  #11 (1402+646): gc=Uppercase_Letter:Lu
+	//  #15 (1402+646): gc=Uppercase_Letter:Lu
 	0x0041, 0x005A, 0x00C0, 0x00D6, 0x00D8, 0x00DE, 0x0100, 0x0100,
 	0x0102, 0x0102, 0x0104, 0x0104, 0x0106, 0x0106, 0x0108, 0x0108,
 	0x010A, 0x010A, 0x010C, 0x010C, 0x010E, 0x010E, 0x0110, 0x0110,
@@ -5406,7 +6564,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1D608, 0x1D621, 0x1D63C, 0x1D655, 0x1D670, 0x1D689, 0x1D6A8, 0x1D6C0,
 	0x1D6E2, 0x1D6FA, 0x1D71C, 0x1D734, 0x1D756, 0x1D76E, 0x1D790, 0x1D7A8,
 	0x1D7CA, 0x1D7CA, 0x1E900, 0x1E921,
-	//  #12 (2048+71): gc=Modifier_Letter:Lm
+	//  #16 (2048+71): gc=Modifier_Letter:Lm
 	0x02B0, 0x02C1, 0x02C6, 0x02D1, 0x02E0, 0x02E4, 0x02EC, 0x02EC,
 	0x02EE, 0x02EE, 0x0374, 0x0374, 0x037A, 0x037A, 0x0559, 0x0559,
 	0x0640, 0x0640, 0x06E5, 0x06E6, 0x07F4, 0x07F5, 0x07FA, 0x07FA,
@@ -5425,7 +6583,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x16B40, 0x16B43, 0x16F93, 0x16F9F, 0x16FE0, 0x16FE1, 0x16FE3, 0x16FE3,
 	0x1AFF0, 0x1AFF3, 0x1AFF5, 0x1AFFB, 0x1AFFD, 0x1AFFE, 0x1E030, 0x1E06D,
 	0x1E137, 0x1E13D, 0x1E4EB, 0x1E4EB, 0x1E94B, 0x1E94B,
-	//  #13 (2119+510): gc=Other_Letter:Lo
+	//  #17 (2119+510): gc=Other_Letter:Lo
 	0x00AA, 0x00AA, 0x00BA, 0x00BA, 0x01BB, 0x01BB, 0x01C0, 0x01C3,
 	0x0294, 0x0294, 0x05D0, 0x05EA, 0x05EF, 0x05F2, 0x0620, 0x063F,
 	0x0641, 0x064A, 0x066E, 0x066F, 0x0671, 0x06D3, 0x06D5, 0x06D5,
@@ -5554,9 +6712,9 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1EEA5, 0x1EEA9, 0x1EEAB, 0x1EEBB, 0x20000, 0x2A6DF, 0x2A700, 0x2B739,
 	0x2B740, 0x2B81D, 0x2B820, 0x2CEA1, 0x2CEB0, 0x2EBE0, 0x2F800, 0x2FA1D,
 	0x30000, 0x3134A, 0x31350, 0x323AF,
-	//  #14 (2629+533): gc=Mark:M:Combining_Mark
+	//  #18 (2629+533): gc=Mark:M:Combining_Mark
 	//  Mc:182 + Me:5 + Mn:346
-	//  #15 (2629+182): gc=Spacing_Mark:Mc
+	//  #19 (2629+182): gc=Spacing_Mark:Mc
 	0x0903, 0x0903, 0x093B, 0x093B, 0x093E, 0x0940, 0x0949, 0x094C,
 	0x094E, 0x094F, 0x0982, 0x0983, 0x09BE, 0x09C0, 0x09C7, 0x09C8,
 	0x09CB, 0x09CC, 0x09D7, 0x09D7, 0x0A03, 0x0A03, 0x0A3E, 0x0A40,
@@ -5603,10 +6761,10 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x11D96, 0x11D96, 0x11EF5, 0x11EF6, 0x11F03, 0x11F03, 0x11F34, 0x11F35,
 	0x11F3E, 0x11F3F, 0x11F41, 0x11F41, 0x16F51, 0x16F87, 0x16FF0, 0x16FF1,
 	0x1D165, 0x1D166, 0x1D16D, 0x1D172,
-	//  #16 (2811+5): gc=Enclosing_Mark:Me
+	//  #20 (2811+5): gc=Enclosing_Mark:Me
 	0x0488, 0x0489, 0x1ABE, 0x1ABE, 0x20DD, 0x20E0, 0x20E2, 0x20E4,
 	0xA670, 0xA672,
-	//  #17 (2816+346): gc=Nonspacing_Mark:Mn
+	//  #21 (2816+346): gc=Nonspacing_Mark:Mn
 	0x0300, 0x036F, 0x0483, 0x0487, 0x0591, 0x05BD, 0x05BF, 0x05BF,
 	0x05C1, 0x05C2, 0x05C4, 0x05C5, 0x05C7, 0x05C7, 0x0610, 0x061A,
 	0x064B, 0x065F, 0x0670, 0x0670, 0x06D6, 0x06DC, 0x06DF, 0x06E4,
@@ -5694,9 +6852,9 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1E023, 0x1E024, 0x1E026, 0x1E02A, 0x1E08F, 0x1E08F, 0x1E130, 0x1E136,
 	0x1E2AE, 0x1E2AE, 0x1E2EC, 0x1E2EF, 0x1E4EC, 0x1E4EF, 0x1E8D0, 0x1E8D6,
 	0x1E944, 0x1E94A, 0xE0100, 0xE01EF,
-	//  #18 (3162+148): gc=Number:N
+	//  #22 (3162+148): gc=Number:N
 	//  Nd:64 + Nl:12 + No:72
-	//  #19 (3162+64): gc=Decimal_Number:Nd:digit
+	//  #23 (3162+64): gc=Decimal_Number:Nd:digit
 	0x0030, 0x0039, 0x0660, 0x0669, 0x06F0, 0x06F9, 0x07C0, 0x07C9,
 	0x0966, 0x096F, 0x09E6, 0x09EF, 0x0A66, 0x0A6F, 0x0AE6, 0x0AEF,
 	0x0B66, 0x0B6F, 0x0BE6, 0x0BEF, 0x0C66, 0x0C6F, 0x0CE6, 0x0CEF,
@@ -5713,11 +6871,11 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x11D50, 0x11D59, 0x11DA0, 0x11DA9, 0x11F50, 0x11F59, 0x16A60, 0x16A69,
 	0x16AC0, 0x16AC9, 0x16B50, 0x16B59, 0x1D7CE, 0x1D7FF, 0x1E140, 0x1E149,
 	0x1E2F0, 0x1E2F9, 0x1E4F0, 0x1E4F9, 0x1E950, 0x1E959, 0x1FBF0, 0x1FBF9,
-	//  #20 (3226+12): gc=Letter_Number:Nl
+	//  #24 (3226+12): gc=Letter_Number:Nl
 	0x16EE, 0x16F0, 0x2160, 0x2182, 0x2185, 0x2188, 0x3007, 0x3007,
 	0x3021, 0x3029, 0x3038, 0x303A, 0xA6E6, 0xA6EF, 0x10140, 0x10174,
 	0x10341, 0x10341, 0x1034A, 0x1034A, 0x103D1, 0x103D5, 0x12400, 0x1246E,
-	//  #21 (3238+72): gc=Other_Number:No
+	//  #25 (3238+72): gc=Other_Number:No
 	0x00B2, 0x00B3, 0x00B9, 0x00B9, 0x00BC, 0x00BE, 0x09F4, 0x09F9,
 	0x0B72, 0x0B77, 0x0BF0, 0x0BF2, 0x0C78, 0x0C7E, 0x0D58, 0x0D5E,
 	0x0D70, 0x0D78, 0x0F2A, 0x0F33, 0x1369, 0x137C, 0x17F0, 0x17F9,
@@ -5736,18 +6894,18 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x16B5B, 0x16B61, 0x16E80, 0x16E96, 0x1D2C0, 0x1D2D3, 0x1D2E0, 0x1D2F3,
 	0x1D360, 0x1D378, 0x1E8C7, 0x1E8CF, 0x1EC71, 0x1ECAB, 0x1ECAD, 0x1ECAF,
 	0x1ECB1, 0x1ECB4, 0x1ED01, 0x1ED2D, 0x1ED2F, 0x1ED3D, 0x1F100, 0x1F10C,
-	//  #22 (3310+388): gc=Punctuation:P:punct
+	//  #26 (3310+388): gc=Punctuation:P:punct
 	//  Pc:6 + Pd:19 + Pe:76 + Pf:10 + Pi:11 + Po:187 + Ps:79
-	//  #23 (3310+6): gc=Connector_Punctuation:Pc
+	//  #27 (3310+6): gc=Connector_Punctuation:Pc
 	0x005F, 0x005F, 0x203F, 0x2040, 0x2054, 0x2054, 0xFE33, 0xFE34,
 	0xFE4D, 0xFE4F, 0xFF3F, 0xFF3F,
-	//  #24 (3316+19): gc=Dash_Punctuation:Pd
+	//  #28 (3316+19): gc=Dash_Punctuation:Pd
 	0x002D, 0x002D, 0x058A, 0x058A, 0x05BE, 0x05BE, 0x1400, 0x1400,
 	0x1806, 0x1806, 0x2010, 0x2015, 0x2E17, 0x2E17, 0x2E1A, 0x2E1A,
 	0x2E3A, 0x2E3B, 0x2E40, 0x2E40, 0x2E5D, 0x2E5D, 0x301C, 0x301C,
 	0x3030, 0x3030, 0x30A0, 0x30A0, 0xFE31, 0xFE32, 0xFE58, 0xFE58,
 	0xFE63, 0xFE63, 0xFF0D, 0xFF0D, 0x10EAD, 0x10EAD,
-	//  #25 (3335+76): gc=Close_Punctuation:Pe
+	//  #29 (3335+76): gc=Close_Punctuation:Pe
 	0x0029, 0x0029, 0x005D, 0x005D, 0x007D, 0x007D, 0x0F3B, 0x0F3B,
 	0x0F3D, 0x0F3D, 0x169C, 0x169C, 0x2046, 0x2046, 0x207E, 0x207E,
 	0x208E, 0x208E, 0x2309, 0x2309, 0x230B, 0x230B, 0x232A, 0x232A,
@@ -5767,15 +6925,15 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0xFE40, 0xFE40, 0xFE42, 0xFE42, 0xFE44, 0xFE44, 0xFE48, 0xFE48,
 	0xFE5A, 0xFE5A, 0xFE5C, 0xFE5C, 0xFE5E, 0xFE5E, 0xFF09, 0xFF09,
 	0xFF3D, 0xFF3D, 0xFF5D, 0xFF5D, 0xFF60, 0xFF60, 0xFF63, 0xFF63,
-	//  #26 (3411+10): gc=Final_Punctuation:Pf
+	//  #30 (3411+10): gc=Final_Punctuation:Pf
 	0x00BB, 0x00BB, 0x2019, 0x2019, 0x201D, 0x201D, 0x203A, 0x203A,
 	0x2E03, 0x2E03, 0x2E05, 0x2E05, 0x2E0A, 0x2E0A, 0x2E0D, 0x2E0D,
 	0x2E1D, 0x2E1D, 0x2E21, 0x2E21,
-	//  #27 (3421+11): gc=Initial_Punctuation:Pi
+	//  #31 (3421+11): gc=Initial_Punctuation:Pi
 	0x00AB, 0x00AB, 0x2018, 0x2018, 0x201B, 0x201C, 0x201F, 0x201F,
 	0x2039, 0x2039, 0x2E02, 0x2E02, 0x2E04, 0x2E04, 0x2E09, 0x2E09,
 	0x2E0C, 0x2E0C, 0x2E1C, 0x2E1C, 0x2E20, 0x2E20,
-	//  #28 (3432+187): gc=Other_Punctuation:Po
+	//  #32 (3432+187): gc=Other_Punctuation:Po
 	0x0021, 0x0023, 0x0025, 0x0027, 0x002A, 0x002A, 0x002C, 0x002C,
 	0x002E, 0x002F, 0x003A, 0x003B, 0x003F, 0x0040, 0x005C, 0x005C,
 	0x00A1, 0x00A1, 0x00A7, 0x00A7, 0x00B6, 0x00B7, 0x00BF, 0x00BF,
@@ -5823,7 +6981,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x12470, 0x12474, 0x12FF1, 0x12FF2, 0x16A6E, 0x16A6F, 0x16AF5, 0x16AF5,
 	0x16B37, 0x16B3B, 0x16B44, 0x16B44, 0x16E97, 0x16E9A, 0x16FE2, 0x16FE2,
 	0x1BC9F, 0x1BC9F, 0x1DA87, 0x1DA8B, 0x1E95E, 0x1E95F,
-	//  #29 (3619+79): gc=Open_Punctuation:Ps
+	//  #33 (3619+79): gc=Open_Punctuation:Ps
 	0x0028, 0x0028, 0x005B, 0x005B, 0x007B, 0x007B, 0x0F3A, 0x0F3A,
 	0x0F3C, 0x0F3C, 0x169B, 0x169B, 0x201A, 0x201A, 0x201E, 0x201E,
 	0x2045, 0x2045, 0x207D, 0x207D, 0x208D, 0x208D, 0x2308, 0x2308,
@@ -5844,16 +7002,16 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0xFE41, 0xFE41, 0xFE43, 0xFE43, 0xFE47, 0xFE47, 0xFE59, 0xFE59,
 	0xFE5B, 0xFE5B, 0xFE5D, 0xFE5D, 0xFF08, 0xFF08, 0xFF3B, 0xFF3B,
 	0xFF5B, 0xFF5B, 0xFF5F, 0xFF5F, 0xFF62, 0xFF62,
-	//  #30 (3698+300): gc=Symbol:S
+	//  #34 (3698+300): gc=Symbol:S
 	//  Sc:21 + Sk:31 + Sm:64 + So:184
-	//  #31 (3698+21): gc=Currency_Symbol:Sc
+	//  #35 (3698+21): gc=Currency_Symbol:Sc
 	0x0024, 0x0024, 0x00A2, 0x00A5, 0x058F, 0x058F, 0x060B, 0x060B,
 	0x07FE, 0x07FF, 0x09F2, 0x09F3, 0x09FB, 0x09FB, 0x0AF1, 0x0AF1,
 	0x0BF9, 0x0BF9, 0x0E3F, 0x0E3F, 0x17DB, 0x17DB, 0x20A0, 0x20C0,
 	0xA838, 0xA838, 0xFDFC, 0xFDFC, 0xFE69, 0xFE69, 0xFF04, 0xFF04,
 	0xFFE0, 0xFFE1, 0xFFE5, 0xFFE6, 0x11FDD, 0x11FE0, 0x1E2FF, 0x1E2FF,
 	0x1ECB0, 0x1ECB0,
-	//  #32 (3719+31): gc=Modifier_Symbol:Sk
+	//  #36 (3719+31): gc=Modifier_Symbol:Sk
 	0x005E, 0x005E, 0x0060, 0x0060, 0x00A8, 0x00A8, 0x00AF, 0x00AF,
 	0x00B4, 0x00B4, 0x00B8, 0x00B8, 0x02C2, 0x02C5, 0x02D2, 0x02DF,
 	0x02E5, 0x02EB, 0x02ED, 0x02ED, 0x02EF, 0x02FF, 0x0375, 0x0375,
@@ -5862,7 +7020,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x309B, 0x309C, 0xA700, 0xA716, 0xA720, 0xA721, 0xA789, 0xA78A,
 	0xAB5B, 0xAB5B, 0xAB6A, 0xAB6B, 0xFBB2, 0xFBC2, 0xFF3E, 0xFF3E,
 	0xFF40, 0xFF40, 0xFFE3, 0xFFE3, 0x1F3FB, 0x1F3FF,
-	//  #33 (3750+64): gc=Math_Symbol:Sm
+	//  #37 (3750+64): gc=Math_Symbol:Sm
 	0x002B, 0x002B, 0x003C, 0x003E, 0x007C, 0x007C, 0x007E, 0x007E,
 	0x00AC, 0x00AC, 0x00B1, 0x00B1, 0x00D7, 0x00D7, 0x00F7, 0x00F7,
 	0x03F6, 0x03F6, 0x0606, 0x0608, 0x2044, 0x2044, 0x2052, 0x2052,
@@ -5879,7 +7037,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0xFFE9, 0xFFEC, 0x1D6C1, 0x1D6C1, 0x1D6DB, 0x1D6DB, 0x1D6FB, 0x1D6FB,
 	0x1D715, 0x1D715, 0x1D735, 0x1D735, 0x1D74F, 0x1D74F, 0x1D76F, 0x1D76F,
 	0x1D789, 0x1D789, 0x1D7A9, 0x1D7A9, 0x1D7C3, 0x1D7C3, 0x1EEF0, 0x1EEF1,
-	//  #34 (3814+184): gc=Other_Symbol:So
+	//  #38 (3814+184): gc=Other_Symbol:So
 	0x00A6, 0x00A6, 0x00A9, 0x00A9, 0x00AE, 0x00AE, 0x00B0, 0x00B0,
 	0x0482, 0x0482, 0x058D, 0x058E, 0x060E, 0x060F, 0x06DE, 0x06DE,
 	0x06E9, 0x06E9, 0x06FD, 0x06FE, 0x07F6, 0x07F6, 0x09FA, 0x09FA,
@@ -5926,20 +7084,20 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1F8B0, 0x1F8B1, 0x1F900, 0x1FA53, 0x1FA60, 0x1FA6D, 0x1FA70, 0x1FA7C,
 	0x1FA80, 0x1FA88, 0x1FA90, 0x1FABD, 0x1FABF, 0x1FAC5, 0x1FACE, 0x1FADB,
 	0x1FAE0, 0x1FAE8, 0x1FAF0, 0x1FAF8, 0x1FB00, 0x1FB92, 0x1FB94, 0x1FBCA,
-	//  #35 (3998+9): gc=Separator:Z
+	//  #39 (3998+9): gc=Separator:Z
 	//  Zl:1 + Zp:1 + Zs:7
-	//  #36 (3998+1): gc=Line_Separator:Zl
+	//  #40 (3998+1): gc=Line_Separator:Zl
 	0x2028, 0x2028,
-	//  #37 (3999+1): gc=Paragraph_Separator:Zp
+	//  #41 (3999+1): gc=Paragraph_Separator:Zp
 	0x2029, 0x2029,
-	//  #38 (4000+7): gc=Space_Separator:Zs
+	//  #42 (4000+7): gc=Space_Separator:Zs
 	0x0020, 0x0020, 0x00A0, 0x00A0, 0x1680, 0x1680, 0x2000, 0x200A,
 	0x202F, 0x202F, 0x205F, 0x205F, 0x3000, 0x3000,
-	//  #39 (4007+1): bp=ASCII
+	//  #43 (4007+1): bp=ASCII
 	0x0000, 0x007F,
-	//  #40 (4008+3): bp=ASCII_Hex_Digit:AHex
+	//  #44 (4008+3): bp=ASCII_Hex_Digit:AHex
 	0x0030, 0x0039, 0x0041, 0x0046, 0x0061, 0x0066,
-	//  #41 (4011+732): bp=Alphabetic:Alpha
+	//  #45 (4011+732): bp=Alphabetic:Alpha
 	0x0041, 0x005A, 0x0061, 0x007A, 0x00AA, 0x00AA, 0x00B5, 0x00B5,
 	0x00BA, 0x00BA, 0x00C0, 0x00D6, 0x00D8, 0x00F6, 0x00F8, 0x02C1,
 	0x02C6, 0x02D1, 0x02E0, 0x02E4, 0x02EC, 0x02EC, 0x02EE, 0x02EE,
@@ -6123,13 +7281,13 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1EEAB, 0x1EEBB, 0x1F130, 0x1F149, 0x1F150, 0x1F169, 0x1F170, 0x1F189,
 	0x20000, 0x2A6DF, 0x2A700, 0x2B739, 0x2B740, 0x2B81D, 0x2B820, 0x2CEA1,
 	0x2CEB0, 0x2EBE0, 0x2F800, 0x2FA1D, 0x30000, 0x3134A, 0x31350, 0x323AF,
-	//  #42 (4743+1): bp=Any
+	//  #46 (4743+1): bp=Any
 	0x0000, 0x10FFFF,
-	//  #43 (4744+0): bp=Assigned
+	//  #47 (4744+0): bp=Assigned
 	
-	//  #44 (4744+4): bp=Bidi_Control:Bidi_C
+	//  #48 (4744+4): bp=Bidi_Control:Bidi_C
 	0x061C, 0x061C, 0x200E, 0x200F, 0x202A, 0x202E, 0x2066, 0x2069,
-	//  #45 (4748+114): bp=Bidi_Mirrored:Bidi_M
+	//  #49 (4748+114): bp=Bidi_Mirrored:Bidi_M
 	0x0028, 0x0029, 0x003C, 0x003C, 0x003E, 0x003E, 0x005B, 0x005B,
 	0x005D, 0x005D, 0x007B, 0x007B, 0x007D, 0x007D, 0x00AB, 0x00AB,
 	0x00BB, 0x00BB, 0x0F3A, 0x0F3D, 0x169B, 0x169C, 0x2039, 0x203A,
@@ -6159,7 +7317,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0xFF3D, 0xFF3D, 0xFF5B, 0xFF5B, 0xFF5D, 0xFF5D, 0xFF5F, 0xFF60,
 	0xFF62, 0xFF63, 0x1D6DB, 0x1D6DB, 0x1D715, 0x1D715, 0x1D74F, 0x1D74F,
 	0x1D789, 0x1D789, 0x1D7C3, 0x1D7C3,
-	//  #46 (4862+437): bp=Case_Ignorable:CI
+	//  #50 (4862+437): bp=Case_Ignorable:CI
 	0x0027, 0x0027, 0x002E, 0x002E, 0x003A, 0x003A, 0x005E, 0x005E,
 	0x0060, 0x0060, 0x00A8, 0x00A8, 0x00AD, 0x00AD, 0x00AF, 0x00AF,
 	0x00B4, 0x00B4, 0x00B7, 0x00B8, 0x02B0, 0x036F, 0x0374, 0x0375,
@@ -6270,7 +7428,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1E2AE, 0x1E2AE, 0x1E2EC, 0x1E2EF, 0x1E4EB, 0x1E4EF, 0x1E8D0, 0x1E8D6,
 	0x1E944, 0x1E94B, 0x1F3FB, 0x1F3FF, 0xE0001, 0xE0001, 0xE0020, 0xE007F,
 	0xE0100, 0xE01EF,
-	//  #47 (5299+157): bp=Cased
+	//  #51 (5299+157): bp=Cased
 	0x0041, 0x005A, 0x0061, 0x007A, 0x00AA, 0x00AA, 0x00B5, 0x00B5,
 	0x00BA, 0x00BA, 0x00C0, 0x00D6, 0x00D8, 0x00F6, 0x00F8, 0x01BA,
 	0x01BC, 0x01BF, 0x01C4, 0x0293, 0x0295, 0x02B8, 0x02C0, 0x02C1,
@@ -6311,7 +7469,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1D7C4, 0x1D7CB, 0x1DF00, 0x1DF09, 0x1DF0B, 0x1DF1E, 0x1DF25, 0x1DF2A,
 	0x1E030, 0x1E06D, 0x1E900, 0x1E943, 0x1F130, 0x1F149, 0x1F150, 0x1F169,
 	0x1F170, 0x1F189,
-	//  #48 (5456+622): bp=Changes_When_Casefolded:CWCF
+	//  #52 (5456+622): bp=Changes_When_Casefolded:CWCF
 	0x0041, 0x005A, 0x00B5, 0x00B5, 0x00C0, 0x00D6, 0x00D8, 0x00DF,
 	0x0100, 0x0100, 0x0102, 0x0102, 0x0104, 0x0104, 0x0106, 0x0106,
 	0x0108, 0x0108, 0x010A, 0x010A, 0x010C, 0x010C, 0x010E, 0x010E,
@@ -6468,7 +7626,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x10400, 0x10427, 0x104B0, 0x104D3, 0x10570, 0x1057A, 0x1057C, 0x1058A,
 	0x1058C, 0x10592, 0x10594, 0x10595, 0x10C80, 0x10CB2, 0x118A0, 0x118BF,
 	0x16E40, 0x16E5F, 0x1E900, 0x1E921,
-	//  #49 (6078+131): bp=Changes_When_Casemapped:CWCM
+	//  #53 (6078+131): bp=Changes_When_Casemapped:CWCM
 	0x0041, 0x005A, 0x0061, 0x007A, 0x00B5, 0x00B5, 0x00C0, 0x00D6,
 	0x00D8, 0x00F6, 0x00F8, 0x0137, 0x0139, 0x018C, 0x018E, 0x019A,
 	0x019C, 0x01A9, 0x01AC, 0x01B9, 0x01BC, 0x01BD, 0x01BF, 0x01BF,
@@ -6502,7 +7660,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1058C, 0x10592, 0x10594, 0x10595, 0x10597, 0x105A1, 0x105A3, 0x105B1,
 	0x105B3, 0x105B9, 0x105BB, 0x105BC, 0x10C80, 0x10CB2, 0x10CC0, 0x10CF2,
 	0x118A0, 0x118DF, 0x16E40, 0x16E7F, 0x1E900, 0x1E943,
-	//  #50 (6209+609): bp=Changes_When_Lowercased:CWL
+	//  #54 (6209+609): bp=Changes_When_Lowercased:CWL
 	0x0041, 0x005A, 0x00C0, 0x00D6, 0x00D8, 0x00DE, 0x0100, 0x0100,
 	0x0102, 0x0102, 0x0104, 0x0104, 0x0106, 0x0106, 0x0108, 0x0108,
 	0x010A, 0x010A, 0x010C, 0x010C, 0x010E, 0x010E, 0x0110, 0x0110,
@@ -6656,7 +7814,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x104B0, 0x104D3, 0x10570, 0x1057A, 0x1057C, 0x1058A, 0x1058C, 0x10592,
 	0x10594, 0x10595, 0x10C80, 0x10CB2, 0x118A0, 0x118BF, 0x16E40, 0x16E5F,
 	0x1E900, 0x1E921,
-	//  #51 (6818+839): bp=Changes_When_NFKC_Casefolded:CWKCF
+	//  #55 (6818+839): bp=Changes_When_NFKC_Casefolded:CWKCF
 	0x0041, 0x005A, 0x00A0, 0x00A0, 0x00A8, 0x00A8, 0x00AA, 0x00AA,
 	0x00AD, 0x00AD, 0x00AF, 0x00AF, 0x00B2, 0x00B5, 0x00B8, 0x00BA,
 	0x00BC, 0x00BE, 0x00C0, 0x00D6, 0x00D8, 0x00DF, 0x0100, 0x0100,
@@ -6867,7 +8025,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1F110, 0x1F12E, 0x1F130, 0x1F14F, 0x1F16A, 0x1F16C, 0x1F190, 0x1F190,
 	0x1F200, 0x1F202, 0x1F210, 0x1F23B, 0x1F240, 0x1F248, 0x1F250, 0x1F251,
 	0x1FBF0, 0x1FBF9, 0x2F800, 0x2FA1D, 0xE0000, 0xE0FFF,
-	//  #52 (7657+626): bp=Changes_When_Titlecased:CWT
+	//  #56 (7657+626): bp=Changes_When_Titlecased:CWT
 	0x0061, 0x007A, 0x00B5, 0x00B5, 0x00DF, 0x00F6, 0x00F8, 0x00FF,
 	0x0101, 0x0101, 0x0103, 0x0103, 0x0105, 0x0105, 0x0107, 0x0107,
 	0x0109, 0x0109, 0x010B, 0x010B, 0x010D, 0x010D, 0x010F, 0x010F,
@@ -7025,7 +8183,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x10428, 0x1044F, 0x104D8, 0x104FB, 0x10597, 0x105A1, 0x105A3, 0x105B1,
 	0x105B3, 0x105B9, 0x105BB, 0x105BC, 0x10CC0, 0x10CF2, 0x118C0, 0x118DF,
 	0x16E60, 0x16E7F, 0x1E922, 0x1E943,
-	//  #53 (8283+627): bp=Changes_When_Uppercased:CWU
+	//  #57 (8283+627): bp=Changes_When_Uppercased:CWU
 	0x0061, 0x007A, 0x00B5, 0x00B5, 0x00DF, 0x00F6, 0x00F8, 0x00FF,
 	0x0101, 0x0101, 0x0103, 0x0103, 0x0105, 0x0105, 0x0107, 0x0107,
 	0x0109, 0x0109, 0x010B, 0x010B, 0x010D, 0x010D, 0x010F, 0x010F,
@@ -7183,23 +8341,23 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0xFF41, 0xFF5A, 0x10428, 0x1044F, 0x104D8, 0x104FB, 0x10597, 0x105A1,
 	0x105A3, 0x105B1, 0x105B3, 0x105B9, 0x105BB, 0x105BC, 0x10CC0, 0x10CF2,
 	0x118C0, 0x118DF, 0x16E60, 0x16E7F, 0x1E922, 0x1E943,
-	//  #54 (8910+23): bp=Dash
+	//  #58 (8910+23): bp=Dash
 	0x002D, 0x002D, 0x058A, 0x058A, 0x05BE, 0x05BE, 0x1400, 0x1400,
 	0x1806, 0x1806, 0x2010, 0x2015, 0x2053, 0x2053, 0x207B, 0x207B,
 	0x208B, 0x208B, 0x2212, 0x2212, 0x2E17, 0x2E17, 0x2E1A, 0x2E1A,
 	0x2E3A, 0x2E3B, 0x2E40, 0x2E40, 0x2E5D, 0x2E5D, 0x301C, 0x301C,
 	0x3030, 0x3030, 0x30A0, 0x30A0, 0xFE31, 0xFE32, 0xFE58, 0xFE58,
 	0xFE63, 0xFE63, 0xFF0D, 0xFF0D, 0x10EAD, 0x10EAD,
-	//  #55 (8933+17): bp=Default_Ignorable_Code_Point:DI
+	//  #59 (8933+17): bp=Default_Ignorable_Code_Point:DI
 	0x00AD, 0x00AD, 0x034F, 0x034F, 0x061C, 0x061C, 0x115F, 0x1160,
 	0x17B4, 0x17B5, 0x180B, 0x180F, 0x200B, 0x200F, 0x202A, 0x202E,
 	0x2060, 0x206F, 0x3164, 0x3164, 0xFE00, 0xFE0F, 0xFEFF, 0xFEFF,
 	0xFFA0, 0xFFA0, 0xFFF0, 0xFFF8, 0x1BCA0, 0x1BCA3, 0x1D173, 0x1D17A,
 	0xE0000, 0xE0FFF,
-	//  #56 (8950+8): bp=Deprecated:Dep
+	//  #60 (8950+8): bp=Deprecated:Dep
 	0x0149, 0x0149, 0x0673, 0x0673, 0x0F77, 0x0F77, 0x0F79, 0x0F79,
 	0x17A3, 0x17A4, 0x206A, 0x206F, 0x2329, 0x232A, 0xE0001, 0xE0001,
-	//  #57 (8958+195): bp=Diacritic:Dia
+	//  #61 (8958+195): bp=Diacritic:Dia
 	0x005E, 0x005E, 0x0060, 0x0060, 0x00A8, 0x00A8, 0x00AF, 0x00AF,
 	0x00B4, 0x00B4, 0x00B7, 0x00B8, 0x02B0, 0x034E, 0x0350, 0x0357,
 	0x035D, 0x0362, 0x0374, 0x0375, 0x037A, 0x037A, 0x0384, 0x0385,
@@ -7249,7 +8407,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1D16D, 0x1D172, 0x1D17B, 0x1D182, 0x1D185, 0x1D18B, 0x1D1AA, 0x1D1AD,
 	0x1E030, 0x1E06D, 0x1E130, 0x1E136, 0x1E2AE, 0x1E2AE, 0x1E2EC, 0x1E2EF,
 	0x1E8D0, 0x1E8D6, 0x1E944, 0x1E946, 0x1E948, 0x1E94A,
-	//  #58 (9153+151): bp=Emoji
+	//  #62 (9153+151): bp=Emoji
 	0x0023, 0x0023, 0x002A, 0x002A, 0x0030, 0x0039, 0x00A9, 0x00A9,
 	0x00AE, 0x00AE, 0x203C, 0x203C, 0x2049, 0x2049, 0x2122, 0x2122,
 	0x2139, 0x2139, 0x2194, 0x2199, 0x21A9, 0x21AA, 0x231A, 0x231B,
@@ -7288,13 +8446,13 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1F7F0, 0x1F7F0, 0x1F90C, 0x1F93A, 0x1F93C, 0x1F945, 0x1F947, 0x1F9FF,
 	0x1FA70, 0x1FA7C, 0x1FA80, 0x1FA88, 0x1FA90, 0x1FABD, 0x1FABF, 0x1FAC5,
 	0x1FACE, 0x1FADB, 0x1FAE0, 0x1FAE8, 0x1FAF0, 0x1FAF8,
-	//  #59 (9304+10): bp=Emoji_Component:EComp
+	//  #63 (9304+10): bp=Emoji_Component:EComp
 	0x0023, 0x0023, 0x002A, 0x002A, 0x0030, 0x0039, 0x200D, 0x200D,
 	0x20E3, 0x20E3, 0xFE0F, 0xFE0F, 0x1F1E6, 0x1F1FF, 0x1F3FB, 0x1F3FF,
 	0x1F9B0, 0x1F9B3, 0xE0020, 0xE007F,
-	//  #60 (9314+1): bp=Emoji_Modifier:EMod
+	//  #64 (9314+1): bp=Emoji_Modifier:EMod
 	0x1F3FB, 0x1F3FF,
-	//  #61 (9315+40): bp=Emoji_Modifier_Base:EBase
+	//  #65 (9315+40): bp=Emoji_Modifier_Base:EBase
 	0x261D, 0x261D, 0x26F9, 0x26F9, 0x270A, 0x270D, 0x1F385, 0x1F385,
 	0x1F3C2, 0x1F3C4, 0x1F3C7, 0x1F3C7, 0x1F3CA, 0x1F3CC, 0x1F442, 0x1F443,
 	0x1F446, 0x1F450, 0x1F466, 0x1F478, 0x1F47C, 0x1F47C, 0x1F481, 0x1F483,
@@ -7305,7 +8463,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1F918, 0x1F91F, 0x1F926, 0x1F926, 0x1F930, 0x1F939, 0x1F93C, 0x1F93E,
 	0x1F977, 0x1F977, 0x1F9B5, 0x1F9B6, 0x1F9B8, 0x1F9B9, 0x1F9BB, 0x1F9BB,
 	0x1F9CD, 0x1F9CF, 0x1F9D1, 0x1F9DD, 0x1FAC3, 0x1FAC5, 0x1FAF0, 0x1FAF8,
-	//  #62 (9355+81): bp=Emoji_Presentation:EPres
+	//  #66 (9355+81): bp=Emoji_Presentation:EPres
 	0x231A, 0x231B, 0x23E9, 0x23EC, 0x23F0, 0x23F0, 0x23F3, 0x23F3,
 	0x25FD, 0x25FE, 0x2614, 0x2615, 0x2648, 0x2653, 0x267F, 0x267F,
 	0x2693, 0x2693, 0x26A1, 0x26A1, 0x26AA, 0x26AB, 0x26BD, 0x26BE,
@@ -7327,7 +8485,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1F93C, 0x1F945, 0x1F947, 0x1F9FF, 0x1FA70, 0x1FA7C, 0x1FA80, 0x1FA88,
 	0x1FA90, 0x1FABD, 0x1FABF, 0x1FAC5, 0x1FACE, 0x1FADB, 0x1FAE0, 0x1FAE8,
 	0x1FAF0, 0x1FAF8,
-	//  #63 (9436+78): bp=Extended_Pictographic:ExtPict
+	//  #67 (9436+78): bp=Extended_Pictographic:ExtPict
 	0x00A9, 0x00A9, 0x00AE, 0x00AE, 0x203C, 0x203C, 0x2049, 0x2049,
 	0x2122, 0x2122, 0x2139, 0x2139, 0x2194, 0x2199, 0x21A9, 0x21AA,
 	0x231A, 0x231B, 0x2328, 0x2328, 0x2388, 0x2388, 0x23CF, 0x23CF,
@@ -7348,7 +8506,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1F7D5, 0x1F7FF, 0x1F80C, 0x1F80F, 0x1F848, 0x1F84F, 0x1F85A, 0x1F85F,
 	0x1F888, 0x1F88F, 0x1F8AE, 0x1F8FF, 0x1F90C, 0x1F93A, 0x1F93C, 0x1F945,
 	0x1F947, 0x1FAFF, 0x1FC00, 0x1FFFD,
-	//  #64 (9514+33): bp=Extender:Ext
+	//  #68 (9514+33): bp=Extender:Ext
 	0x00B7, 0x00B7, 0x02D0, 0x02D1, 0x0640, 0x0640, 0x07FA, 0x07FA,
 	0x0B55, 0x0B55, 0x0E46, 0x0E46, 0x0EC6, 0x0EC6, 0x180A, 0x180A,
 	0x1843, 0x1843, 0x1AA7, 0x1AA7, 0x1C36, 0x1C36, 0x1C7B, 0x1C7B,
@@ -7358,7 +8516,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x10781, 0x10782, 0x1135D, 0x1135D, 0x115C6, 0x115C8, 0x11A98, 0x11A98,
 	0x16B42, 0x16B43, 0x16FE0, 0x16FE1, 0x16FE3, 0x16FE3, 0x1E13C, 0x1E13D,
 	0x1E944, 0x1E946,
-	//  #65 (9547+875): bp=Grapheme_Base:Gr_Base
+	//  #69 (9547+875): bp=Grapheme_Base:Gr_Base
 	0x0020, 0x007E, 0x00A0, 0x00AC, 0x00AE, 0x02FF, 0x0370, 0x0377,
 	0x037A, 0x037F, 0x0384, 0x038A, 0x038C, 0x038C, 0x038E, 0x03A1,
 	0x03A3, 0x0482, 0x048A, 0x052F, 0x0531, 0x0556, 0x0559, 0x058A,
@@ -7578,7 +8736,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1FB00, 0x1FB92, 0x1FB94, 0x1FBCA, 0x1FBF0, 0x1FBF9, 0x20000, 0x2A6DF,
 	0x2A700, 0x2B739, 0x2B740, 0x2B81D, 0x2B820, 0x2CEA1, 0x2CEB0, 0x2EBE0,
 	0x2F800, 0x2FA1D, 0x30000, 0x3134A, 0x31350, 0x323AF,
-	//  #66 (10422+363): bp=Grapheme_Extend:Gr_Ext
+	//  #70 (10422+363): bp=Grapheme_Extend:Gr_Ext
 	0x0300, 0x036F, 0x0483, 0x0489, 0x0591, 0x05BD, 0x05BF, 0x05BF,
 	0x05C1, 0x05C2, 0x05C4, 0x05C5, 0x05C7, 0x05C7, 0x0610, 0x061A,
 	0x064B, 0x065F, 0x0670, 0x0670, 0x06D6, 0x06DC, 0x06DF, 0x06E4,
@@ -7670,14 +8828,14 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1E023, 0x1E024, 0x1E026, 0x1E02A, 0x1E08F, 0x1E08F, 0x1E130, 0x1E136,
 	0x1E2AE, 0x1E2AE, 0x1E2EC, 0x1E2EF, 0x1E4EC, 0x1E4EF, 0x1E8D0, 0x1E8D6,
 	0x1E944, 0x1E94A, 0xE0020, 0xE007F, 0xE0100, 0xE01EF,
-	//  #67 (10785+6): bp=Hex_Digit:Hex
+	//  #71 (10785+6): bp=Hex_Digit:Hex
 	0x0030, 0x0039, 0x0041, 0x0046, 0x0061, 0x0066, 0xFF10, 0xFF19,
 	0xFF21, 0xFF26, 0xFF41, 0xFF46,
-	//  #68 (10791+2): bp=IDS_Binary_Operator:IDSB
+	//  #72 (10791+2): bp=IDS_Binary_Operator:IDSB
 	0x2FF0, 0x2FF1, 0x2FF4, 0x2FFB,
-	//  #69 (10793+1): bp=IDS_Trinary_Operator:IDST
+	//  #73 (10793+1): bp=IDS_Trinary_Operator:IDST
 	0x2FF2, 0x2FF3,
-	//  #70 (10794+768): bp=ID_Continue:IDC
+	//  #74 (10794+768): bp=ID_Continue:IDC
 	0x0030, 0x0039, 0x0041, 0x005A, 0x005F, 0x005F, 0x0061, 0x007A,
 	0x00AA, 0x00AA, 0x00B5, 0x00B5, 0x00B7, 0x00B7, 0x00BA, 0x00BA,
 	0x00C0, 0x00D6, 0x00D8, 0x00F6, 0x00F8, 0x02C1, 0x02C6, 0x02D1,
@@ -7870,7 +9028,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1EEA5, 0x1EEA9, 0x1EEAB, 0x1EEBB, 0x1FBF0, 0x1FBF9, 0x20000, 0x2A6DF,
 	0x2A700, 0x2B739, 0x2B740, 0x2B81D, 0x2B820, 0x2CEA1, 0x2CEB0, 0x2EBE0,
 	0x2F800, 0x2FA1D, 0x30000, 0x3134A, 0x31350, 0x323AF, 0xE0100, 0xE01EF,
-	//  #71 (11562+659): bp=ID_Start:IDS
+	//  #75 (11562+659): bp=ID_Start:IDS
 	0x0041, 0x005A, 0x0061, 0x007A, 0x00AA, 0x00AA, 0x00B5, 0x00B5,
 	0x00BA, 0x00BA, 0x00C0, 0x00D6, 0x00D8, 0x00F6, 0x00F8, 0x02C1,
 	0x02C6, 0x02D1, 0x02E0, 0x02E4, 0x02EC, 0x02EC, 0x02EE, 0x02EE,
@@ -8036,18 +9194,18 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1EEA1, 0x1EEA3, 0x1EEA5, 0x1EEA9, 0x1EEAB, 0x1EEBB, 0x20000, 0x2A6DF,
 	0x2A700, 0x2B739, 0x2B740, 0x2B81D, 0x2B820, 0x2CEA1, 0x2CEB0, 0x2EBE0,
 	0x2F800, 0x2FA1D, 0x30000, 0x3134A, 0x31350, 0x323AF,
-	//  #72 (12221+20): bp=Ideographic:Ideo
+	//  #76 (12221+20): bp=Ideographic:Ideo
 	0x3006, 0x3007, 0x3021, 0x3029, 0x3038, 0x303A, 0x3400, 0x4DBF,
 	0x4E00, 0x9FFF, 0xF900, 0xFA6D, 0xFA70, 0xFAD9, 0x16FE4, 0x16FE4,
 	0x17000, 0x187F7, 0x18800, 0x18CD5, 0x18D00, 0x18D08, 0x1B170, 0x1B2FB,
 	0x20000, 0x2A6DF, 0x2A700, 0x2B739, 0x2B740, 0x2B81D, 0x2B820, 0x2CEA1,
 	0x2CEB0, 0x2EBE0, 0x2F800, 0x2FA1D, 0x30000, 0x3134A, 0x31350, 0x323AF,
-	//  #73 (12241+1): bp=Join_Control:Join_C
+	//  #77 (12241+1): bp=Join_Control:Join_C
 	0x200C, 0x200D,
-	//  #74 (12242+7): bp=Logical_Order_Exception:LOE
+	//  #78 (12242+7): bp=Logical_Order_Exception:LOE
 	0x0E40, 0x0E44, 0x0EC0, 0x0EC4, 0x19B5, 0x19B7, 0x19BA, 0x19BA,
 	0xAAB5, 0xAAB6, 0xAAB9, 0xAAB9, 0xAABB, 0xAABC,
-	//  #75 (12249+671): bp=Lowercase:Lower
+	//  #79 (12249+671): bp=Lowercase:Lower
 	0x0061, 0x007A, 0x00AA, 0x00AA, 0x00B5, 0x00B5, 0x00BA, 0x00BA,
 	0x00DF, 0x00F6, 0x00F8, 0x00FF, 0x0101, 0x0101, 0x0103, 0x0103,
 	0x0105, 0x0105, 0x0107, 0x0107, 0x0109, 0x0109, 0x010B, 0x010B,
@@ -8216,7 +9374,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1D750, 0x1D755, 0x1D770, 0x1D788, 0x1D78A, 0x1D78F, 0x1D7AA, 0x1D7C2,
 	0x1D7C4, 0x1D7C9, 0x1D7CB, 0x1D7CB, 0x1DF00, 0x1DF09, 0x1DF0B, 0x1DF1E,
 	0x1DF25, 0x1DF2A, 0x1E030, 0x1E06D, 0x1E922, 0x1E943,
-	//  #76 (12920+138): bp=Math
+	//  #80 (12920+138): bp=Math
 	0x002B, 0x002B, 0x003C, 0x003E, 0x005E, 0x005E, 0x007C, 0x007C,
 	0x007E, 0x007E, 0x00AC, 0x00AC, 0x00B1, 0x00B1, 0x00D7, 0x00D7,
 	0x00F7, 0x00F7, 0x03D0, 0x03D2, 0x03D5, 0x03D5, 0x03F0, 0x03F1,
@@ -8252,13 +9410,13 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1EE6C, 0x1EE72, 0x1EE74, 0x1EE77, 0x1EE79, 0x1EE7C, 0x1EE7E, 0x1EE7E,
 	0x1EE80, 0x1EE89, 0x1EE8B, 0x1EE9B, 0x1EEA1, 0x1EEA3, 0x1EEA5, 0x1EEA9,
 	0x1EEAB, 0x1EEBB, 0x1EEF0, 0x1EEF1,
-	//  #77 (13058+18): bp=Noncharacter_Code_Point:NChar
+	//  #81 (13058+18): bp=Noncharacter_Code_Point:NChar
 	0xFDD0, 0xFDEF, 0xFFFE, 0xFFFF, 0x1FFFE, 0x1FFFF, 0x2FFFE, 0x2FFFF,
 	0x3FFFE, 0x3FFFF, 0x4FFFE, 0x4FFFF, 0x5FFFE, 0x5FFFF, 0x6FFFE, 0x6FFFF,
 	0x7FFFE, 0x7FFFF, 0x8FFFE, 0x8FFFF, 0x9FFFE, 0x9FFFF, 0xAFFFE, 0xAFFFF,
 	0xBFFFE, 0xBFFFF, 0xCFFFE, 0xCFFFF, 0xDFFFE, 0xDFFFF, 0xEFFFE, 0xEFFFF,
 	0xFFFFE, 0xFFFFF, 0x10FFFE, 0x10FFFF,
-	//  #78 (13076+28): bp=Pattern_Syntax:Pat_Syn
+	//  #82 (13076+28): bp=Pattern_Syntax:Pat_Syn
 	0x0021, 0x002F, 0x003A, 0x0040, 0x005B, 0x005E, 0x0060, 0x0060,
 	0x007B, 0x007E, 0x00A1, 0x00A7, 0x00A9, 0x00A9, 0x00AB, 0x00AC,
 	0x00AE, 0x00AE, 0x00B0, 0x00B1, 0x00B6, 0x00B6, 0x00BB, 0x00BB,
@@ -8266,19 +9424,19 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x2030, 0x203E, 0x2041, 0x2053, 0x2055, 0x205E, 0x2190, 0x245F,
 	0x2500, 0x2775, 0x2794, 0x2BFF, 0x2E00, 0x2E7F, 0x3001, 0x3003,
 	0x3008, 0x3020, 0x3030, 0x3030, 0xFD3E, 0xFD3F, 0xFE45, 0xFE46,
-	//  #79 (13104+5): bp=Pattern_White_Space:Pat_WS
+	//  #83 (13104+5): bp=Pattern_White_Space:Pat_WS
 	0x0009, 0x000D, 0x0020, 0x0020, 0x0085, 0x0085, 0x200E, 0x200F,
 	0x2028, 0x2029,
-	//  #80 (13109+13): bp=Quotation_Mark:QMark
+	//  #84 (13109+13): bp=Quotation_Mark:QMark
 	0x0022, 0x0022, 0x0027, 0x0027, 0x00AB, 0x00AB, 0x00BB, 0x00BB,
 	0x2018, 0x201F, 0x2039, 0x203A, 0x2E42, 0x2E42, 0x300C, 0x300F,
 	0x301D, 0x301F, 0xFE41, 0xFE44, 0xFF02, 0xFF02, 0xFF07, 0xFF07,
 	0xFF62, 0xFF63,
-	//  #81 (13122+3): bp=Radical
+	//  #85 (13122+3): bp=Radical
 	0x2E80, 0x2E99, 0x2E9B, 0x2EF3, 0x2F00, 0x2FD5,
-	//  #82 (13125+1): bp=Regional_Indicator:RI
+	//  #86 (13125+1): bp=Regional_Indicator:RI
 	0x1F1E6, 0x1F1FF,
-	//  #83 (13126+80): bp=Sentence_Terminal:STerm
+	//  #87 (13126+80): bp=Sentence_Terminal:STerm
 	0x0021, 0x0021, 0x002E, 0x002E, 0x003F, 0x003F, 0x0589, 0x0589,
 	0x061D, 0x061F, 0x06D4, 0x06D4, 0x0700, 0x0702, 0x07F9, 0x07F9,
 	0x0837, 0x0837, 0x0839, 0x0839, 0x083D, 0x083E, 0x0964, 0x0965,
@@ -8299,7 +9457,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x11A42, 0x11A43, 0x11A9B, 0x11A9C, 0x11C41, 0x11C42, 0x11EF7, 0x11EF8,
 	0x11F43, 0x11F44, 0x16A6E, 0x16A6F, 0x16AF5, 0x16AF5, 0x16B37, 0x16B38,
 	0x16B44, 0x16B44, 0x16E98, 0x16E98, 0x1BC9F, 0x1BC9F, 0x1DA88, 0x1DA88,
-	//  #84 (13206+34): bp=Soft_Dotted:SD
+	//  #88 (13206+34): bp=Soft_Dotted:SD
 	0x0069, 0x006A, 0x012F, 0x012F, 0x0249, 0x0249, 0x0268, 0x0268,
 	0x029D, 0x029D, 0x02B2, 0x02B2, 0x03F3, 0x03F3, 0x0456, 0x0456,
 	0x0458, 0x0458, 0x1D62, 0x1D62, 0x1D96, 0x1D96, 0x1DA4, 0x1DA4,
@@ -8309,7 +9467,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1D55A, 0x1D55B, 0x1D58E, 0x1D58F, 0x1D5C2, 0x1D5C3, 0x1D5F6, 0x1D5F7,
 	0x1D62A, 0x1D62B, 0x1D65E, 0x1D65F, 0x1D692, 0x1D693, 0x1DF1A, 0x1DF1A,
 	0x1E04C, 0x1E04D, 0x1E068, 0x1E068,
-	//  #85 (13240+108): bp=Terminal_Punctuation:Term
+	//  #89 (13240+108): bp=Terminal_Punctuation:Term
 	0x0021, 0x0021, 0x002C, 0x002C, 0x002E, 0x002E, 0x003A, 0x003B,
 	0x003F, 0x003F, 0x037E, 0x037E, 0x0387, 0x0387, 0x0589, 0x0589,
 	0x05C3, 0x05C3, 0x060C, 0x060C, 0x061B, 0x061B, 0x061D, 0x061F,
@@ -8337,12 +9495,12 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x11C41, 0x11C43, 0x11C71, 0x11C71, 0x11EF7, 0x11EF8, 0x11F43, 0x11F44,
 	0x12470, 0x12474, 0x16A6E, 0x16A6F, 0x16AF5, 0x16AF5, 0x16B37, 0x16B39,
 	0x16B44, 0x16B44, 0x16E97, 0x16E98, 0x1BC9F, 0x1BC9F, 0x1DA87, 0x1DA8A,
-	//  #86 (13348+16): bp=Unified_Ideograph:UIdeo
+	//  #90 (13348+16): bp=Unified_Ideograph:UIdeo
 	0x3400, 0x4DBF, 0x4E00, 0x9FFF, 0xFA0E, 0xFA0F, 0xFA11, 0xFA11,
 	0xFA13, 0xFA14, 0xFA1F, 0xFA1F, 0xFA21, 0xFA21, 0xFA23, 0xFA24,
 	0xFA27, 0xFA29, 0x20000, 0x2A6DF, 0x2A700, 0x2B739, 0x2B740, 0x2B81D,
 	0x2B820, 0x2CEA1, 0x2CEB0, 0x2EBE0, 0x30000, 0x3134A, 0x31350, 0x323AF,
-	//  #87 (13364+651): bp=Uppercase:Upper
+	//  #91 (13364+651): bp=Uppercase:Upper
 	0x0041, 0x005A, 0x00C0, 0x00D6, 0x00D8, 0x00DE, 0x0100, 0x0100,
 	0x0102, 0x0102, 0x0104, 0x0104, 0x0106, 0x0106, 0x0108, 0x0108,
 	0x010A, 0x010A, 0x010C, 0x010C, 0x010E, 0x010E, 0x0110, 0x0110,
@@ -8506,13 +9664,13 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1D670, 0x1D689, 0x1D6A8, 0x1D6C0, 0x1D6E2, 0x1D6FA, 0x1D71C, 0x1D734,
 	0x1D756, 0x1D76E, 0x1D790, 0x1D7A8, 0x1D7CA, 0x1D7CA, 0x1E900, 0x1E921,
 	0x1F130, 0x1F149, 0x1F150, 0x1F169, 0x1F170, 0x1F189,
-	//  #88 (14015+4): bp=Variation_Selector:VS
+	//  #92 (14015+4): bp=Variation_Selector:VS
 	0x180B, 0x180D, 0x180F, 0x180F, 0xFE00, 0xFE0F, 0xE0100, 0xE01EF,
-	//  #89 (14019+10): bp=White_Space:space
+	//  #93 (14019+10): bp=White_Space:space
 	0x0009, 0x000D, 0x0020, 0x0020, 0x0085, 0x0085, 0x00A0, 0x00A0,
 	0x1680, 0x1680, 0x2000, 0x200A, 0x2028, 0x2029, 0x202F, 0x202F,
 	0x205F, 0x205F, 0x3000, 0x3000,
-	//  #90 (14029+775): bp=XID_Continue:XIDC
+	//  #94 (14029+775): bp=XID_Continue:XIDC
 	0x0030, 0x0039, 0x0041, 0x005A, 0x005F, 0x005F, 0x0061, 0x007A,
 	0x00AA, 0x00AA, 0x00B5, 0x00B5, 0x00B7, 0x00B7, 0x00BA, 0x00BA,
 	0x00C0, 0x00D6, 0x00D8, 0x00F6, 0x00F8, 0x02C1, 0x02C6, 0x02D1,
@@ -8707,7 +9865,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1EEAB, 0x1EEBB, 0x1FBF0, 0x1FBF9, 0x20000, 0x2A6DF, 0x2A700, 0x2B739,
 	0x2B740, 0x2B81D, 0x2B820, 0x2CEA1, 0x2CEB0, 0x2EBE0, 0x2F800, 0x2FA1D,
 	0x30000, 0x3134A, 0x31350, 0x323AF, 0xE0100, 0xE01EF,
-	//  #91 (14804+666): bp=XID_Start:XIDS
+	//  #95 (14804+666): bp=XID_Start:XIDS
 	0x0041, 0x005A, 0x0061, 0x007A, 0x00AA, 0x00AA, 0x00B5, 0x00B5,
 	0x00BA, 0x00BA, 0x00C0, 0x00D6, 0x00D8, 0x00F6, 0x00F8, 0x02C1,
 	0x02C6, 0x02D1, 0x02E0, 0x02E4, 0x02EC, 0x02EC, 0x02EE, 0x02EE,
@@ -8875,72 +10033,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1EEA5, 0x1EEA9, 0x1EEAB, 0x1EEBB, 0x20000, 0x2A6DF, 0x2A700, 0x2B739,
 	0x2B740, 0x2B81D, 0x2B820, 0x2CEA1, 0x2CEB0, 0x2EBE0, 0x2F800, 0x2FA1D,
 	0x30000, 0x3134A, 0x31350, 0x323AF,
-	//  #92 (15470+3): sc=Adlam:Adlm
-	0x1E900, 0x1E94B, 0x1E950, 0x1E959, 0x1E95E, 0x1E95F,
-	//  #93 (15473+3): sc=Ahom:Ahom scx=Ahom:Ahom
-	0x11700, 0x1171A, 0x1171D, 0x1172B, 0x11730, 0x11746,
-	//  #94 (15476+1): sc=Anatolian_Hieroglyphs:Hluw scx=Anatolian_Hieroglyphs:Hluw
-	0x14400, 0x14646,
-	//  #95 (15477+58): sc=Arabic:Arab
-	0x0600, 0x0604, 0x0606, 0x060B, 0x060D, 0x061A, 0x061C, 0x061E,
-	0x0620, 0x063F, 0x0641, 0x064A, 0x0656, 0x066F, 0x0671, 0x06DC,
-	0x06DE, 0x06FF, 0x0750, 0x077F, 0x0870, 0x088E, 0x0890, 0x0891,
-	0x0898, 0x08E1, 0x08E3, 0x08FF, 0xFB50, 0xFBC2, 0xFBD3, 0xFD3D,
-	0xFD40, 0xFD8F, 0xFD92, 0xFDC7, 0xFDCF, 0xFDCF, 0xFDF0, 0xFDFF,
-	0xFE70, 0xFE74, 0xFE76, 0xFEFC, 0x10E60, 0x10E7E, 0x10EFD, 0x10EFF,
-	0x1EE00, 0x1EE03, 0x1EE05, 0x1EE1F, 0x1EE21, 0x1EE22, 0x1EE24, 0x1EE24,
-	0x1EE27, 0x1EE27, 0x1EE29, 0x1EE32, 0x1EE34, 0x1EE37, 0x1EE39, 0x1EE39,
-	0x1EE3B, 0x1EE3B, 0x1EE42, 0x1EE42, 0x1EE47, 0x1EE47, 0x1EE49, 0x1EE49,
-	0x1EE4B, 0x1EE4B, 0x1EE4D, 0x1EE4F, 0x1EE51, 0x1EE52, 0x1EE54, 0x1EE54,
-	0x1EE57, 0x1EE57, 0x1EE59, 0x1EE59, 0x1EE5B, 0x1EE5B, 0x1EE5D, 0x1EE5D,
-	0x1EE5F, 0x1EE5F, 0x1EE61, 0x1EE62, 0x1EE64, 0x1EE64, 0x1EE67, 0x1EE6A,
-	0x1EE6C, 0x1EE72, 0x1EE74, 0x1EE77, 0x1EE79, 0x1EE7C, 0x1EE7E, 0x1EE7E,
-	0x1EE80, 0x1EE89, 0x1EE8B, 0x1EE9B, 0x1EEA1, 0x1EEA3, 0x1EEA5, 0x1EEA9,
-	0x1EEAB, 0x1EEBB, 0x1EEF0, 0x1EEF1,
-	//  #96 (15535+4): sc=Armenian:Armn scx=Armenian:Armn
-	0x0531, 0x0556, 0x0559, 0x058A, 0x058D, 0x058F, 0xFB13, 0xFB17,
-	//  #97 (15539+2): sc=Avestan:Avst scx=Avestan:Avst
-	0x10B00, 0x10B35, 0x10B39, 0x10B3F,
-	//  #98 (15541+2): sc=Balinese:Bali scx=Balinese:Bali
-	0x1B00, 0x1B4C, 0x1B50, 0x1B7E,
-	//  #99 (15543+2): sc=Bamum:Bamu scx=Bamum:Bamu
-	0xA6A0, 0xA6F7, 0x16800, 0x16A38,
-	//  #100 (15545+2): sc=Bassa_Vah:Bass scx=Bassa_Vah:Bass
-	0x16AD0, 0x16AED, 0x16AF0, 0x16AF5,
-	//  #101 (15547+2): sc=Batak:Batk scx=Batak:Batk
-	0x1BC0, 0x1BF3, 0x1BFC, 0x1BFF,
-	//  #102 (15549+14): sc=Bengali:Beng
-	0x0980, 0x0983, 0x0985, 0x098C, 0x098F, 0x0990, 0x0993, 0x09A8,
-	0x09AA, 0x09B0, 0x09B2, 0x09B2, 0x09B6, 0x09B9, 0x09BC, 0x09C4,
-	0x09C7, 0x09C8, 0x09CB, 0x09CE, 0x09D7, 0x09D7, 0x09DC, 0x09DD,
-	0x09DF, 0x09E3, 0x09E6, 0x09FE,
-	//  #103 (15563+4): sc=Bhaiksuki:Bhks scx=Bhaiksuki:Bhks
-	0x11C00, 0x11C08, 0x11C0A, 0x11C36, 0x11C38, 0x11C45, 0x11C50, 0x11C6C,
-	//  #104 (15567+3): sc=Bopomofo:Bopo
-	0x02EA, 0x02EB, 0x3105, 0x312F, 0x31A0, 0x31BF,
-	//  #105 (15570+3): sc=Brahmi:Brah scx=Brahmi:Brah
-	0x11000, 0x1104D, 0x11052, 0x11075, 0x1107F, 0x1107F,
-	//  #106 (15573+1): sc=Braille:Brai scx=Braille:Brai
-	0x2800, 0x28FF,
-	//  #107 (15574+2): sc=Buginese:Bugi
-	0x1A00, 0x1A1B, 0x1A1E, 0x1A1F,
-	//  #108 (15576+1): sc=Buhid:Buhd
-	0x1740, 0x1753,
-	//  #109 (15577+3): sc=Canadian_Aboriginal:Cans scx=Canadian_Aboriginal:Cans
-	0x1400, 0x167F, 0x18B0, 0x18F5, 0x11AB0, 0x11ABF,
-	//  #110 (15580+1): sc=Carian:Cari scx=Carian:Cari
-	0x102A0, 0x102D0,
-	//  #111 (15581+2): sc=Caucasian_Albanian:Aghb scx=Caucasian_Albanian:Aghb
-	0x10530, 0x10563, 0x1056F, 0x1056F,
-	//  #112 (15583+2): sc=Chakma:Cakm
-	0x11100, 0x11134, 0x11136, 0x11147,
-	//  #113 (15585+4): sc=Cham:Cham scx=Cham:Cham
-	0xAA00, 0xAA36, 0xAA40, 0xAA4D, 0xAA50, 0xAA59, 0xAA5C, 0xAA5F,
-	//  #114 (15589+3): sc=Cherokee:Cher scx=Cherokee:Cher
-	0x13A0, 0x13F5, 0x13F8, 0x13FD, 0xAB70, 0xABBF,
-	//  #115 (15592+1): sc=Chorasmian:Chrs scx=Chorasmian:Chrs
-	0x10FB0, 0x10FCB,
-	//  #116 (15593+173): sc=Common:Zyyy
+	//  #96 (15470+173): sc=Common:Zyyy
 	0x0000, 0x0040, 0x005B, 0x0060, 0x007B, 0x00A9, 0x00AB, 0x00B9,
 	0x00BB, 0x00BF, 0x00D7, 0x00D7, 0x00F7, 0x00F7, 0x02B9, 0x02DF,
 	0x02E5, 0x02E9, 0x02EC, 0x02FF, 0x0374, 0x0374, 0x037E, 0x037E,
@@ -8985,159 +10078,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1FABF, 0x1FAC5, 0x1FACE, 0x1FADB, 0x1FAE0, 0x1FAE8, 0x1FAF0, 0x1FAF8,
 	0x1FB00, 0x1FB92, 0x1FB94, 0x1FBCA, 0x1FBF0, 0x1FBF9, 0xE0001, 0xE0001,
 	0xE0020, 0xE007F,
-	//  #117 (15766+3): sc=Coptic:Copt:Qaac
-	0x03E2, 0x03EF, 0x2C80, 0x2CF3, 0x2CF9, 0x2CFF,
-	//  #118 (15769+4): sc=Cuneiform:Xsux scx=Cuneiform:Xsux
-	0x12000, 0x12399, 0x12400, 0x1246E, 0x12470, 0x12474, 0x12480, 0x12543,
-	//  #119 (15773+6): sc=Cypriot:Cprt
-	0x10800, 0x10805, 0x10808, 0x10808, 0x1080A, 0x10835, 0x10837, 0x10838,
-	0x1083C, 0x1083C, 0x1083F, 0x1083F,
-	//  #120 (15779+1): sc=Cypro_Minoan:Cpmn
-	0x12F90, 0x12FF2,
-	//  #121 (15780+10): sc=Cyrillic:Cyrl
-	0x0400, 0x0484, 0x0487, 0x052F, 0x1C80, 0x1C88, 0x1D2B, 0x1D2B,
-	0x1D78, 0x1D78, 0x2DE0, 0x2DFF, 0xA640, 0xA69F, 0xFE2E, 0xFE2F,
-	0x1E030, 0x1E06D, 0x1E08F, 0x1E08F,
-	//  #122 (15790+1): sc=Deseret:Dsrt scx=Deseret:Dsrt
-	0x10400, 0x1044F,
-	//  #123 (15791+5): sc=Devanagari:Deva
-	0x0900, 0x0950, 0x0955, 0x0963, 0x0966, 0x097F, 0xA8E0, 0xA8FF,
-	0x11B00, 0x11B09,
-	//  #124 (15796+8): sc=Dives_Akuru:Diak scx=Dives_Akuru:Diak
-	0x11900, 0x11906, 0x11909, 0x11909, 0x1190C, 0x11913, 0x11915, 0x11916,
-	0x11918, 0x11935, 0x11937, 0x11938, 0x1193B, 0x11946, 0x11950, 0x11959,
-	//  #125 (15804+1): sc=Dogra:Dogr
-	0x11800, 0x1183B,
-	//  #126 (15805+5): sc=Duployan:Dupl
-	0x1BC00, 0x1BC6A, 0x1BC70, 0x1BC7C, 0x1BC80, 0x1BC88, 0x1BC90, 0x1BC99,
-	0x1BC9C, 0x1BC9F,
-	//  #127 (15810+1): sc=Egyptian_Hieroglyphs:Egyp scx=Egyptian_Hieroglyphs:Egyp
-	0x13000, 0x13455,
-	//  #128 (15811+1): sc=Elbasan:Elba scx=Elbasan:Elba
-	0x10500, 0x10527,
-	//  #129 (15812+1): sc=Elymaic:Elym scx=Elymaic:Elym
-	0x10FE0, 0x10FF6,
-	//  #130 (15813+36): sc=Ethiopic:Ethi scx=Ethiopic:Ethi
-	0x1200, 0x1248, 0x124A, 0x124D, 0x1250, 0x1256, 0x1258, 0x1258,
-	0x125A, 0x125D, 0x1260, 0x1288, 0x128A, 0x128D, 0x1290, 0x12B0,
-	0x12B2, 0x12B5, 0x12B8, 0x12BE, 0x12C0, 0x12C0, 0x12C2, 0x12C5,
-	0x12C8, 0x12D6, 0x12D8, 0x1310, 0x1312, 0x1315, 0x1318, 0x135A,
-	0x135D, 0x137C, 0x1380, 0x1399, 0x2D80, 0x2D96, 0x2DA0, 0x2DA6,
-	0x2DA8, 0x2DAE, 0x2DB0, 0x2DB6, 0x2DB8, 0x2DBE, 0x2DC0, 0x2DC6,
-	0x2DC8, 0x2DCE, 0x2DD0, 0x2DD6, 0x2DD8, 0x2DDE, 0xAB01, 0xAB06,
-	0xAB09, 0xAB0E, 0xAB11, 0xAB16, 0xAB20, 0xAB26, 0xAB28, 0xAB2E,
-	0x1E7E0, 0x1E7E6, 0x1E7E8, 0x1E7EB, 0x1E7ED, 0x1E7EE, 0x1E7F0, 0x1E7FE,
-	//  #131 (15849+10): sc=Georgian:Geor
-	0x10A0, 0x10C5, 0x10C7, 0x10C7, 0x10CD, 0x10CD, 0x10D0, 0x10FA,
-	0x10FC, 0x10FF, 0x1C90, 0x1CBA, 0x1CBD, 0x1CBF, 0x2D00, 0x2D25,
-	0x2D27, 0x2D27, 0x2D2D, 0x2D2D,
-	//  #132 (15859+6): sc=Glagolitic:Glag
-	0x2C00, 0x2C5F, 0x1E000, 0x1E006, 0x1E008, 0x1E018, 0x1E01B, 0x1E021,
-	0x1E023, 0x1E024, 0x1E026, 0x1E02A,
-	//  #133 (15865+1): sc=Gothic:Goth scx=Gothic:Goth
-	0x10330, 0x1034A,
-	//  #134 (15866+15): sc=Grantha:Gran
-	0x11300, 0x11303, 0x11305, 0x1130C, 0x1130F, 0x11310, 0x11313, 0x11328,
-	0x1132A, 0x11330, 0x11332, 0x11333, 0x11335, 0x11339, 0x1133C, 0x11344,
-	0x11347, 0x11348, 0x1134B, 0x1134D, 0x11350, 0x11350, 0x11357, 0x11357,
-	0x1135D, 0x11363, 0x11366, 0x1136C, 0x11370, 0x11374,
-	//  #135 (15881+36): sc=Greek:Grek
-	0x0370, 0x0373, 0x0375, 0x0377, 0x037A, 0x037D, 0x037F, 0x037F,
-	0x0384, 0x0384, 0x0386, 0x0386, 0x0388, 0x038A, 0x038C, 0x038C,
-	0x038E, 0x03A1, 0x03A3, 0x03E1, 0x03F0, 0x03FF, 0x1D26, 0x1D2A,
-	0x1D5D, 0x1D61, 0x1D66, 0x1D6A, 0x1DBF, 0x1DBF, 0x1F00, 0x1F15,
-	0x1F18, 0x1F1D, 0x1F20, 0x1F45, 0x1F48, 0x1F4D, 0x1F50, 0x1F57,
-	0x1F59, 0x1F59, 0x1F5B, 0x1F5B, 0x1F5D, 0x1F5D, 0x1F5F, 0x1F7D,
-	0x1F80, 0x1FB4, 0x1FB6, 0x1FC4, 0x1FC6, 0x1FD3, 0x1FD6, 0x1FDB,
-	0x1FDD, 0x1FEF, 0x1FF2, 0x1FF4, 0x1FF6, 0x1FFE, 0x2126, 0x2126,
-	0xAB65, 0xAB65, 0x10140, 0x1018E, 0x101A0, 0x101A0, 0x1D200, 0x1D245,
-	//  #136 (15917+14): sc=Gujarati:Gujr
-	0x0A81, 0x0A83, 0x0A85, 0x0A8D, 0x0A8F, 0x0A91, 0x0A93, 0x0AA8,
-	0x0AAA, 0x0AB0, 0x0AB2, 0x0AB3, 0x0AB5, 0x0AB9, 0x0ABC, 0x0AC5,
-	0x0AC7, 0x0AC9, 0x0ACB, 0x0ACD, 0x0AD0, 0x0AD0, 0x0AE0, 0x0AE3,
-	0x0AE6, 0x0AF1, 0x0AF9, 0x0AFF,
-	//  #137 (15931+6): sc=Gunjala_Gondi:Gong
-	0x11D60, 0x11D65, 0x11D67, 0x11D68, 0x11D6A, 0x11D8E, 0x11D90, 0x11D91,
-	0x11D93, 0x11D98, 0x11DA0, 0x11DA9,
-	//  #138 (15937+16): sc=Gurmukhi:Guru
-	0x0A01, 0x0A03, 0x0A05, 0x0A0A, 0x0A0F, 0x0A10, 0x0A13, 0x0A28,
-	0x0A2A, 0x0A30, 0x0A32, 0x0A33, 0x0A35, 0x0A36, 0x0A38, 0x0A39,
-	0x0A3C, 0x0A3C, 0x0A3E, 0x0A42, 0x0A47, 0x0A48, 0x0A4B, 0x0A4D,
-	0x0A51, 0x0A51, 0x0A59, 0x0A5C, 0x0A5E, 0x0A5E, 0x0A66, 0x0A76,
-	//  #139 (15953+21): sc=Han:Hani
-	0x2E80, 0x2E99, 0x2E9B, 0x2EF3, 0x2F00, 0x2FD5, 0x3005, 0x3005,
-	0x3007, 0x3007, 0x3021, 0x3029, 0x3038, 0x303B, 0x3400, 0x4DBF,
-	0x4E00, 0x9FFF, 0xF900, 0xFA6D, 0xFA70, 0xFAD9, 0x16FE2, 0x16FE3,
-	0x16FF0, 0x16FF1, 0x20000, 0x2A6DF, 0x2A700, 0x2B739, 0x2B740, 0x2B81D,
-	0x2B820, 0x2CEA1, 0x2CEB0, 0x2EBE0, 0x2F800, 0x2FA1D, 0x30000, 0x3134A,
-	0x31350, 0x323AF,
-	//  #140 (15974+14): sc=Hangul:Hang
-	0x1100, 0x11FF, 0x302E, 0x302F, 0x3131, 0x318E, 0x3200, 0x321E,
-	0x3260, 0x327E, 0xA960, 0xA97C, 0xAC00, 0xD7A3, 0xD7B0, 0xD7C6,
-	0xD7CB, 0xD7FB, 0xFFA0, 0xFFBE, 0xFFC2, 0xFFC7, 0xFFCA, 0xFFCF,
-	0xFFD2, 0xFFD7, 0xFFDA, 0xFFDC,
-	//  #141 (15988+2): sc=Hanifi_Rohingya:Rohg
-	0x10D00, 0x10D27, 0x10D30, 0x10D39,
-	//  #142 (15990+1): sc=Hanunoo:Hano
-	0x1720, 0x1734,
-	//  #143 (15991+3): sc=Hatran:Hatr scx=Hatran:Hatr
-	0x108E0, 0x108F2, 0x108F4, 0x108F5, 0x108FB, 0x108FF,
-	//  #144 (15994+9): sc=Hebrew:Hebr scx=Hebrew:Hebr
-	0x0591, 0x05C7, 0x05D0, 0x05EA, 0x05EF, 0x05F4, 0xFB1D, 0xFB36,
-	0xFB38, 0xFB3C, 0xFB3E, 0xFB3E, 0xFB40, 0xFB41, 0xFB43, 0xFB44,
-	0xFB46, 0xFB4F,
-	//  #145 (16003+6): sc=Hiragana:Hira
-	0x3041, 0x3096, 0x309D, 0x309F, 0x1B001, 0x1B11F, 0x1B132, 0x1B132,
-	0x1B150, 0x1B152, 0x1F200, 0x1F200,
-	//  #146 (16009+2): sc=Imperial_Aramaic:Armi scx=Imperial_Aramaic:Armi
-	0x10840, 0x10855, 0x10857, 0x1085F,
-	//  #147 (16011+29): sc=Inherited:Zinh:Qaai
-	0x0300, 0x036F, 0x0485, 0x0486, 0x064B, 0x0655, 0x0670, 0x0670,
-	0x0951, 0x0954, 0x1AB0, 0x1ACE, 0x1CD0, 0x1CD2, 0x1CD4, 0x1CE0,
-	0x1CE2, 0x1CE8, 0x1CED, 0x1CED, 0x1CF4, 0x1CF4, 0x1CF8, 0x1CF9,
-	0x1DC0, 0x1DFF, 0x200C, 0x200D, 0x20D0, 0x20F0, 0x302A, 0x302D,
-	0x3099, 0x309A, 0xFE00, 0xFE0F, 0xFE20, 0xFE2D, 0x101FD, 0x101FD,
-	0x102E0, 0x102E0, 0x1133B, 0x1133B, 0x1CF00, 0x1CF2D, 0x1CF30, 0x1CF46,
-	0x1D167, 0x1D169, 0x1D17B, 0x1D182, 0x1D185, 0x1D18B, 0x1D1AA, 0x1D1AD,
-	0xE0100, 0xE01EF,
-	//  #148 (16040+2): sc=Inscriptional_Pahlavi:Phli scx=Inscriptional_Pahlavi:Phli
-	0x10B60, 0x10B72, 0x10B78, 0x10B7F,
-	//  #149 (16042+2): sc=Inscriptional_Parthian:Prti scx=Inscriptional_Parthian:Prti
-	0x10B40, 0x10B55, 0x10B58, 0x10B5F,
-	//  #150 (16044+3): sc=Javanese:Java
-	0xA980, 0xA9CD, 0xA9D0, 0xA9D9, 0xA9DE, 0xA9DF,
-	//  #151 (16047+2): sc=Kaithi:Kthi
-	0x11080, 0x110C2, 0x110CD, 0x110CD,
-	//  #152 (16049+13): sc=Kannada:Knda
-	0x0C80, 0x0C8C, 0x0C8E, 0x0C90, 0x0C92, 0x0CA8, 0x0CAA, 0x0CB3,
-	0x0CB5, 0x0CB9, 0x0CBC, 0x0CC4, 0x0CC6, 0x0CC8, 0x0CCA, 0x0CCD,
-	0x0CD5, 0x0CD6, 0x0CDD, 0x0CDE, 0x0CE0, 0x0CE3, 0x0CE6, 0x0CEF,
-	0x0CF1, 0x0CF3,
-	//  #153 (16062+14): sc=Katakana:Kana
-	0x30A1, 0x30FA, 0x30FD, 0x30FF, 0x31F0, 0x31FF, 0x32D0, 0x32FE,
-	0x3300, 0x3357, 0xFF66, 0xFF6F, 0xFF71, 0xFF9D, 0x1AFF0, 0x1AFF3,
-	0x1AFF5, 0x1AFFB, 0x1AFFD, 0x1AFFE, 0x1B000, 0x1B000, 0x1B120, 0x1B122,
-	0x1B155, 0x1B155, 0x1B164, 0x1B167,
-	//  #154 (16076+3): sc=Kawi:Kawi scx=Kawi:Kawi
-	0x11F00, 0x11F10, 0x11F12, 0x11F3A, 0x11F3E, 0x11F59,
-	//  #155 (16079+2): sc=Kayah_Li:Kali
-	0xA900, 0xA92D, 0xA92F, 0xA92F,
-	//  #156 (16081+8): sc=Kharoshthi:Khar scx=Kharoshthi:Khar
-	0x10A00, 0x10A03, 0x10A05, 0x10A06, 0x10A0C, 0x10A13, 0x10A15, 0x10A17,
-	0x10A19, 0x10A35, 0x10A38, 0x10A3A, 0x10A3F, 0x10A48, 0x10A50, 0x10A58,
-	//  #157 (16089+2): sc=Khitan_Small_Script:Kits scx=Khitan_Small_Script:Kits
-	0x16FE4, 0x16FE4, 0x18B00, 0x18CD5,
-	//  #158 (16091+4): sc=Khmer:Khmr scx=Khmer:Khmr
-	0x1780, 0x17DD, 0x17E0, 0x17E9, 0x17F0, 0x17F9, 0x19E0, 0x19FF,
-	//  #159 (16095+2): sc=Khojki:Khoj
-	0x11200, 0x11211, 0x11213, 0x11241,
-	//  #160 (16097+2): sc=Khudawadi:Sind
-	0x112B0, 0x112EA, 0x112F0, 0x112F9,
-	//  #161 (16099+11): sc=Lao:Laoo scx=Lao:Laoo
-	0x0E81, 0x0E82, 0x0E84, 0x0E84, 0x0E86, 0x0E8A, 0x0E8C, 0x0EA3,
-	0x0EA5, 0x0EA5, 0x0EA7, 0x0EBD, 0x0EC0, 0x0EC4, 0x0EC6, 0x0EC6,
-	0x0EC8, 0x0ECE, 0x0ED0, 0x0ED9, 0x0EDC, 0x0EDF,
-	//  #162 (16110+39): sc=Latin:Latn
+	//  #97 (15643+39): sc=Latin:Latn
 	0x0041, 0x005A, 0x0061, 0x007A, 0x00AA, 0x00AA, 0x00BA, 0x00BA,
 	0x00C0, 0x00D6, 0x00D8, 0x00F6, 0x00F8, 0x02B8, 0x02E0, 0x02E4,
 	0x1D00, 0x1D25, 0x1D2C, 0x1D5C, 0x1D62, 0x1D65, 0x1D6B, 0x1D77,
@@ -9148,249 +10089,431 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0xAB30, 0xAB5A, 0xAB5C, 0xAB64, 0xAB66, 0xAB69, 0xFB00, 0xFB06,
 	0xFF21, 0xFF3A, 0xFF41, 0xFF5A, 0x10780, 0x10785, 0x10787, 0x107B0,
 	0x107B2, 0x107BA, 0x1DF00, 0x1DF1E, 0x1DF25, 0x1DF2A,
-	//  #163 (16149+3): sc=Lepcha:Lepc scx=Lepcha:Lepc
-	0x1C00, 0x1C37, 0x1C3B, 0x1C49, 0x1C4D, 0x1C4F,
-	//  #164 (16152+5): sc=Limbu:Limb
-	0x1900, 0x191E, 0x1920, 0x192B, 0x1930, 0x193B, 0x1940, 0x1940,
-	0x1944, 0x194F,
-	//  #165 (16157+3): sc=Linear_A:Lina
-	0x10600, 0x10736, 0x10740, 0x10755, 0x10760, 0x10767,
-	//  #166 (16160+7): sc=Linear_B:Linb
-	0x10000, 0x1000B, 0x1000D, 0x10026, 0x10028, 0x1003A, 0x1003C, 0x1003D,
-	0x1003F, 0x1004D, 0x10050, 0x1005D, 0x10080, 0x100FA,
-	//  #167 (16167+2): sc=Lisu:Lisu scx=Lisu:Lisu
-	0xA4D0, 0xA4FF, 0x11FB0, 0x11FB0,
-	//  #168 (16169+1): sc=Lycian:Lyci scx=Lycian:Lyci
-	0x10280, 0x1029C,
-	//  #169 (16170+2): sc=Lydian:Lydi scx=Lydian:Lydi
-	0x10920, 0x10939, 0x1093F, 0x1093F,
-	//  #170 (16172+1): sc=Mahajani:Mahj
-	0x11150, 0x11176,
-	//  #171 (16173+1): sc=Makasar:Maka scx=Makasar:Maka
-	0x11EE0, 0x11EF8,
-	//  #172 (16174+7): sc=Malayalam:Mlym
-	0x0D00, 0x0D0C, 0x0D0E, 0x0D10, 0x0D12, 0x0D44, 0x0D46, 0x0D48,
-	0x0D4A, 0x0D4F, 0x0D54, 0x0D63, 0x0D66, 0x0D7F,
-	//  #173 (16181+2): sc=Mandaic:Mand
-	0x0840, 0x085B, 0x085E, 0x085E,
-	//  #174 (16183+2): sc=Manichaean:Mani
-	0x10AC0, 0x10AE6, 0x10AEB, 0x10AF6,
-	//  #175 (16185+3): sc=Marchen:Marc scx=Marchen:Marc
-	0x11C70, 0x11C8F, 0x11C92, 0x11CA7, 0x11CA9, 0x11CB6,
-	//  #176 (16188+7): sc=Masaram_Gondi:Gonm
-	0x11D00, 0x11D06, 0x11D08, 0x11D09, 0x11D0B, 0x11D36, 0x11D3A, 0x11D3A,
-	0x11D3C, 0x11D3D, 0x11D3F, 0x11D47, 0x11D50, 0x11D59,
-	//  #177 (16195+1): sc=Medefaidrin:Medf scx=Medefaidrin:Medf
-	0x16E40, 0x16E9A,
-	//  #178 (16196+3): sc=Meetei_Mayek:Mtei scx=Meetei_Mayek:Mtei
-	0xAAE0, 0xAAF6, 0xABC0, 0xABED, 0xABF0, 0xABF9,
-	//  #179 (16199+2): sc=Mende_Kikakui:Mend scx=Mende_Kikakui:Mend
-	0x1E800, 0x1E8C4, 0x1E8C7, 0x1E8D6,
-	//  #180 (16201+3): sc=Meroitic_Cursive:Merc scx=Meroitic_Cursive:Merc
-	0x109A0, 0x109B7, 0x109BC, 0x109CF, 0x109D2, 0x109FF,
-	//  #181 (16204+1): sc=Meroitic_Hieroglyphs:Mero scx=Meroitic_Hieroglyphs:Mero
-	0x10980, 0x1099F,
-	//  #182 (16205+3): sc=Miao:Plrd scx=Miao:Plrd
-	0x16F00, 0x16F4A, 0x16F4F, 0x16F87, 0x16F8F, 0x16F9F,
-	//  #183 (16208+2): sc=Modi:Modi
-	0x11600, 0x11644, 0x11650, 0x11659,
-	//  #184 (16210+6): sc=Mongolian:Mong
-	0x1800, 0x1801, 0x1804, 0x1804, 0x1806, 0x1819, 0x1820, 0x1878,
-	0x1880, 0x18AA, 0x11660, 0x1166C,
-	//  #185 (16216+3): sc=Mro:Mroo scx=Mro:Mroo
-	0x16A40, 0x16A5E, 0x16A60, 0x16A69, 0x16A6E, 0x16A6F,
-	//  #186 (16219+5): sc=Multani:Mult
-	0x11280, 0x11286, 0x11288, 0x11288, 0x1128A, 0x1128D, 0x1128F, 0x1129D,
-	0x1129F, 0x112A9,
-	//  #187 (16224+3): sc=Myanmar:Mymr
-	0x1000, 0x109F, 0xA9E0, 0xA9FE, 0xAA60, 0xAA7F,
-	//  #188 (16227+2): sc=Nabataean:Nbat scx=Nabataean:Nbat
-	0x10880, 0x1089E, 0x108A7, 0x108AF,
-	//  #189 (16229+1): sc=Nag_Mundari:Nagm scx=Nag_Mundari:Nagm
-	0x1E4D0, 0x1E4F9,
-	//  #190 (16230+3): sc=Nandinagari:Nand
-	0x119A0, 0x119A7, 0x119AA, 0x119D7, 0x119DA, 0x119E4,
-	//  #191 (16233+4): sc=New_Tai_Lue:Talu scx=New_Tai_Lue:Talu
-	0x1980, 0x19AB, 0x19B0, 0x19C9, 0x19D0, 0x19DA, 0x19DE, 0x19DF,
-	//  #192 (16237+2): sc=Newa:Newa scx=Newa:Newa
-	0x11400, 0x1145B, 0x1145D, 0x11461,
-	//  #193 (16239+2): sc=Nko:Nkoo
-	0x07C0, 0x07FA, 0x07FD, 0x07FF,
-	//  #194 (16241+2): sc=Nushu:Nshu scx=Nushu:Nshu
-	0x16FE1, 0x16FE1, 0x1B170, 0x1B2FB,
-	//  #195 (16243+4): sc=Nyiakeng_Puachue_Hmong:Hmnp scx=Nyiakeng_Puachue_Hmong:Hmnp
-	0x1E100, 0x1E12C, 0x1E130, 0x1E13D, 0x1E140, 0x1E149, 0x1E14E, 0x1E14F,
-	//  #196 (16247+1): sc=Ogham:Ogam scx=Ogham:Ogam
-	0x1680, 0x169C,
-	//  #197 (16248+1): sc=Ol_Chiki:Olck scx=Ol_Chiki:Olck
-	0x1C50, 0x1C7F,
-	//  #198 (16249+3): sc=Old_Hungarian:Hung scx=Old_Hungarian:Hung
-	0x10C80, 0x10CB2, 0x10CC0, 0x10CF2, 0x10CFA, 0x10CFF,
-	//  #199 (16252+2): sc=Old_Italic:Ital scx=Old_Italic:Ital
-	0x10300, 0x10323, 0x1032D, 0x1032F,
-	//  #200 (16254+1): sc=Old_North_Arabian:Narb scx=Old_North_Arabian:Narb
-	0x10A80, 0x10A9F,
-	//  #201 (16255+1): sc=Old_Permic:Perm
-	0x10350, 0x1037A,
-	//  #202 (16256+2): sc=Old_Persian:Xpeo scx=Old_Persian:Xpeo
-	0x103A0, 0x103C3, 0x103C8, 0x103D5,
-	//  #203 (16258+1): sc=Old_Sogdian:Sogo scx=Old_Sogdian:Sogo
-	0x10F00, 0x10F27,
-	//  #204 (16259+1): sc=Old_South_Arabian:Sarb scx=Old_South_Arabian:Sarb
-	0x10A60, 0x10A7F,
-	//  #205 (16260+1): sc=Old_Turkic:Orkh scx=Old_Turkic:Orkh
-	0x10C00, 0x10C48,
-	//  #206 (16261+1): sc=Old_Uyghur:Ougr
-	0x10F70, 0x10F89,
-	//  #207 (16262+14): sc=Oriya:Orya
+	//  #98 (15682+36): sc=Greek:Grek
+	0x0370, 0x0373, 0x0375, 0x0377, 0x037A, 0x037D, 0x037F, 0x037F,
+	0x0384, 0x0384, 0x0386, 0x0386, 0x0388, 0x038A, 0x038C, 0x038C,
+	0x038E, 0x03A1, 0x03A3, 0x03E1, 0x03F0, 0x03FF, 0x1D26, 0x1D2A,
+	0x1D5D, 0x1D61, 0x1D66, 0x1D6A, 0x1DBF, 0x1DBF, 0x1F00, 0x1F15,
+	0x1F18, 0x1F1D, 0x1F20, 0x1F45, 0x1F48, 0x1F4D, 0x1F50, 0x1F57,
+	0x1F59, 0x1F59, 0x1F5B, 0x1F5B, 0x1F5D, 0x1F5D, 0x1F5F, 0x1F7D,
+	0x1F80, 0x1FB4, 0x1FB6, 0x1FC4, 0x1FC6, 0x1FD3, 0x1FD6, 0x1FDB,
+	0x1FDD, 0x1FEF, 0x1FF2, 0x1FF4, 0x1FF6, 0x1FFE, 0x2126, 0x2126,
+	0xAB65, 0xAB65, 0x10140, 0x1018E, 0x101A0, 0x101A0, 0x1D200, 0x1D245,
+	//  #99 (15718+10): sc=Cyrillic:Cyrl
+	0x0400, 0x0484, 0x0487, 0x052F, 0x1C80, 0x1C88, 0x1D2B, 0x1D2B,
+	0x1D78, 0x1D78, 0x2DE0, 0x2DFF, 0xA640, 0xA69F, 0xFE2E, 0xFE2F,
+	0x1E030, 0x1E06D, 0x1E08F, 0x1E08F,
+	//  #100 (15728+4): sc=Armenian:Armn scx=Armenian:Armn
+	0x0531, 0x0556, 0x0559, 0x058A, 0x058D, 0x058F, 0xFB13, 0xFB17,
+	//  #101 (15732+9): sc=Hebrew:Hebr scx=Hebrew:Hebr
+	0x0591, 0x05C7, 0x05D0, 0x05EA, 0x05EF, 0x05F4, 0xFB1D, 0xFB36,
+	0xFB38, 0xFB3C, 0xFB3E, 0xFB3E, 0xFB40, 0xFB41, 0xFB43, 0xFB44,
+	0xFB46, 0xFB4F,
+	//  #102 (15741+58): sc=Arabic:Arab
+	0x0600, 0x0604, 0x0606, 0x060B, 0x060D, 0x061A, 0x061C, 0x061E,
+	0x0620, 0x063F, 0x0641, 0x064A, 0x0656, 0x066F, 0x0671, 0x06DC,
+	0x06DE, 0x06FF, 0x0750, 0x077F, 0x0870, 0x088E, 0x0890, 0x0891,
+	0x0898, 0x08E1, 0x08E3, 0x08FF, 0xFB50, 0xFBC2, 0xFBD3, 0xFD3D,
+	0xFD40, 0xFD8F, 0xFD92, 0xFDC7, 0xFDCF, 0xFDCF, 0xFDF0, 0xFDFF,
+	0xFE70, 0xFE74, 0xFE76, 0xFEFC, 0x10E60, 0x10E7E, 0x10EFD, 0x10EFF,
+	0x1EE00, 0x1EE03, 0x1EE05, 0x1EE1F, 0x1EE21, 0x1EE22, 0x1EE24, 0x1EE24,
+	0x1EE27, 0x1EE27, 0x1EE29, 0x1EE32, 0x1EE34, 0x1EE37, 0x1EE39, 0x1EE39,
+	0x1EE3B, 0x1EE3B, 0x1EE42, 0x1EE42, 0x1EE47, 0x1EE47, 0x1EE49, 0x1EE49,
+	0x1EE4B, 0x1EE4B, 0x1EE4D, 0x1EE4F, 0x1EE51, 0x1EE52, 0x1EE54, 0x1EE54,
+	0x1EE57, 0x1EE57, 0x1EE59, 0x1EE59, 0x1EE5B, 0x1EE5B, 0x1EE5D, 0x1EE5D,
+	0x1EE5F, 0x1EE5F, 0x1EE61, 0x1EE62, 0x1EE64, 0x1EE64, 0x1EE67, 0x1EE6A,
+	0x1EE6C, 0x1EE72, 0x1EE74, 0x1EE77, 0x1EE79, 0x1EE7C, 0x1EE7E, 0x1EE7E,
+	0x1EE80, 0x1EE89, 0x1EE8B, 0x1EE9B, 0x1EEA1, 0x1EEA3, 0x1EEA5, 0x1EEA9,
+	0x1EEAB, 0x1EEBB, 0x1EEF0, 0x1EEF1,
+	//  #103 (15799+4): sc=Syriac:Syrc
+	0x0700, 0x070D, 0x070F, 0x074A, 0x074D, 0x074F, 0x0860, 0x086A,
+	//  #104 (15803+1): sc=Thaana:Thaa
+	0x0780, 0x07B1,
+	//  #105 (15804+5): sc=Devanagari:Deva
+	0x0900, 0x0950, 0x0955, 0x0963, 0x0966, 0x097F, 0xA8E0, 0xA8FF,
+	0x11B00, 0x11B09,
+	//  #106 (15809+14): sc=Bengali:Beng
+	0x0980, 0x0983, 0x0985, 0x098C, 0x098F, 0x0990, 0x0993, 0x09A8,
+	0x09AA, 0x09B0, 0x09B2, 0x09B2, 0x09B6, 0x09B9, 0x09BC, 0x09C4,
+	0x09C7, 0x09C8, 0x09CB, 0x09CE, 0x09D7, 0x09D7, 0x09DC, 0x09DD,
+	0x09DF, 0x09E3, 0x09E6, 0x09FE,
+	//  #107 (15823+16): sc=Gurmukhi:Guru
+	0x0A01, 0x0A03, 0x0A05, 0x0A0A, 0x0A0F, 0x0A10, 0x0A13, 0x0A28,
+	0x0A2A, 0x0A30, 0x0A32, 0x0A33, 0x0A35, 0x0A36, 0x0A38, 0x0A39,
+	0x0A3C, 0x0A3C, 0x0A3E, 0x0A42, 0x0A47, 0x0A48, 0x0A4B, 0x0A4D,
+	0x0A51, 0x0A51, 0x0A59, 0x0A5C, 0x0A5E, 0x0A5E, 0x0A66, 0x0A76,
+	//  #108 (15839+14): sc=Gujarati:Gujr
+	0x0A81, 0x0A83, 0x0A85, 0x0A8D, 0x0A8F, 0x0A91, 0x0A93, 0x0AA8,
+	0x0AAA, 0x0AB0, 0x0AB2, 0x0AB3, 0x0AB5, 0x0AB9, 0x0ABC, 0x0AC5,
+	0x0AC7, 0x0AC9, 0x0ACB, 0x0ACD, 0x0AD0, 0x0AD0, 0x0AE0, 0x0AE3,
+	0x0AE6, 0x0AF1, 0x0AF9, 0x0AFF,
+	//  #109 (15853+14): sc=Oriya:Orya
 	0x0B01, 0x0B03, 0x0B05, 0x0B0C, 0x0B0F, 0x0B10, 0x0B13, 0x0B28,
 	0x0B2A, 0x0B30, 0x0B32, 0x0B33, 0x0B35, 0x0B39, 0x0B3C, 0x0B44,
 	0x0B47, 0x0B48, 0x0B4B, 0x0B4D, 0x0B55, 0x0B57, 0x0B5C, 0x0B5D,
 	0x0B5F, 0x0B63, 0x0B66, 0x0B77,
-	//  #208 (16276+2): sc=Osage:Osge scx=Osage:Osge
-	0x104B0, 0x104D3, 0x104D8, 0x104FB,
-	//  #209 (16278+2): sc=Osmanya:Osma scx=Osmanya:Osma
-	0x10480, 0x1049D, 0x104A0, 0x104A9,
-	//  #210 (16280+5): sc=Pahawh_Hmong:Hmng scx=Pahawh_Hmong:Hmng
-	0x16B00, 0x16B45, 0x16B50, 0x16B59, 0x16B5B, 0x16B61, 0x16B63, 0x16B77,
-	0x16B7D, 0x16B8F,
-	//  #211 (16285+1): sc=Palmyrene:Palm scx=Palmyrene:Palm
-	0x10860, 0x1087F,
-	//  #212 (16286+1): sc=Pau_Cin_Hau:Pauc scx=Pau_Cin_Hau:Pauc
-	0x11AC0, 0x11AF8,
-	//  #213 (16287+1): sc=Phags_Pa:Phag
-	0xA840, 0xA877,
-	//  #214 (16288+2): sc=Phoenician:Phnx scx=Phoenician:Phnx
-	0x10900, 0x1091B, 0x1091F, 0x1091F,
-	//  #215 (16290+3): sc=Psalter_Pahlavi:Phlp
-	0x10B80, 0x10B91, 0x10B99, 0x10B9C, 0x10BA9, 0x10BAF,
-	//  #216 (16293+2): sc=Rejang:Rjng scx=Rejang:Rjng
-	0xA930, 0xA953, 0xA95F, 0xA95F,
-	//  #217 (16295+2): sc=Runic:Runr scx=Runic:Runr
-	0x16A0, 0x16EA, 0x16EE, 0x16F8,
-	//  #218 (16297+2): sc=Samaritan:Samr scx=Samaritan:Samr
-	0x0800, 0x082D, 0x0830, 0x083E,
-	//  #219 (16299+2): sc=Saurashtra:Saur scx=Saurashtra:Saur
-	0xA880, 0xA8C5, 0xA8CE, 0xA8D9,
-	//  #220 (16301+1): sc=Sharada:Shrd
-	0x11180, 0x111DF,
-	//  #221 (16302+1): sc=Shavian:Shaw scx=Shavian:Shaw
-	0x10450, 0x1047F,
-	//  #222 (16303+2): sc=Siddham:Sidd scx=Siddham:Sidd
-	0x11580, 0x115B5, 0x115B8, 0x115DD,
-	//  #223 (16305+3): sc=SignWriting:Sgnw scx=SignWriting:Sgnw
-	0x1D800, 0x1DA8B, 0x1DA9B, 0x1DA9F, 0x1DAA1, 0x1DAAF,
-	//  #224 (16308+13): sc=Sinhala:Sinh
-	0x0D81, 0x0D83, 0x0D85, 0x0D96, 0x0D9A, 0x0DB1, 0x0DB3, 0x0DBB,
-	0x0DBD, 0x0DBD, 0x0DC0, 0x0DC6, 0x0DCA, 0x0DCA, 0x0DCF, 0x0DD4,
-	0x0DD6, 0x0DD6, 0x0DD8, 0x0DDF, 0x0DE6, 0x0DEF, 0x0DF2, 0x0DF4,
-	0x111E1, 0x111F4,
-	//  #225 (16321+1): sc=Sogdian:Sogd
-	0x10F30, 0x10F59,
-	//  #226 (16322+2): sc=Sora_Sompeng:Sora scx=Sora_Sompeng:Sora
-	0x110D0, 0x110E8, 0x110F0, 0x110F9,
-	//  #227 (16324+1): sc=Soyombo:Soyo scx=Soyombo:Soyo
-	0x11A50, 0x11AA2,
-	//  #228 (16325+2): sc=Sundanese:Sund scx=Sundanese:Sund
-	0x1B80, 0x1BBF, 0x1CC0, 0x1CC7,
-	//  #229 (16327+1): sc=Syloti_Nagri:Sylo
-	0xA800, 0xA82C,
-	//  #230 (16328+4): sc=Syriac:Syrc
-	0x0700, 0x070D, 0x070F, 0x074A, 0x074D, 0x074F, 0x0860, 0x086A,
-	//  #231 (16332+2): sc=Tagalog:Tglg
-	0x1700, 0x1715, 0x171F, 0x171F,
-	//  #232 (16334+3): sc=Tagbanwa:Tagb
-	0x1760, 0x176C, 0x176E, 0x1770, 0x1772, 0x1773,
-	//  #233 (16337+2): sc=Tai_Le:Tale
-	0x1950, 0x196D, 0x1970, 0x1974,
-	//  #234 (16339+5): sc=Tai_Tham:Lana scx=Tai_Tham:Lana
-	0x1A20, 0x1A5E, 0x1A60, 0x1A7C, 0x1A7F, 0x1A89, 0x1A90, 0x1A99,
-	0x1AA0, 0x1AAD,
-	//  #235 (16344+2): sc=Tai_Viet:Tavt scx=Tai_Viet:Tavt
-	0xAA80, 0xAAC2, 0xAADB, 0xAADF,
-	//  #236 (16346+2): sc=Takri:Takr
-	0x11680, 0x116B9, 0x116C0, 0x116C9,
-	//  #237 (16348+18): sc=Tamil:Taml
+	//  #110 (15867+18): sc=Tamil:Taml
 	0x0B82, 0x0B83, 0x0B85, 0x0B8A, 0x0B8E, 0x0B90, 0x0B92, 0x0B95,
 	0x0B99, 0x0B9A, 0x0B9C, 0x0B9C, 0x0B9E, 0x0B9F, 0x0BA3, 0x0BA4,
 	0x0BA8, 0x0BAA, 0x0BAE, 0x0BB9, 0x0BBE, 0x0BC2, 0x0BC6, 0x0BC8,
 	0x0BCA, 0x0BCD, 0x0BD0, 0x0BD0, 0x0BD7, 0x0BD7, 0x0BE6, 0x0BFA,
 	0x11FC0, 0x11FF1, 0x11FFF, 0x11FFF,
-	//  #238 (16366+2): sc=Tangsa:Tnsa scx=Tangsa:Tnsa
-	0x16A70, 0x16ABE, 0x16AC0, 0x16AC9,
-	//  #239 (16368+4): sc=Tangut:Tang scx=Tangut:Tang
-	0x16FE0, 0x16FE0, 0x17000, 0x187F7, 0x18800, 0x18AFF, 0x18D00, 0x18D08,
-	//  #240 (16372+13): sc=Telugu:Telu
+	//  #111 (15885+13): sc=Telugu:Telu
 	0x0C00, 0x0C0C, 0x0C0E, 0x0C10, 0x0C12, 0x0C28, 0x0C2A, 0x0C39,
 	0x0C3C, 0x0C44, 0x0C46, 0x0C48, 0x0C4A, 0x0C4D, 0x0C55, 0x0C56,
 	0x0C58, 0x0C5A, 0x0C5D, 0x0C5D, 0x0C60, 0x0C63, 0x0C66, 0x0C6F,
 	0x0C77, 0x0C7F,
-	//  #241 (16385+1): sc=Thaana:Thaa
-	0x0780, 0x07B1,
-	//  #242 (16386+2): sc=Thai:Thai scx=Thai:Thai
+	//  #112 (15898+13): sc=Kannada:Knda
+	0x0C80, 0x0C8C, 0x0C8E, 0x0C90, 0x0C92, 0x0CA8, 0x0CAA, 0x0CB3,
+	0x0CB5, 0x0CB9, 0x0CBC, 0x0CC4, 0x0CC6, 0x0CC8, 0x0CCA, 0x0CCD,
+	0x0CD5, 0x0CD6, 0x0CDD, 0x0CDE, 0x0CE0, 0x0CE3, 0x0CE6, 0x0CEF,
+	0x0CF1, 0x0CF3,
+	//  #113 (15911+7): sc=Malayalam:Mlym
+	0x0D00, 0x0D0C, 0x0D0E, 0x0D10, 0x0D12, 0x0D44, 0x0D46, 0x0D48,
+	0x0D4A, 0x0D4F, 0x0D54, 0x0D63, 0x0D66, 0x0D7F,
+	//  #114 (15918+13): sc=Sinhala:Sinh
+	0x0D81, 0x0D83, 0x0D85, 0x0D96, 0x0D9A, 0x0DB1, 0x0DB3, 0x0DBB,
+	0x0DBD, 0x0DBD, 0x0DC0, 0x0DC6, 0x0DCA, 0x0DCA, 0x0DCF, 0x0DD4,
+	0x0DD6, 0x0DD6, 0x0DD8, 0x0DDF, 0x0DE6, 0x0DEF, 0x0DF2, 0x0DF4,
+	0x111E1, 0x111F4,
+	//  #115 (15931+2): sc=Thai:Thai scx=Thai:Thai
 	0x0E01, 0x0E3A, 0x0E40, 0x0E5B,
-	//  #243 (16388+7): sc=Tibetan:Tibt scx=Tibetan:Tibt
+	//  #116 (15933+11): sc=Lao:Laoo scx=Lao:Laoo
+	0x0E81, 0x0E82, 0x0E84, 0x0E84, 0x0E86, 0x0E8A, 0x0E8C, 0x0EA3,
+	0x0EA5, 0x0EA5, 0x0EA7, 0x0EBD, 0x0EC0, 0x0EC4, 0x0EC6, 0x0EC6,
+	0x0EC8, 0x0ECE, 0x0ED0, 0x0ED9, 0x0EDC, 0x0EDF,
+	//  #117 (15944+7): sc=Tibetan:Tibt scx=Tibetan:Tibt
 	0x0F00, 0x0F47, 0x0F49, 0x0F6C, 0x0F71, 0x0F97, 0x0F99, 0x0FBC,
 	0x0FBE, 0x0FCC, 0x0FCE, 0x0FD4, 0x0FD9, 0x0FDA,
-	//  #244 (16395+3): sc=Tifinagh:Tfng scx=Tifinagh:Tfng
-	0x2D30, 0x2D67, 0x2D6F, 0x2D70, 0x2D7F, 0x2D7F,
-	//  #245 (16398+2): sc=Tirhuta:Tirh
-	0x11480, 0x114C7, 0x114D0, 0x114D9,
-	//  #246 (16400+1): sc=Toto:Toto scx=Toto:Toto
-	0x1E290, 0x1E2AE,
-	//  #247 (16401+2): sc=Ugaritic:Ugar scx=Ugaritic:Ugar
+	//  #118 (15951+3): sc=Myanmar:Mymr
+	0x1000, 0x109F, 0xA9E0, 0xA9FE, 0xAA60, 0xAA7F,
+	//  #119 (15954+10): sc=Georgian:Geor
+	0x10A0, 0x10C5, 0x10C7, 0x10C7, 0x10CD, 0x10CD, 0x10D0, 0x10FA,
+	0x10FC, 0x10FF, 0x1C90, 0x1CBA, 0x1CBD, 0x1CBF, 0x2D00, 0x2D25,
+	0x2D27, 0x2D27, 0x2D2D, 0x2D2D,
+	//  #120 (15964+14): sc=Hangul:Hang
+	0x1100, 0x11FF, 0x302E, 0x302F, 0x3131, 0x318E, 0x3200, 0x321E,
+	0x3260, 0x327E, 0xA960, 0xA97C, 0xAC00, 0xD7A3, 0xD7B0, 0xD7C6,
+	0xD7CB, 0xD7FB, 0xFFA0, 0xFFBE, 0xFFC2, 0xFFC7, 0xFFCA, 0xFFCF,
+	0xFFD2, 0xFFD7, 0xFFDA, 0xFFDC,
+	//  #121 (15978+36): sc=Ethiopic:Ethi scx=Ethiopic:Ethi
+	0x1200, 0x1248, 0x124A, 0x124D, 0x1250, 0x1256, 0x1258, 0x1258,
+	0x125A, 0x125D, 0x1260, 0x1288, 0x128A, 0x128D, 0x1290, 0x12B0,
+	0x12B2, 0x12B5, 0x12B8, 0x12BE, 0x12C0, 0x12C0, 0x12C2, 0x12C5,
+	0x12C8, 0x12D6, 0x12D8, 0x1310, 0x1312, 0x1315, 0x1318, 0x135A,
+	0x135D, 0x137C, 0x1380, 0x1399, 0x2D80, 0x2D96, 0x2DA0, 0x2DA6,
+	0x2DA8, 0x2DAE, 0x2DB0, 0x2DB6, 0x2DB8, 0x2DBE, 0x2DC0, 0x2DC6,
+	0x2DC8, 0x2DCE, 0x2DD0, 0x2DD6, 0x2DD8, 0x2DDE, 0xAB01, 0xAB06,
+	0xAB09, 0xAB0E, 0xAB11, 0xAB16, 0xAB20, 0xAB26, 0xAB28, 0xAB2E,
+	0x1E7E0, 0x1E7E6, 0x1E7E8, 0x1E7EB, 0x1E7ED, 0x1E7EE, 0x1E7F0, 0x1E7FE,
+	//  #122 (16014+3): sc=Cherokee:Cher scx=Cherokee:Cher
+	0x13A0, 0x13F5, 0x13F8, 0x13FD, 0xAB70, 0xABBF,
+	//  #123 (16017+3): sc=Canadian_Aboriginal:Cans scx=Canadian_Aboriginal:Cans
+	0x1400, 0x167F, 0x18B0, 0x18F5, 0x11AB0, 0x11ABF,
+	//  #124 (16020+1): sc=Ogham:Ogam scx=Ogham:Ogam
+	0x1680, 0x169C,
+	//  #125 (16021+2): sc=Runic:Runr scx=Runic:Runr
+	0x16A0, 0x16EA, 0x16EE, 0x16F8,
+	//  #126 (16023+4): sc=Khmer:Khmr scx=Khmer:Khmr
+	0x1780, 0x17DD, 0x17E0, 0x17E9, 0x17F0, 0x17F9, 0x19E0, 0x19FF,
+	//  #127 (16027+6): sc=Mongolian:Mong
+	0x1800, 0x1801, 0x1804, 0x1804, 0x1806, 0x1819, 0x1820, 0x1878,
+	0x1880, 0x18AA, 0x11660, 0x1166C,
+	//  #128 (16033+6): sc=Hiragana:Hira
+	0x3041, 0x3096, 0x309D, 0x309F, 0x1B001, 0x1B11F, 0x1B132, 0x1B132,
+	0x1B150, 0x1B152, 0x1F200, 0x1F200,
+	//  #129 (16039+14): sc=Katakana:Kana
+	0x30A1, 0x30FA, 0x30FD, 0x30FF, 0x31F0, 0x31FF, 0x32D0, 0x32FE,
+	0x3300, 0x3357, 0xFF66, 0xFF6F, 0xFF71, 0xFF9D, 0x1AFF0, 0x1AFF3,
+	0x1AFF5, 0x1AFFB, 0x1AFFD, 0x1AFFE, 0x1B000, 0x1B000, 0x1B120, 0x1B122,
+	0x1B155, 0x1B155, 0x1B164, 0x1B167,
+	//  #130 (16053+3): sc=Bopomofo:Bopo
+	0x02EA, 0x02EB, 0x3105, 0x312F, 0x31A0, 0x31BF,
+	//  #131 (16056+21): sc=Han:Hani
+	0x2E80, 0x2E99, 0x2E9B, 0x2EF3, 0x2F00, 0x2FD5, 0x3005, 0x3005,
+	0x3007, 0x3007, 0x3021, 0x3029, 0x3038, 0x303B, 0x3400, 0x4DBF,
+	0x4E00, 0x9FFF, 0xF900, 0xFA6D, 0xFA70, 0xFAD9, 0x16FE2, 0x16FE3,
+	0x16FF0, 0x16FF1, 0x20000, 0x2A6DF, 0x2A700, 0x2B739, 0x2B740, 0x2B81D,
+	0x2B820, 0x2CEA1, 0x2CEB0, 0x2EBE0, 0x2F800, 0x2FA1D, 0x30000, 0x3134A,
+	0x31350, 0x323AF,
+	//  #132 (16077+2): sc=Yi:Yiii
+	0xA000, 0xA48C, 0xA490, 0xA4C6,
+	//  #133 (16079+2): sc=Old_Italic:Ital scx=Old_Italic:Ital
+	0x10300, 0x10323, 0x1032D, 0x1032F,
+	//  #134 (16081+1): sc=Gothic:Goth scx=Gothic:Goth
+	0x10330, 0x1034A,
+	//  #135 (16082+1): sc=Deseret:Dsrt scx=Deseret:Dsrt
+	0x10400, 0x1044F,
+	//  #136 (16083+29): sc=Inherited:Zinh:Qaai
+	0x0300, 0x036F, 0x0485, 0x0486, 0x064B, 0x0655, 0x0670, 0x0670,
+	0x0951, 0x0954, 0x1AB0, 0x1ACE, 0x1CD0, 0x1CD2, 0x1CD4, 0x1CE0,
+	0x1CE2, 0x1CE8, 0x1CED, 0x1CED, 0x1CF4, 0x1CF4, 0x1CF8, 0x1CF9,
+	0x1DC0, 0x1DFF, 0x200C, 0x200D, 0x20D0, 0x20F0, 0x302A, 0x302D,
+	0x3099, 0x309A, 0xFE00, 0xFE0F, 0xFE20, 0xFE2D, 0x101FD, 0x101FD,
+	0x102E0, 0x102E0, 0x1133B, 0x1133B, 0x1CF00, 0x1CF2D, 0x1CF30, 0x1CF46,
+	0x1D167, 0x1D169, 0x1D17B, 0x1D182, 0x1D185, 0x1D18B, 0x1D1AA, 0x1D1AD,
+	0xE0100, 0xE01EF,
+	//  #137 (16112+2): sc=Tagalog:Tglg
+	0x1700, 0x1715, 0x171F, 0x171F,
+	//  #138 (16114+1): sc=Hanunoo:Hano
+	0x1720, 0x1734,
+	//  #139 (16115+1): sc=Buhid:Buhd
+	0x1740, 0x1753,
+	//  #140 (16116+3): sc=Tagbanwa:Tagb
+	0x1760, 0x176C, 0x176E, 0x1770, 0x1772, 0x1773,
+	//  #141 (16119+5): sc=Limbu:Limb
+	0x1900, 0x191E, 0x1920, 0x192B, 0x1930, 0x193B, 0x1940, 0x1940,
+	0x1944, 0x194F,
+	//  #142 (16124+2): sc=Tai_Le:Tale
+	0x1950, 0x196D, 0x1970, 0x1974,
+	//  #143 (16126+7): sc=Linear_B:Linb
+	0x10000, 0x1000B, 0x1000D, 0x10026, 0x10028, 0x1003A, 0x1003C, 0x1003D,
+	0x1003F, 0x1004D, 0x10050, 0x1005D, 0x10080, 0x100FA,
+	//  #144 (16133+2): sc=Ugaritic:Ugar scx=Ugaritic:Ugar
 	0x10380, 0x1039D, 0x1039F, 0x1039F,
-	//  #248 (16403+1): sc=Vai:Vaii scx=Vai:Vaii
+	//  #145 (16135+1): sc=Shavian:Shaw scx=Shavian:Shaw
+	0x10450, 0x1047F,
+	//  #146 (16136+2): sc=Osmanya:Osma scx=Osmanya:Osma
+	0x10480, 0x1049D, 0x104A0, 0x104A9,
+	//  #147 (16138+6): sc=Cypriot:Cprt
+	0x10800, 0x10805, 0x10808, 0x10808, 0x1080A, 0x10835, 0x10837, 0x10838,
+	0x1083C, 0x1083C, 0x1083F, 0x1083F,
+	//  #148 (16144+1): sc=Braille:Brai scx=Braille:Brai
+	0x2800, 0x28FF,
+	//  #149 (16145+2): sc=Buginese:Bugi
+	0x1A00, 0x1A1B, 0x1A1E, 0x1A1F,
+	//  #150 (16147+3): sc=Coptic:Copt:Qaac
+	0x03E2, 0x03EF, 0x2C80, 0x2CF3, 0x2CF9, 0x2CFF,
+	//  #151 (16150+4): sc=New_Tai_Lue:Talu scx=New_Tai_Lue:Talu
+	0x1980, 0x19AB, 0x19B0, 0x19C9, 0x19D0, 0x19DA, 0x19DE, 0x19DF,
+	//  #152 (16154+6): sc=Glagolitic:Glag
+	0x2C00, 0x2C5F, 0x1E000, 0x1E006, 0x1E008, 0x1E018, 0x1E01B, 0x1E021,
+	0x1E023, 0x1E024, 0x1E026, 0x1E02A,
+	//  #153 (16160+3): sc=Tifinagh:Tfng scx=Tifinagh:Tfng
+	0x2D30, 0x2D67, 0x2D6F, 0x2D70, 0x2D7F, 0x2D7F,
+	//  #154 (16163+1): sc=Syloti_Nagri:Sylo
+	0xA800, 0xA82C,
+	//  #155 (16164+2): sc=Old_Persian:Xpeo scx=Old_Persian:Xpeo
+	0x103A0, 0x103C3, 0x103C8, 0x103D5,
+	//  #156 (16166+8): sc=Kharoshthi:Khar scx=Kharoshthi:Khar
+	0x10A00, 0x10A03, 0x10A05, 0x10A06, 0x10A0C, 0x10A13, 0x10A15, 0x10A17,
+	0x10A19, 0x10A35, 0x10A38, 0x10A3A, 0x10A3F, 0x10A48, 0x10A50, 0x10A58,
+	//  #157 (16174+2): sc=Balinese:Bali scx=Balinese:Bali
+	0x1B00, 0x1B4C, 0x1B50, 0x1B7E,
+	//  #158 (16176+4): sc=Cuneiform:Xsux scx=Cuneiform:Xsux
+	0x12000, 0x12399, 0x12400, 0x1246E, 0x12470, 0x12474, 0x12480, 0x12543,
+	//  #159 (16180+2): sc=Phoenician:Phnx scx=Phoenician:Phnx
+	0x10900, 0x1091B, 0x1091F, 0x1091F,
+	//  #160 (16182+1): sc=Phags_Pa:Phag
+	0xA840, 0xA877,
+	//  #161 (16183+2): sc=Nko:Nkoo
+	0x07C0, 0x07FA, 0x07FD, 0x07FF,
+	//  #162 (16185+2): sc=Sundanese:Sund scx=Sundanese:Sund
+	0x1B80, 0x1BBF, 0x1CC0, 0x1CC7,
+	//  #163 (16187+3): sc=Lepcha:Lepc scx=Lepcha:Lepc
+	0x1C00, 0x1C37, 0x1C3B, 0x1C49, 0x1C4D, 0x1C4F,
+	//  #164 (16190+1): sc=Ol_Chiki:Olck scx=Ol_Chiki:Olck
+	0x1C50, 0x1C7F,
+	//  #165 (16191+1): sc=Vai:Vaii scx=Vai:Vaii
 	0xA500, 0xA62B,
-	//  #249 (16404+8): sc=Vithkuqi:Vith scx=Vithkuqi:Vith
+	//  #166 (16192+2): sc=Saurashtra:Saur scx=Saurashtra:Saur
+	0xA880, 0xA8C5, 0xA8CE, 0xA8D9,
+	//  #167 (16194+2): sc=Kayah_Li:Kali
+	0xA900, 0xA92D, 0xA92F, 0xA92F,
+	//  #168 (16196+2): sc=Rejang:Rjng scx=Rejang:Rjng
+	0xA930, 0xA953, 0xA95F, 0xA95F,
+	//  #169 (16198+1): sc=Lycian:Lyci scx=Lycian:Lyci
+	0x10280, 0x1029C,
+	//  #170 (16199+1): sc=Carian:Cari scx=Carian:Cari
+	0x102A0, 0x102D0,
+	//  #171 (16200+2): sc=Lydian:Lydi scx=Lydian:Lydi
+	0x10920, 0x10939, 0x1093F, 0x1093F,
+	//  #172 (16202+4): sc=Cham:Cham scx=Cham:Cham
+	0xAA00, 0xAA36, 0xAA40, 0xAA4D, 0xAA50, 0xAA59, 0xAA5C, 0xAA5F,
+	//  #173 (16206+5): sc=Tai_Tham:Lana scx=Tai_Tham:Lana
+	0x1A20, 0x1A5E, 0x1A60, 0x1A7C, 0x1A7F, 0x1A89, 0x1A90, 0x1A99,
+	0x1AA0, 0x1AAD,
+	//  #174 (16211+2): sc=Tai_Viet:Tavt scx=Tai_Viet:Tavt
+	0xAA80, 0xAAC2, 0xAADB, 0xAADF,
+	//  #175 (16213+2): sc=Avestan:Avst scx=Avestan:Avst
+	0x10B00, 0x10B35, 0x10B39, 0x10B3F,
+	//  #176 (16215+1): sc=Egyptian_Hieroglyphs:Egyp scx=Egyptian_Hieroglyphs:Egyp
+	0x13000, 0x13455,
+	//  #177 (16216+2): sc=Samaritan:Samr scx=Samaritan:Samr
+	0x0800, 0x082D, 0x0830, 0x083E,
+	//  #178 (16218+2): sc=Lisu:Lisu scx=Lisu:Lisu
+	0xA4D0, 0xA4FF, 0x11FB0, 0x11FB0,
+	//  #179 (16220+2): sc=Bamum:Bamu scx=Bamum:Bamu
+	0xA6A0, 0xA6F7, 0x16800, 0x16A38,
+	//  #180 (16222+3): sc=Javanese:Java
+	0xA980, 0xA9CD, 0xA9D0, 0xA9D9, 0xA9DE, 0xA9DF,
+	//  #181 (16225+3): sc=Meetei_Mayek:Mtei scx=Meetei_Mayek:Mtei
+	0xAAE0, 0xAAF6, 0xABC0, 0xABED, 0xABF0, 0xABF9,
+	//  #182 (16228+2): sc=Imperial_Aramaic:Armi scx=Imperial_Aramaic:Armi
+	0x10840, 0x10855, 0x10857, 0x1085F,
+	//  #183 (16230+1): sc=Old_South_Arabian:Sarb scx=Old_South_Arabian:Sarb
+	0x10A60, 0x10A7F,
+	//  #184 (16231+2): sc=Inscriptional_Parthian:Prti scx=Inscriptional_Parthian:Prti
+	0x10B40, 0x10B55, 0x10B58, 0x10B5F,
+	//  #185 (16233+2): sc=Inscriptional_Pahlavi:Phli scx=Inscriptional_Pahlavi:Phli
+	0x10B60, 0x10B72, 0x10B78, 0x10B7F,
+	//  #186 (16235+1): sc=Old_Turkic:Orkh scx=Old_Turkic:Orkh
+	0x10C00, 0x10C48,
+	//  #187 (16236+2): sc=Kaithi:Kthi
+	0x11080, 0x110C2, 0x110CD, 0x110CD,
+	//  #188 (16238+2): sc=Batak:Batk scx=Batak:Batk
+	0x1BC0, 0x1BF3, 0x1BFC, 0x1BFF,
+	//  #189 (16240+3): sc=Brahmi:Brah scx=Brahmi:Brah
+	0x11000, 0x1104D, 0x11052, 0x11075, 0x1107F, 0x1107F,
+	//  #190 (16243+2): sc=Mandaic:Mand
+	0x0840, 0x085B, 0x085E, 0x085E,
+	//  #191 (16245+2): sc=Chakma:Cakm
+	0x11100, 0x11134, 0x11136, 0x11147,
+	//  #192 (16247+3): sc=Meroitic_Cursive:Merc scx=Meroitic_Cursive:Merc
+	0x109A0, 0x109B7, 0x109BC, 0x109CF, 0x109D2, 0x109FF,
+	//  #193 (16250+1): sc=Meroitic_Hieroglyphs:Mero scx=Meroitic_Hieroglyphs:Mero
+	0x10980, 0x1099F,
+	//  #194 (16251+3): sc=Miao:Plrd scx=Miao:Plrd
+	0x16F00, 0x16F4A, 0x16F4F, 0x16F87, 0x16F8F, 0x16F9F,
+	//  #195 (16254+1): sc=Sharada:Shrd
+	0x11180, 0x111DF,
+	//  #196 (16255+2): sc=Sora_Sompeng:Sora scx=Sora_Sompeng:Sora
+	0x110D0, 0x110E8, 0x110F0, 0x110F9,
+	//  #197 (16257+2): sc=Takri:Takr
+	0x11680, 0x116B9, 0x116C0, 0x116C9,
+	//  #198 (16259+2): sc=Caucasian_Albanian:Aghb scx=Caucasian_Albanian:Aghb
+	0x10530, 0x10563, 0x1056F, 0x1056F,
+	//  #199 (16261+2): sc=Bassa_Vah:Bass scx=Bassa_Vah:Bass
+	0x16AD0, 0x16AED, 0x16AF0, 0x16AF5,
+	//  #200 (16263+5): sc=Duployan:Dupl
+	0x1BC00, 0x1BC6A, 0x1BC70, 0x1BC7C, 0x1BC80, 0x1BC88, 0x1BC90, 0x1BC99,
+	0x1BC9C, 0x1BC9F,
+	//  #201 (16268+1): sc=Elbasan:Elba scx=Elbasan:Elba
+	0x10500, 0x10527,
+	//  #202 (16269+15): sc=Grantha:Gran
+	0x11300, 0x11303, 0x11305, 0x1130C, 0x1130F, 0x11310, 0x11313, 0x11328,
+	0x1132A, 0x11330, 0x11332, 0x11333, 0x11335, 0x11339, 0x1133C, 0x11344,
+	0x11347, 0x11348, 0x1134B, 0x1134D, 0x11350, 0x11350, 0x11357, 0x11357,
+	0x1135D, 0x11363, 0x11366, 0x1136C, 0x11370, 0x11374,
+	//  #203 (16284+5): sc=Pahawh_Hmong:Hmng scx=Pahawh_Hmong:Hmng
+	0x16B00, 0x16B45, 0x16B50, 0x16B59, 0x16B5B, 0x16B61, 0x16B63, 0x16B77,
+	0x16B7D, 0x16B8F,
+	//  #204 (16289+2): sc=Khojki:Khoj
+	0x11200, 0x11211, 0x11213, 0x11241,
+	//  #205 (16291+3): sc=Linear_A:Lina
+	0x10600, 0x10736, 0x10740, 0x10755, 0x10760, 0x10767,
+	//  #206 (16294+1): sc=Mahajani:Mahj
+	0x11150, 0x11176,
+	//  #207 (16295+2): sc=Manichaean:Mani
+	0x10AC0, 0x10AE6, 0x10AEB, 0x10AF6,
+	//  #208 (16297+2): sc=Mende_Kikakui:Mend scx=Mende_Kikakui:Mend
+	0x1E800, 0x1E8C4, 0x1E8C7, 0x1E8D6,
+	//  #209 (16299+2): sc=Modi:Modi
+	0x11600, 0x11644, 0x11650, 0x11659,
+	//  #210 (16301+3): sc=Mro:Mroo scx=Mro:Mroo
+	0x16A40, 0x16A5E, 0x16A60, 0x16A69, 0x16A6E, 0x16A6F,
+	//  #211 (16304+1): sc=Old_North_Arabian:Narb scx=Old_North_Arabian:Narb
+	0x10A80, 0x10A9F,
+	//  #212 (16305+2): sc=Nabataean:Nbat scx=Nabataean:Nbat
+	0x10880, 0x1089E, 0x108A7, 0x108AF,
+	//  #213 (16307+1): sc=Palmyrene:Palm scx=Palmyrene:Palm
+	0x10860, 0x1087F,
+	//  #214 (16308+1): sc=Pau_Cin_Hau:Pauc scx=Pau_Cin_Hau:Pauc
+	0x11AC0, 0x11AF8,
+	//  #215 (16309+1): sc=Old_Permic:Perm
+	0x10350, 0x1037A,
+	//  #216 (16310+3): sc=Psalter_Pahlavi:Phlp
+	0x10B80, 0x10B91, 0x10B99, 0x10B9C, 0x10BA9, 0x10BAF,
+	//  #217 (16313+2): sc=Siddham:Sidd scx=Siddham:Sidd
+	0x11580, 0x115B5, 0x115B8, 0x115DD,
+	//  #218 (16315+2): sc=Khudawadi:Sind
+	0x112B0, 0x112EA, 0x112F0, 0x112F9,
+	//  #219 (16317+2): sc=Tirhuta:Tirh
+	0x11480, 0x114C7, 0x114D0, 0x114D9,
+	//  #220 (16319+2): sc=Warang_Citi:Wara scx=Warang_Citi:Wara
+	0x118A0, 0x118F2, 0x118FF, 0x118FF,
+	//  #221 (16321+3): sc=Ahom:Ahom scx=Ahom:Ahom
+	0x11700, 0x1171A, 0x1171D, 0x1172B, 0x11730, 0x11746,
+	//  #222 (16324+1): sc=Anatolian_Hieroglyphs:Hluw scx=Anatolian_Hieroglyphs:Hluw
+	0x14400, 0x14646,
+	//  #223 (16325+3): sc=Hatran:Hatr scx=Hatran:Hatr
+	0x108E0, 0x108F2, 0x108F4, 0x108F5, 0x108FB, 0x108FF,
+	//  #224 (16328+5): sc=Multani:Mult
+	0x11280, 0x11286, 0x11288, 0x11288, 0x1128A, 0x1128D, 0x1128F, 0x1129D,
+	0x1129F, 0x112A9,
+	//  #225 (16333+3): sc=Old_Hungarian:Hung scx=Old_Hungarian:Hung
+	0x10C80, 0x10CB2, 0x10CC0, 0x10CF2, 0x10CFA, 0x10CFF,
+	//  #226 (16336+3): sc=SignWriting:Sgnw scx=SignWriting:Sgnw
+	0x1D800, 0x1DA8B, 0x1DA9B, 0x1DA9F, 0x1DAA1, 0x1DAAF,
+	//  #227 (16339+3): sc=Adlam:Adlm
+	0x1E900, 0x1E94B, 0x1E950, 0x1E959, 0x1E95E, 0x1E95F,
+	//  #228 (16342+4): sc=Bhaiksuki:Bhks scx=Bhaiksuki:Bhks
+	0x11C00, 0x11C08, 0x11C0A, 0x11C36, 0x11C38, 0x11C45, 0x11C50, 0x11C6C,
+	//  #229 (16346+3): sc=Marchen:Marc scx=Marchen:Marc
+	0x11C70, 0x11C8F, 0x11C92, 0x11CA7, 0x11CA9, 0x11CB6,
+	//  #230 (16349+2): sc=Newa:Newa scx=Newa:Newa
+	0x11400, 0x1145B, 0x1145D, 0x11461,
+	//  #231 (16351+2): sc=Osage:Osge scx=Osage:Osge
+	0x104B0, 0x104D3, 0x104D8, 0x104FB,
+	//  #232 (16353+4): sc=Tangut:Tang scx=Tangut:Tang
+	0x16FE0, 0x16FE0, 0x17000, 0x187F7, 0x18800, 0x18AFF, 0x18D00, 0x18D08,
+	//  #233 (16357+7): sc=Masaram_Gondi:Gonm
+	0x11D00, 0x11D06, 0x11D08, 0x11D09, 0x11D0B, 0x11D36, 0x11D3A, 0x11D3A,
+	0x11D3C, 0x11D3D, 0x11D3F, 0x11D47, 0x11D50, 0x11D59,
+	//  #234 (16364+2): sc=Nushu:Nshu scx=Nushu:Nshu
+	0x16FE1, 0x16FE1, 0x1B170, 0x1B2FB,
+	//  #235 (16366+1): sc=Soyombo:Soyo scx=Soyombo:Soyo
+	0x11A50, 0x11AA2,
+	//  #236 (16367+1): sc=Zanabazar_Square:Zanb scx=Zanabazar_Square:Zanb
+	0x11A00, 0x11A47,
+	//  #237 (16368+1): sc=Dogra:Dogr
+	0x11800, 0x1183B,
+	//  #238 (16369+6): sc=Gunjala_Gondi:Gong
+	0x11D60, 0x11D65, 0x11D67, 0x11D68, 0x11D6A, 0x11D8E, 0x11D90, 0x11D91,
+	0x11D93, 0x11D98, 0x11DA0, 0x11DA9,
+	//  #239 (16375+1): sc=Makasar:Maka scx=Makasar:Maka
+	0x11EE0, 0x11EF8,
+	//  #240 (16376+1): sc=Medefaidrin:Medf scx=Medefaidrin:Medf
+	0x16E40, 0x16E9A,
+	//  #241 (16377+2): sc=Hanifi_Rohingya:Rohg
+	0x10D00, 0x10D27, 0x10D30, 0x10D39,
+	//  #242 (16379+1): sc=Sogdian:Sogd
+	0x10F30, 0x10F59,
+	//  #243 (16380+1): sc=Old_Sogdian:Sogo scx=Old_Sogdian:Sogo
+	0x10F00, 0x10F27,
+	//  #244 (16381+1): sc=Elymaic:Elym scx=Elymaic:Elym
+	0x10FE0, 0x10FF6,
+	//  #245 (16382+3): sc=Nandinagari:Nand
+	0x119A0, 0x119A7, 0x119AA, 0x119D7, 0x119DA, 0x119E4,
+	//  #246 (16385+4): sc=Nyiakeng_Puachue_Hmong:Hmnp scx=Nyiakeng_Puachue_Hmong:Hmnp
+	0x1E100, 0x1E12C, 0x1E130, 0x1E13D, 0x1E140, 0x1E149, 0x1E14E, 0x1E14F,
+	//  #247 (16389+2): sc=Wancho:Wcho scx=Wancho:Wcho
+	0x1E2C0, 0x1E2F9, 0x1E2FF, 0x1E2FF,
+	//  #248 (16391+1): sc=Chorasmian:Chrs scx=Chorasmian:Chrs
+	0x10FB0, 0x10FCB,
+	//  #249 (16392+8): sc=Dives_Akuru:Diak scx=Dives_Akuru:Diak
+	0x11900, 0x11906, 0x11909, 0x11909, 0x1190C, 0x11913, 0x11915, 0x11916,
+	0x11918, 0x11935, 0x11937, 0x11938, 0x1193B, 0x11946, 0x11950, 0x11959,
+	//  #250 (16400+2): sc=Khitan_Small_Script:Kits scx=Khitan_Small_Script:Kits
+	0x16FE4, 0x16FE4, 0x18B00, 0x18CD5,
+	//  #251 (16402+3): sc=Yezidi:Yezi
+	0x10E80, 0x10EA9, 0x10EAB, 0x10EAD, 0x10EB0, 0x10EB1,
+	//  #252 (16405+1): sc=Cypro_Minoan:Cpmn
+	0x12F90, 0x12FF2,
+	//  #253 (16406+1): sc=Old_Uyghur:Ougr
+	0x10F70, 0x10F89,
+	//  #254 (16407+2): sc=Tangsa:Tnsa scx=Tangsa:Tnsa
+	0x16A70, 0x16ABE, 0x16AC0, 0x16AC9,
+	//  #255 (16409+1): sc=Toto:Toto scx=Toto:Toto
+	0x1E290, 0x1E2AE,
+	//  #256 (16410+8): sc=Vithkuqi:Vith scx=Vithkuqi:Vith
 	0x10570, 0x1057A, 0x1057C, 0x1058A, 0x1058C, 0x10592, 0x10594, 0x10595,
 	0x10597, 0x105A1, 0x105A3, 0x105B1, 0x105B3, 0x105B9, 0x105BB, 0x105BC,
-	//  #250 (16412+2): sc=Wancho:Wcho scx=Wancho:Wcho
-	0x1E2C0, 0x1E2F9, 0x1E2FF, 0x1E2FF,
-	//  #251 (16414+2): sc=Warang_Citi:Wara scx=Warang_Citi:Wara
-	0x118A0, 0x118F2, 0x118FF, 0x118FF,
-	//  #252 (16416+3): sc=Yezidi:Yezi
-	0x10E80, 0x10EA9, 0x10EAB, 0x10EAD, 0x10EB0, 0x10EB1,
-	//  #253 (16419+2): sc=Yi:Yiii
-	0xA000, 0xA48C, 0xA490, 0xA4C6,
-	//  #254 (16421+1): sc=Zanabazar_Square:Zanb scx=Zanabazar_Square:Zanb
-	0x11A00, 0x11A47,
-	//  #255 (16422+5): scx=Adlam:Adlm
-	0x061F, 0x061F, 0x0640, 0x0640, 0x1E900, 0x1E94B, 0x1E950, 0x1E959,
-	0x1E95E, 0x1E95F,
-	//  #256 (16427+52): scx=Arabic:Arab
-	0x0600, 0x0604, 0x0606, 0x06DC, 0x06DE, 0x06FF, 0x0750, 0x077F,
-	0x0870, 0x088E, 0x0890, 0x0891, 0x0898, 0x08E1, 0x08E3, 0x08FF,
-	0xFB50, 0xFBC2, 0xFBD3, 0xFD8F, 0xFD92, 0xFDC7, 0xFDCF, 0xFDCF,
-	0xFDF0, 0xFDFF, 0xFE70, 0xFE74, 0xFE76, 0xFEFC, 0x102E0, 0x102FB,
-	0x10E60, 0x10E7E, 0x10EFD, 0x10EFF, 0x1EE00, 0x1EE03, 0x1EE05, 0x1EE1F,
-	0x1EE21, 0x1EE22, 0x1EE24, 0x1EE24, 0x1EE27, 0x1EE27, 0x1EE29, 0x1EE32,
-	0x1EE34, 0x1EE37, 0x1EE39, 0x1EE39, 0x1EE3B, 0x1EE3B, 0x1EE42, 0x1EE42,
-	0x1EE47, 0x1EE47, 0x1EE49, 0x1EE49, 0x1EE4B, 0x1EE4B, 0x1EE4D, 0x1EE4F,
-	0x1EE51, 0x1EE52, 0x1EE54, 0x1EE54, 0x1EE57, 0x1EE57, 0x1EE59, 0x1EE59,
-	0x1EE5B, 0x1EE5B, 0x1EE5D, 0x1EE5D, 0x1EE5F, 0x1EE5F, 0x1EE61, 0x1EE62,
-	0x1EE64, 0x1EE64, 0x1EE67, 0x1EE6A, 0x1EE6C, 0x1EE72, 0x1EE74, 0x1EE77,
-	0x1EE79, 0x1EE7C, 0x1EE7E, 0x1EE7E, 0x1EE80, 0x1EE89, 0x1EE8B, 0x1EE9B,
-	0x1EEA1, 0x1EEA3, 0x1EEA5, 0x1EEA9, 0x1EEAB, 0x1EEBB, 0x1EEF0, 0x1EEF1,
-	//  #257 (16479+26): scx=Bengali:Beng
-	0x0951, 0x0952, 0x0964, 0x0965, 0x0980, 0x0983, 0x0985, 0x098C,
-	0x098F, 0x0990, 0x0993, 0x09A8, 0x09AA, 0x09B0, 0x09B2, 0x09B2,
-	0x09B6, 0x09B9, 0x09BC, 0x09C4, 0x09C7, 0x09C8, 0x09CB, 0x09CE,
-	0x09D7, 0x09D7, 0x09DC, 0x09DD, 0x09DF, 0x09E3, 0x09E6, 0x09FE,
-	0x1CD0, 0x1CD0, 0x1CD2, 0x1CD2, 0x1CD5, 0x1CD6, 0x1CD8, 0x1CD8,
-	0x1CE1, 0x1CE1, 0x1CEA, 0x1CEA, 0x1CED, 0x1CED, 0x1CF2, 0x1CF2,
-	0x1CF5, 0x1CF7, 0xA8F1, 0xA8F1,
-	//  #258 (16505+12): scx=Bopomofo:Bopo
-	0x02EA, 0x02EB, 0x3001, 0x3003, 0x3008, 0x3011, 0x3013, 0x301F,
-	0x302A, 0x302D, 0x3030, 0x3030, 0x3037, 0x3037, 0x30FB, 0x30FB,
-	0x3105, 0x312F, 0x31A0, 0x31BF, 0xFE45, 0xFE46, 0xFF61, 0xFF65,
-	//  #259 (16517+3): scx=Buginese:Bugi
-	0x1A00, 0x1A1B, 0x1A1E, 0x1A1F, 0xA9CF, 0xA9CF,
-	//  #260 (16520+2): scx=Buhid:Buhd
-	0x1735, 0x1736, 0x1740, 0x1753,
-	//  #261 (16522+4): scx=Chakma:Cakm
-	0x09E6, 0x09EF, 0x1040, 0x1049, 0x11100, 0x11134, 0x11136, 0x11147,
-	//  #262 (16526+147): scx=Common:Zyyy
+	//  #257 (16418+3): sc=Kawi:Kawi scx=Kawi:Kawi
+	0x11F00, 0x11F10, 0x11F12, 0x11F3A, 0x11F3E, 0x11F59,
+	//  #258 (16421+1): sc=Nag_Mundari:Nagm scx=Nag_Mundari:Nagm
+	0x1E4D0, 0x1E4F9,
+	//  #259 (16422+147): scx=Common:Zyyy
 	0x0000, 0x0040, 0x005B, 0x0060, 0x007B, 0x00A9, 0x00AB, 0x00B9,
 	0x00BB, 0x00BF, 0x00D7, 0x00D7, 0x00F7, 0x00F7, 0x02B9, 0x02DF,
 	0x02E5, 0x02E9, 0x02EC, 0x02FF, 0x0374, 0x0374, 0x037E, 0x037E,
@@ -9428,127 +10551,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x1FA80, 0x1FA88, 0x1FA90, 0x1FABD, 0x1FABF, 0x1FAC5, 0x1FACE, 0x1FADB,
 	0x1FAE0, 0x1FAE8, 0x1FAF0, 0x1FAF8, 0x1FB00, 0x1FB92, 0x1FB94, 0x1FBCA,
 	0x1FBF0, 0x1FBF9, 0xE0001, 0xE0001, 0xE0020, 0xE007F,
-	//  #263 (16673+4): scx=Coptic:Copt:Qaac
-	0x03E2, 0x03EF, 0x2C80, 0x2CF3, 0x2CF9, 0x2CFF, 0x102E0, 0x102FB,
-	//  #264 (16677+9): scx=Cypriot:Cprt
-	0x10100, 0x10102, 0x10107, 0x10133, 0x10137, 0x1013F, 0x10800, 0x10805,
-	0x10808, 0x10808, 0x1080A, 0x10835, 0x10837, 0x10838, 0x1083C, 0x1083C,
-	0x1083F, 0x1083F,
-	//  #265 (16686+2): scx=Cypro_Minoan:Cpmn
-	0x10100, 0x10101, 0x12F90, 0x12FF2,
-	//  #266 (16688+11): scx=Cyrillic:Cyrl
-	0x0400, 0x052F, 0x1C80, 0x1C88, 0x1D2B, 0x1D2B, 0x1D78, 0x1D78,
-	0x1DF8, 0x1DF8, 0x2DE0, 0x2DFF, 0x2E43, 0x2E43, 0xA640, 0xA69F,
-	0xFE2E, 0xFE2F, 0x1E030, 0x1E06D, 0x1E08F, 0x1E08F,
-	//  #267 (16699+8): scx=Devanagari:Deva
-	0x0900, 0x0952, 0x0955, 0x097F, 0x1CD0, 0x1CF6, 0x1CF8, 0x1CF9,
-	0x20F0, 0x20F0, 0xA830, 0xA839, 0xA8E0, 0xA8FF, 0x11B00, 0x11B09,
-	//  #268 (16707+3): scx=Dogra:Dogr
-	0x0964, 0x096F, 0xA830, 0xA839, 0x11800, 0x1183B,
-	//  #269 (16710+5): scx=Duployan:Dupl
-	0x1BC00, 0x1BC6A, 0x1BC70, 0x1BC7C, 0x1BC80, 0x1BC88, 0x1BC90, 0x1BC99,
-	0x1BC9C, 0x1BCA3,
-	//  #270 (16715+9): scx=Georgian:Geor
-	0x10A0, 0x10C5, 0x10C7, 0x10C7, 0x10CD, 0x10CD, 0x10D0, 0x10FF,
-	0x1C90, 0x1CBA, 0x1CBD, 0x1CBF, 0x2D00, 0x2D25, 0x2D27, 0x2D27,
-	0x2D2D, 0x2D2D,
-	//  #271 (16724+10): scx=Glagolitic:Glag
-	0x0484, 0x0484, 0x0487, 0x0487, 0x2C00, 0x2C5F, 0x2E43, 0x2E43,
-	0xA66F, 0xA66F, 0x1E000, 0x1E006, 0x1E008, 0x1E018, 0x1E01B, 0x1E021,
-	0x1E023, 0x1E024, 0x1E026, 0x1E02A,
-	//  #272 (16734+25): scx=Grantha:Gran
-	0x0951, 0x0952, 0x0964, 0x0965, 0x0BE6, 0x0BF3, 0x1CD0, 0x1CD0,
-	0x1CD2, 0x1CD3, 0x1CF2, 0x1CF4, 0x1CF8, 0x1CF9, 0x20F0, 0x20F0,
-	0x11300, 0x11303, 0x11305, 0x1130C, 0x1130F, 0x11310, 0x11313, 0x11328,
-	0x1132A, 0x11330, 0x11332, 0x11333, 0x11335, 0x11339, 0x1133B, 0x11344,
-	0x11347, 0x11348, 0x1134B, 0x1134D, 0x11350, 0x11350, 0x11357, 0x11357,
-	0x1135D, 0x11363, 0x11366, 0x1136C, 0x11370, 0x11374, 0x11FD0, 0x11FD1,
-	0x11FD3, 0x11FD3,
-	//  #273 (16759+38): scx=Greek:Grek
-	0x0342, 0x0342, 0x0345, 0x0345, 0x0370, 0x0373, 0x0375, 0x0377,
-	0x037A, 0x037D, 0x037F, 0x037F, 0x0384, 0x0384, 0x0386, 0x0386,
-	0x0388, 0x038A, 0x038C, 0x038C, 0x038E, 0x03A1, 0x03A3, 0x03E1,
-	0x03F0, 0x03FF, 0x1D26, 0x1D2A, 0x1D5D, 0x1D61, 0x1D66, 0x1D6A,
-	0x1DBF, 0x1DC1, 0x1F00, 0x1F15, 0x1F18, 0x1F1D, 0x1F20, 0x1F45,
-	0x1F48, 0x1F4D, 0x1F50, 0x1F57, 0x1F59, 0x1F59, 0x1F5B, 0x1F5B,
-	0x1F5D, 0x1F5D, 0x1F5F, 0x1F7D, 0x1F80, 0x1FB4, 0x1FB6, 0x1FC4,
-	0x1FC6, 0x1FD3, 0x1FD6, 0x1FDB, 0x1FDD, 0x1FEF, 0x1FF2, 0x1FF4,
-	0x1FF6, 0x1FFE, 0x2126, 0x2126, 0xAB65, 0xAB65, 0x10140, 0x1018E,
-	0x101A0, 0x101A0, 0x1D200, 0x1D245,
-	//  #274 (16797+17): scx=Gujarati:Gujr
-	0x0951, 0x0952, 0x0964, 0x0965, 0x0A81, 0x0A83, 0x0A85, 0x0A8D,
-	0x0A8F, 0x0A91, 0x0A93, 0x0AA8, 0x0AAA, 0x0AB0, 0x0AB2, 0x0AB3,
-	0x0AB5, 0x0AB9, 0x0ABC, 0x0AC5, 0x0AC7, 0x0AC9, 0x0ACB, 0x0ACD,
-	0x0AD0, 0x0AD0, 0x0AE0, 0x0AE3, 0x0AE6, 0x0AF1, 0x0AF9, 0x0AFF,
-	0xA830, 0xA839,
-	//  #275 (16814+7): scx=Gunjala_Gondi:Gong
-	0x0964, 0x0965, 0x11D60, 0x11D65, 0x11D67, 0x11D68, 0x11D6A, 0x11D8E,
-	0x11D90, 0x11D91, 0x11D93, 0x11D98, 0x11DA0, 0x11DA9,
-	//  #276 (16821+19): scx=Gurmukhi:Guru
-	0x0951, 0x0952, 0x0964, 0x0965, 0x0A01, 0x0A03, 0x0A05, 0x0A0A,
-	0x0A0F, 0x0A10, 0x0A13, 0x0A28, 0x0A2A, 0x0A30, 0x0A32, 0x0A33,
-	0x0A35, 0x0A36, 0x0A38, 0x0A39, 0x0A3C, 0x0A3C, 0x0A3E, 0x0A42,
-	0x0A47, 0x0A48, 0x0A4B, 0x0A4D, 0x0A51, 0x0A51, 0x0A59, 0x0A5C,
-	0x0A5E, 0x0A5E, 0x0A66, 0x0A76, 0xA830, 0xA839,
-	//  #277 (16840+38): scx=Han:Hani
-	0x2E80, 0x2E99, 0x2E9B, 0x2EF3, 0x2F00, 0x2FD5, 0x3001, 0x3003,
-	0x3005, 0x3011, 0x3013, 0x301F, 0x3021, 0x302D, 0x3030, 0x3030,
-	0x3037, 0x303F, 0x30FB, 0x30FB, 0x3190, 0x319F, 0x31C0, 0x31E3,
-	0x3220, 0x3247, 0x3280, 0x32B0, 0x32C0, 0x32CB, 0x32FF, 0x32FF,
-	0x3358, 0x3370, 0x337B, 0x337F, 0x33E0, 0x33FE, 0x3400, 0x4DBF,
-	0x4E00, 0x9FFF, 0xA700, 0xA707, 0xF900, 0xFA6D, 0xFA70, 0xFAD9,
-	0xFE45, 0xFE46, 0xFF61, 0xFF65, 0x16FE2, 0x16FE3, 0x16FF0, 0x16FF1,
-	0x1D360, 0x1D371, 0x1F250, 0x1F251, 0x20000, 0x2A6DF, 0x2A700, 0x2B739,
-	0x2B740, 0x2B81D, 0x2B820, 0x2CEA1, 0x2CEB0, 0x2EBE0, 0x2F800, 0x2FA1D,
-	0x30000, 0x3134A, 0x31350, 0x323AF,
-	//  #278 (16878+21): scx=Hangul:Hang
-	0x1100, 0x11FF, 0x3001, 0x3003, 0x3008, 0x3011, 0x3013, 0x301F,
-	0x302E, 0x3030, 0x3037, 0x3037, 0x30FB, 0x30FB, 0x3131, 0x318E,
-	0x3200, 0x321E, 0x3260, 0x327E, 0xA960, 0xA97C, 0xAC00, 0xD7A3,
-	0xD7B0, 0xD7C6, 0xD7CB, 0xD7FB, 0xFE45, 0xFE46, 0xFF61, 0xFF65,
-	0xFFA0, 0xFFBE, 0xFFC2, 0xFFC7, 0xFFCA, 0xFFCF, 0xFFD2, 0xFFD7,
-	0xFFDA, 0xFFDC,
-	//  #279 (16899+7): scx=Hanifi_Rohingya:Rohg
-	0x060C, 0x060C, 0x061B, 0x061B, 0x061F, 0x061F, 0x0640, 0x0640,
-	0x06D4, 0x06D4, 0x10D00, 0x10D27, 0x10D30, 0x10D39,
-	//  #280 (16906+1): scx=Hanunoo:Hano
-	0x1720, 0x1736,
-	//  #281 (16907+17): scx=Hiragana:Hira
-	0x3001, 0x3003, 0x3008, 0x3011, 0x3013, 0x301F, 0x3030, 0x3035,
-	0x3037, 0x3037, 0x303C, 0x303D, 0x3041, 0x3096, 0x3099, 0x30A0,
-	0x30FB, 0x30FC, 0xFE45, 0xFE46, 0xFF61, 0xFF65, 0xFF70, 0xFF70,
-	0xFF9E, 0xFF9F, 0x1B001, 0x1B11F, 0x1B132, 0x1B132, 0x1B150, 0x1B152,
-	0x1F200, 0x1F200,
-	//  #282 (16924+20): scx=Inherited:Zinh:Qaai
-	0x0300, 0x0341, 0x0343, 0x0344, 0x0346, 0x0362, 0x0953, 0x0954,
-	0x1AB0, 0x1ACE, 0x1DC2, 0x1DF7, 0x1DF9, 0x1DF9, 0x1DFB, 0x1DFF,
-	0x200C, 0x200D, 0x20D0, 0x20EF, 0xFE00, 0xFE0F, 0xFE20, 0xFE2D,
-	0x101FD, 0x101FD, 0x1CF00, 0x1CF2D, 0x1CF30, 0x1CF46, 0x1D167, 0x1D169,
-	0x1D17B, 0x1D182, 0x1D185, 0x1D18B, 0x1D1AA, 0x1D1AD, 0xE0100, 0xE01EF,
-	//  #283 (16944+3): scx=Javanese:Java
-	0xA980, 0xA9CD, 0xA9CF, 0xA9D9, 0xA9DE, 0xA9DF,
-	//  #284 (16947+4): scx=Kaithi:Kthi
-	0x0966, 0x096F, 0xA830, 0xA839, 0x11080, 0x110C2, 0x110CD, 0x110CD,
-	//  #285 (16951+21): scx=Kannada:Knda
-	0x0951, 0x0952, 0x0964, 0x0965, 0x0C80, 0x0C8C, 0x0C8E, 0x0C90,
-	0x0C92, 0x0CA8, 0x0CAA, 0x0CB3, 0x0CB5, 0x0CB9, 0x0CBC, 0x0CC4,
-	0x0CC6, 0x0CC8, 0x0CCA, 0x0CCD, 0x0CD5, 0x0CD6, 0x0CDD, 0x0CDE,
-	0x0CE0, 0x0CE3, 0x0CE6, 0x0CEF, 0x0CF1, 0x0CF3, 0x1CD0, 0x1CD0,
-	0x1CD2, 0x1CD2, 0x1CDA, 0x1CDA, 0x1CF2, 0x1CF2, 0x1CF4, 0x1CF4,
-	0xA830, 0xA835,
-	//  #286 (16972+20): scx=Katakana:Kana
-	0x3001, 0x3003, 0x3008, 0x3011, 0x3013, 0x301F, 0x3030, 0x3035,
-	0x3037, 0x3037, 0x303C, 0x303D, 0x3099, 0x309C, 0x30A0, 0x30FF,
-	0x31F0, 0x31FF, 0x32D0, 0x32FE, 0x3300, 0x3357, 0xFE45, 0xFE46,
-	0xFF61, 0xFF9F, 0x1AFF0, 0x1AFF3, 0x1AFF5, 0x1AFFB, 0x1AFFD, 0x1AFFE,
-	0x1B000, 0x1B000, 0x1B120, 0x1B122, 0x1B155, 0x1B155, 0x1B164, 0x1B167,
-	//  #287 (16992+1): scx=Kayah_Li:Kali
-	0xA900, 0xA92F,
-	//  #288 (16993+4): scx=Khojki:Khoj
-	0x0AE6, 0x0AEF, 0xA830, 0xA839, 0x11200, 0x11211, 0x11213, 0x11241,
-	//  #289 (16997+4): scx=Khudawadi:Sind
-	0x0964, 0x0965, 0xA830, 0xA839, 0x112B0, 0x112EA, 0x112F0, 0x112F9,
-	//  #290 (17001+47): scx=Latin:Latn
+	//  #260 (16569+47): scx=Latin:Latn
 	0x0041, 0x005A, 0x0061, 0x007A, 0x00AA, 0x00AA, 0x00BA, 0x00BA,
 	0x00C0, 0x00D6, 0x00D8, 0x00F6, 0x00F8, 0x02B8, 0x02E0, 0x02E4,
 	0x0363, 0x036F, 0x0485, 0x0486, 0x0951, 0x0952, 0x10FB, 0x10FB,
@@ -9561,84 +10564,72 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0xAB30, 0xAB5A, 0xAB5C, 0xAB64, 0xAB66, 0xAB69, 0xFB00, 0xFB06,
 	0xFF21, 0xFF3A, 0xFF41, 0xFF5A, 0x10780, 0x10785, 0x10787, 0x107B0,
 	0x107B2, 0x107BA, 0x1DF00, 0x1DF1E, 0x1DF25, 0x1DF2A,
-	//  #291 (17048+6): scx=Limbu:Limb
-	0x0965, 0x0965, 0x1900, 0x191E, 0x1920, 0x192B, 0x1930, 0x193B,
-	0x1940, 0x1940, 0x1944, 0x194F,
-	//  #292 (17054+4): scx=Linear_A:Lina
-	0x10107, 0x10133, 0x10600, 0x10736, 0x10740, 0x10755, 0x10760, 0x10767,
-	//  #293 (17058+10): scx=Linear_B:Linb
-	0x10000, 0x1000B, 0x1000D, 0x10026, 0x10028, 0x1003A, 0x1003C, 0x1003D,
-	0x1003F, 0x1004D, 0x10050, 0x1005D, 0x10080, 0x100FA, 0x10100, 0x10102,
-	0x10107, 0x10133, 0x10137, 0x1013F,
-	//  #294 (17068+3): scx=Mahajani:Mahj
-	0x0964, 0x096F, 0xA830, 0xA839, 0x11150, 0x11176,
-	//  #295 (17071+11): scx=Malayalam:Mlym
-	0x0951, 0x0952, 0x0964, 0x0965, 0x0D00, 0x0D0C, 0x0D0E, 0x0D10,
-	0x0D12, 0x0D44, 0x0D46, 0x0D48, 0x0D4A, 0x0D4F, 0x0D54, 0x0D63,
-	0x0D66, 0x0D7F, 0x1CDA, 0x1CDA, 0xA830, 0xA832,
-	//  #296 (17082+3): scx=Mandaic:Mand
-	0x0640, 0x0640, 0x0840, 0x085B, 0x085E, 0x085E,
-	//  #297 (17085+3): scx=Manichaean:Mani
-	0x0640, 0x0640, 0x10AC0, 0x10AE6, 0x10AEB, 0x10AF6,
-	//  #298 (17088+8): scx=Masaram_Gondi:Gonm
-	0x0964, 0x0965, 0x11D00, 0x11D06, 0x11D08, 0x11D09, 0x11D0B, 0x11D36,
-	0x11D3A, 0x11D3A, 0x11D3C, 0x11D3D, 0x11D3F, 0x11D47, 0x11D50, 0x11D59,
-	//  #299 (17096+3): scx=Modi:Modi
-	0xA830, 0xA839, 0x11600, 0x11644, 0x11650, 0x11659,
-	//  #300 (17099+5): scx=Mongolian:Mong
-	0x1800, 0x1819, 0x1820, 0x1878, 0x1880, 0x18AA, 0x202F, 0x202F,
-	0x11660, 0x1166C,
-	//  #301 (17104+6): scx=Multani:Mult
-	0x0A66, 0x0A6F, 0x11280, 0x11286, 0x11288, 0x11288, 0x1128A, 0x1128D,
-	0x1128F, 0x1129D, 0x1129F, 0x112A9,
-	//  #302 (17110+4): scx=Myanmar:Mymr
-	0x1000, 0x109F, 0xA92E, 0xA92E, 0xA9E0, 0xA9FE, 0xAA60, 0xAA7F,
-	//  #303 (17114+9): scx=Nandinagari:Nand
-	0x0964, 0x0965, 0x0CE6, 0x0CEF, 0x1CE9, 0x1CE9, 0x1CF2, 0x1CF2,
-	0x1CFA, 0x1CFA, 0xA830, 0xA835, 0x119A0, 0x119A7, 0x119AA, 0x119D7,
-	0x119DA, 0x119E4,
-	//  #304 (17123+6): scx=Nko:Nkoo
-	0x060C, 0x060C, 0x061B, 0x061B, 0x061F, 0x061F, 0x07C0, 0x07FA,
-	0x07FD, 0x07FF, 0xFD3E, 0xFD3F,
-	//  #305 (17129+2): scx=Old_Permic:Perm
-	0x0483, 0x0483, 0x10350, 0x1037A,
-	//  #306 (17131+3): scx=Old_Uyghur:Ougr
-	0x0640, 0x0640, 0x10AF2, 0x10AF2, 0x10F70, 0x10F89,
-	//  #307 (17134+18): scx=Oriya:Orya
+	//  #261 (16616+38): scx=Greek:Grek
+	0x0342, 0x0342, 0x0345, 0x0345, 0x0370, 0x0373, 0x0375, 0x0377,
+	0x037A, 0x037D, 0x037F, 0x037F, 0x0384, 0x0384, 0x0386, 0x0386,
+	0x0388, 0x038A, 0x038C, 0x038C, 0x038E, 0x03A1, 0x03A3, 0x03E1,
+	0x03F0, 0x03FF, 0x1D26, 0x1D2A, 0x1D5D, 0x1D61, 0x1D66, 0x1D6A,
+	0x1DBF, 0x1DC1, 0x1F00, 0x1F15, 0x1F18, 0x1F1D, 0x1F20, 0x1F45,
+	0x1F48, 0x1F4D, 0x1F50, 0x1F57, 0x1F59, 0x1F59, 0x1F5B, 0x1F5B,
+	0x1F5D, 0x1F5D, 0x1F5F, 0x1F7D, 0x1F80, 0x1FB4, 0x1FB6, 0x1FC4,
+	0x1FC6, 0x1FD3, 0x1FD6, 0x1FDB, 0x1FDD, 0x1FEF, 0x1FF2, 0x1FF4,
+	0x1FF6, 0x1FFE, 0x2126, 0x2126, 0xAB65, 0xAB65, 0x10140, 0x1018E,
+	0x101A0, 0x101A0, 0x1D200, 0x1D245,
+	//  #262 (16654+11): scx=Cyrillic:Cyrl
+	0x0400, 0x052F, 0x1C80, 0x1C88, 0x1D2B, 0x1D2B, 0x1D78, 0x1D78,
+	0x1DF8, 0x1DF8, 0x2DE0, 0x2DFF, 0x2E43, 0x2E43, 0xA640, 0xA69F,
+	0xFE2E, 0xFE2F, 0x1E030, 0x1E06D, 0x1E08F, 0x1E08F,
+	//  #263 (16665+52): scx=Arabic:Arab
+	0x0600, 0x0604, 0x0606, 0x06DC, 0x06DE, 0x06FF, 0x0750, 0x077F,
+	0x0870, 0x088E, 0x0890, 0x0891, 0x0898, 0x08E1, 0x08E3, 0x08FF,
+	0xFB50, 0xFBC2, 0xFBD3, 0xFD8F, 0xFD92, 0xFDC7, 0xFDCF, 0xFDCF,
+	0xFDF0, 0xFDFF, 0xFE70, 0xFE74, 0xFE76, 0xFEFC, 0x102E0, 0x102FB,
+	0x10E60, 0x10E7E, 0x10EFD, 0x10EFF, 0x1EE00, 0x1EE03, 0x1EE05, 0x1EE1F,
+	0x1EE21, 0x1EE22, 0x1EE24, 0x1EE24, 0x1EE27, 0x1EE27, 0x1EE29, 0x1EE32,
+	0x1EE34, 0x1EE37, 0x1EE39, 0x1EE39, 0x1EE3B, 0x1EE3B, 0x1EE42, 0x1EE42,
+	0x1EE47, 0x1EE47, 0x1EE49, 0x1EE49, 0x1EE4B, 0x1EE4B, 0x1EE4D, 0x1EE4F,
+	0x1EE51, 0x1EE52, 0x1EE54, 0x1EE54, 0x1EE57, 0x1EE57, 0x1EE59, 0x1EE59,
+	0x1EE5B, 0x1EE5B, 0x1EE5D, 0x1EE5D, 0x1EE5F, 0x1EE5F, 0x1EE61, 0x1EE62,
+	0x1EE64, 0x1EE64, 0x1EE67, 0x1EE6A, 0x1EE6C, 0x1EE72, 0x1EE74, 0x1EE77,
+	0x1EE79, 0x1EE7C, 0x1EE7E, 0x1EE7E, 0x1EE80, 0x1EE89, 0x1EE8B, 0x1EE9B,
+	0x1EEA1, 0x1EEA3, 0x1EEA5, 0x1EEA9, 0x1EEAB, 0x1EEBB, 0x1EEF0, 0x1EEF1,
+	//  #264 (16717+12): scx=Syriac:Syrc
+	0x060C, 0x060C, 0x061B, 0x061C, 0x061F, 0x061F, 0x0640, 0x0640,
+	0x064B, 0x0655, 0x0670, 0x0670, 0x0700, 0x070D, 0x070F, 0x074A,
+	0x074D, 0x074F, 0x0860, 0x086A, 0x1DF8, 0x1DF8, 0x1DFA, 0x1DFA,
+	//  #265 (16729+7): scx=Thaana:Thaa
+	0x060C, 0x060C, 0x061B, 0x061C, 0x061F, 0x061F, 0x0660, 0x0669,
+	0x0780, 0x07B1, 0xFDF2, 0xFDF2, 0xFDFD, 0xFDFD,
+	//  #266 (16736+8): scx=Devanagari:Deva
+	0x0900, 0x0952, 0x0955, 0x097F, 0x1CD0, 0x1CF6, 0x1CF8, 0x1CF9,
+	0x20F0, 0x20F0, 0xA830, 0xA839, 0xA8E0, 0xA8FF, 0x11B00, 0x11B09,
+	//  #267 (16744+26): scx=Bengali:Beng
+	0x0951, 0x0952, 0x0964, 0x0965, 0x0980, 0x0983, 0x0985, 0x098C,
+	0x098F, 0x0990, 0x0993, 0x09A8, 0x09AA, 0x09B0, 0x09B2, 0x09B2,
+	0x09B6, 0x09B9, 0x09BC, 0x09C4, 0x09C7, 0x09C8, 0x09CB, 0x09CE,
+	0x09D7, 0x09D7, 0x09DC, 0x09DD, 0x09DF, 0x09E3, 0x09E6, 0x09FE,
+	0x1CD0, 0x1CD0, 0x1CD2, 0x1CD2, 0x1CD5, 0x1CD6, 0x1CD8, 0x1CD8,
+	0x1CE1, 0x1CE1, 0x1CEA, 0x1CEA, 0x1CED, 0x1CED, 0x1CF2, 0x1CF2,
+	0x1CF5, 0x1CF7, 0xA8F1, 0xA8F1,
+	//  #268 (16770+19): scx=Gurmukhi:Guru
+	0x0951, 0x0952, 0x0964, 0x0965, 0x0A01, 0x0A03, 0x0A05, 0x0A0A,
+	0x0A0F, 0x0A10, 0x0A13, 0x0A28, 0x0A2A, 0x0A30, 0x0A32, 0x0A33,
+	0x0A35, 0x0A36, 0x0A38, 0x0A39, 0x0A3C, 0x0A3C, 0x0A3E, 0x0A42,
+	0x0A47, 0x0A48, 0x0A4B, 0x0A4D, 0x0A51, 0x0A51, 0x0A59, 0x0A5C,
+	0x0A5E, 0x0A5E, 0x0A66, 0x0A76, 0xA830, 0xA839,
+	//  #269 (16789+17): scx=Gujarati:Gujr
+	0x0951, 0x0952, 0x0964, 0x0965, 0x0A81, 0x0A83, 0x0A85, 0x0A8D,
+	0x0A8F, 0x0A91, 0x0A93, 0x0AA8, 0x0AAA, 0x0AB0, 0x0AB2, 0x0AB3,
+	0x0AB5, 0x0AB9, 0x0ABC, 0x0AC5, 0x0AC7, 0x0AC9, 0x0ACB, 0x0ACD,
+	0x0AD0, 0x0AD0, 0x0AE0, 0x0AE3, 0x0AE6, 0x0AF1, 0x0AF9, 0x0AFF,
+	0xA830, 0xA839,
+	//  #270 (16806+18): scx=Oriya:Orya
 	0x0951, 0x0952, 0x0964, 0x0965, 0x0B01, 0x0B03, 0x0B05, 0x0B0C,
 	0x0B0F, 0x0B10, 0x0B13, 0x0B28, 0x0B2A, 0x0B30, 0x0B32, 0x0B33,
 	0x0B35, 0x0B39, 0x0B3C, 0x0B44, 0x0B47, 0x0B48, 0x0B4B, 0x0B4D,
 	0x0B55, 0x0B57, 0x0B5C, 0x0B5D, 0x0B5F, 0x0B63, 0x0B66, 0x0B77,
 	0x1CDA, 0x1CDA, 0x1CF2, 0x1CF2,
-	//  #308 (17152+3): scx=Phags_Pa:Phag
-	0x1802, 0x1803, 0x1805, 0x1805, 0xA840, 0xA877,
-	//  #309 (17155+4): scx=Psalter_Pahlavi:Phlp
-	0x0640, 0x0640, 0x10B80, 0x10B91, 0x10B99, 0x10B9C, 0x10BA9, 0x10BAF,
-	//  #310 (17159+6): scx=Sharada:Shrd
-	0x0951, 0x0951, 0x1CD7, 0x1CD7, 0x1CD9, 0x1CD9, 0x1CDC, 0x1CDD,
-	0x1CE0, 0x1CE0, 0x11180, 0x111DF,
-	//  #311 (17165+14): scx=Sinhala:Sinh
-	0x0964, 0x0965, 0x0D81, 0x0D83, 0x0D85, 0x0D96, 0x0D9A, 0x0DB1,
-	0x0DB3, 0x0DBB, 0x0DBD, 0x0DBD, 0x0DC0, 0x0DC6, 0x0DCA, 0x0DCA,
-	0x0DCF, 0x0DD4, 0x0DD6, 0x0DD6, 0x0DD8, 0x0DDF, 0x0DE6, 0x0DEF,
-	0x0DF2, 0x0DF4, 0x111E1, 0x111F4,
-	//  #312 (17179+2): scx=Sogdian:Sogd
-	0x0640, 0x0640, 0x10F30, 0x10F59,
-	//  #313 (17181+3): scx=Syloti_Nagri:Sylo
-	0x0964, 0x0965, 0x09E6, 0x09EF, 0xA800, 0xA82C,
-	//  #314 (17184+12): scx=Syriac:Syrc
-	0x060C, 0x060C, 0x061B, 0x061C, 0x061F, 0x061F, 0x0640, 0x0640,
-	0x064B, 0x0655, 0x0670, 0x0670, 0x0700, 0x070D, 0x070F, 0x074A,
-	0x074D, 0x074F, 0x0860, 0x086A, 0x1DF8, 0x1DF8, 0x1DFA, 0x1DFA,
-	//  #315 (17196+3): scx=Tagalog:Tglg
-	0x1700, 0x1715, 0x171F, 0x171F, 0x1735, 0x1736,
-	//  #316 (17199+4): scx=Tagbanwa:Tagb
-	0x1735, 0x1736, 0x1760, 0x176C, 0x176E, 0x1770, 0x1772, 0x1773,
-	//  #317 (17203+3): scx=Tai_Le:Tale
-	0x1040, 0x1049, 0x1950, 0x196D, 0x1970, 0x1974,
-	//  #318 (17206+4): scx=Takri:Takr
-	0x0964, 0x0965, 0xA830, 0xA839, 0x11680, 0x116B9, 0x116C0, 0x116C9,
-	//  #319 (17210+25): scx=Tamil:Taml
+	//  #271 (16824+25): scx=Tamil:Taml
 	0x0951, 0x0952, 0x0964, 0x0965, 0x0B82, 0x0B83, 0x0B85, 0x0B8A,
 	0x0B8E, 0x0B90, 0x0B92, 0x0B95, 0x0B99, 0x0B9A, 0x0B9C, 0x0B9C,
 	0x0B9E, 0x0B9F, 0x0BA3, 0x0BA4, 0x0BA8, 0x0BAA, 0x0BAE, 0x0BB9,
@@ -9646,29 +10637,196 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0x0BD7, 0x0BD7, 0x0BE6, 0x0BFA, 0x1CDA, 0x1CDA, 0xA8F3, 0xA8F3,
 	0x11301, 0x11301, 0x11303, 0x11303, 0x1133B, 0x1133C, 0x11FC0, 0x11FF1,
 	0x11FFF, 0x11FFF,
-	//  #320 (17235+17): scx=Telugu:Telu
+	//  #272 (16849+17): scx=Telugu:Telu
 	0x0951, 0x0952, 0x0964, 0x0965, 0x0C00, 0x0C0C, 0x0C0E, 0x0C10,
 	0x0C12, 0x0C28, 0x0C2A, 0x0C39, 0x0C3C, 0x0C44, 0x0C46, 0x0C48,
 	0x0C4A, 0x0C4D, 0x0C55, 0x0C56, 0x0C58, 0x0C5A, 0x0C5D, 0x0C5D,
 	0x0C60, 0x0C63, 0x0C66, 0x0C6F, 0x0C77, 0x0C7F, 0x1CDA, 0x1CDA,
 	0x1CF2, 0x1CF2,
-	//  #321 (17252+7): scx=Thaana:Thaa
-	0x060C, 0x060C, 0x061B, 0x061C, 0x061F, 0x061F, 0x0660, 0x0669,
-	0x0780, 0x07B1, 0xFDF2, 0xFDF2, 0xFDFD, 0xFDFD,
-	//  #322 (17259+6): scx=Tirhuta:Tirh
+	//  #273 (16866+21): scx=Kannada:Knda
+	0x0951, 0x0952, 0x0964, 0x0965, 0x0C80, 0x0C8C, 0x0C8E, 0x0C90,
+	0x0C92, 0x0CA8, 0x0CAA, 0x0CB3, 0x0CB5, 0x0CB9, 0x0CBC, 0x0CC4,
+	0x0CC6, 0x0CC8, 0x0CCA, 0x0CCD, 0x0CD5, 0x0CD6, 0x0CDD, 0x0CDE,
+	0x0CE0, 0x0CE3, 0x0CE6, 0x0CEF, 0x0CF1, 0x0CF3, 0x1CD0, 0x1CD0,
+	0x1CD2, 0x1CD2, 0x1CDA, 0x1CDA, 0x1CF2, 0x1CF2, 0x1CF4, 0x1CF4,
+	0xA830, 0xA835,
+	//  #274 (16887+11): scx=Malayalam:Mlym
+	0x0951, 0x0952, 0x0964, 0x0965, 0x0D00, 0x0D0C, 0x0D0E, 0x0D10,
+	0x0D12, 0x0D44, 0x0D46, 0x0D48, 0x0D4A, 0x0D4F, 0x0D54, 0x0D63,
+	0x0D66, 0x0D7F, 0x1CDA, 0x1CDA, 0xA830, 0xA832,
+	//  #275 (16898+14): scx=Sinhala:Sinh
+	0x0964, 0x0965, 0x0D81, 0x0D83, 0x0D85, 0x0D96, 0x0D9A, 0x0DB1,
+	0x0DB3, 0x0DBB, 0x0DBD, 0x0DBD, 0x0DC0, 0x0DC6, 0x0DCA, 0x0DCA,
+	0x0DCF, 0x0DD4, 0x0DD6, 0x0DD6, 0x0DD8, 0x0DDF, 0x0DE6, 0x0DEF,
+	0x0DF2, 0x0DF4, 0x111E1, 0x111F4,
+	//  #276 (16912+4): scx=Myanmar:Mymr
+	0x1000, 0x109F, 0xA92E, 0xA92E, 0xA9E0, 0xA9FE, 0xAA60, 0xAA7F,
+	//  #277 (16916+9): scx=Georgian:Geor
+	0x10A0, 0x10C5, 0x10C7, 0x10C7, 0x10CD, 0x10CD, 0x10D0, 0x10FF,
+	0x1C90, 0x1CBA, 0x1CBD, 0x1CBF, 0x2D00, 0x2D25, 0x2D27, 0x2D27,
+	0x2D2D, 0x2D2D,
+	//  #278 (16925+21): scx=Hangul:Hang
+	0x1100, 0x11FF, 0x3001, 0x3003, 0x3008, 0x3011, 0x3013, 0x301F,
+	0x302E, 0x3030, 0x3037, 0x3037, 0x30FB, 0x30FB, 0x3131, 0x318E,
+	0x3200, 0x321E, 0x3260, 0x327E, 0xA960, 0xA97C, 0xAC00, 0xD7A3,
+	0xD7B0, 0xD7C6, 0xD7CB, 0xD7FB, 0xFE45, 0xFE46, 0xFF61, 0xFF65,
+	0xFFA0, 0xFFBE, 0xFFC2, 0xFFC7, 0xFFCA, 0xFFCF, 0xFFD2, 0xFFD7,
+	0xFFDA, 0xFFDC,
+	//  #279 (16946+5): scx=Mongolian:Mong
+	0x1800, 0x1819, 0x1820, 0x1878, 0x1880, 0x18AA, 0x202F, 0x202F,
+	0x11660, 0x1166C,
+	//  #280 (16951+17): scx=Hiragana:Hira
+	0x3001, 0x3003, 0x3008, 0x3011, 0x3013, 0x301F, 0x3030, 0x3035,
+	0x3037, 0x3037, 0x303C, 0x303D, 0x3041, 0x3096, 0x3099, 0x30A0,
+	0x30FB, 0x30FC, 0xFE45, 0xFE46, 0xFF61, 0xFF65, 0xFF70, 0xFF70,
+	0xFF9E, 0xFF9F, 0x1B001, 0x1B11F, 0x1B132, 0x1B132, 0x1B150, 0x1B152,
+	0x1F200, 0x1F200,
+	//  #281 (16968+20): scx=Katakana:Kana
+	0x3001, 0x3003, 0x3008, 0x3011, 0x3013, 0x301F, 0x3030, 0x3035,
+	0x3037, 0x3037, 0x303C, 0x303D, 0x3099, 0x309C, 0x30A0, 0x30FF,
+	0x31F0, 0x31FF, 0x32D0, 0x32FE, 0x3300, 0x3357, 0xFE45, 0xFE46,
+	0xFF61, 0xFF9F, 0x1AFF0, 0x1AFF3, 0x1AFF5, 0x1AFFB, 0x1AFFD, 0x1AFFE,
+	0x1B000, 0x1B000, 0x1B120, 0x1B122, 0x1B155, 0x1B155, 0x1B164, 0x1B167,
+	//  #282 (16988+12): scx=Bopomofo:Bopo
+	0x02EA, 0x02EB, 0x3001, 0x3003, 0x3008, 0x3011, 0x3013, 0x301F,
+	0x302A, 0x302D, 0x3030, 0x3030, 0x3037, 0x3037, 0x30FB, 0x30FB,
+	0x3105, 0x312F, 0x31A0, 0x31BF, 0xFE45, 0xFE46, 0xFF61, 0xFF65,
+	//  #283 (17000+38): scx=Han:Hani
+	0x2E80, 0x2E99, 0x2E9B, 0x2EF3, 0x2F00, 0x2FD5, 0x3001, 0x3003,
+	0x3005, 0x3011, 0x3013, 0x301F, 0x3021, 0x302D, 0x3030, 0x3030,
+	0x3037, 0x303F, 0x30FB, 0x30FB, 0x3190, 0x319F, 0x31C0, 0x31E3,
+	0x3220, 0x3247, 0x3280, 0x32B0, 0x32C0, 0x32CB, 0x32FF, 0x32FF,
+	0x3358, 0x3370, 0x337B, 0x337F, 0x33E0, 0x33FE, 0x3400, 0x4DBF,
+	0x4E00, 0x9FFF, 0xA700, 0xA707, 0xF900, 0xFA6D, 0xFA70, 0xFAD9,
+	0xFE45, 0xFE46, 0xFF61, 0xFF65, 0x16FE2, 0x16FE3, 0x16FF0, 0x16FF1,
+	0x1D360, 0x1D371, 0x1F250, 0x1F251, 0x20000, 0x2A6DF, 0x2A700, 0x2B739,
+	0x2B740, 0x2B81D, 0x2B820, 0x2CEA1, 0x2CEB0, 0x2EBE0, 0x2F800, 0x2FA1D,
+	0x30000, 0x3134A, 0x31350, 0x323AF,
+	//  #284 (17038+7): scx=Yi:Yiii
+	0x3001, 0x3002, 0x3008, 0x3011, 0x3014, 0x301B, 0x30FB, 0x30FB,
+	0xA000, 0xA48C, 0xA490, 0xA4C6, 0xFF61, 0xFF65,
+	//  #285 (17045+20): scx=Inherited:Zinh:Qaai
+	0x0300, 0x0341, 0x0343, 0x0344, 0x0346, 0x0362, 0x0953, 0x0954,
+	0x1AB0, 0x1ACE, 0x1DC2, 0x1DF7, 0x1DF9, 0x1DF9, 0x1DFB, 0x1DFF,
+	0x200C, 0x200D, 0x20D0, 0x20EF, 0xFE00, 0xFE0F, 0xFE20, 0xFE2D,
+	0x101FD, 0x101FD, 0x1CF00, 0x1CF2D, 0x1CF30, 0x1CF46, 0x1D167, 0x1D169,
+	0x1D17B, 0x1D182, 0x1D185, 0x1D18B, 0x1D1AA, 0x1D1AD, 0xE0100, 0xE01EF,
+	//  #286 (17065+3): scx=Tagalog:Tglg
+	0x1700, 0x1715, 0x171F, 0x171F, 0x1735, 0x1736,
+	//  #287 (17068+1): scx=Hanunoo:Hano
+	0x1720, 0x1736,
+	//  #288 (17069+2): scx=Buhid:Buhd
+	0x1735, 0x1736, 0x1740, 0x1753,
+	//  #289 (17071+4): scx=Tagbanwa:Tagb
+	0x1735, 0x1736, 0x1760, 0x176C, 0x176E, 0x1770, 0x1772, 0x1773,
+	//  #290 (17075+6): scx=Limbu:Limb
+	0x0965, 0x0965, 0x1900, 0x191E, 0x1920, 0x192B, 0x1930, 0x193B,
+	0x1940, 0x1940, 0x1944, 0x194F,
+	//  #291 (17081+3): scx=Tai_Le:Tale
+	0x1040, 0x1049, 0x1950, 0x196D, 0x1970, 0x1974,
+	//  #292 (17084+10): scx=Linear_B:Linb
+	0x10000, 0x1000B, 0x1000D, 0x10026, 0x10028, 0x1003A, 0x1003C, 0x1003D,
+	0x1003F, 0x1004D, 0x10050, 0x1005D, 0x10080, 0x100FA, 0x10100, 0x10102,
+	0x10107, 0x10133, 0x10137, 0x1013F,
+	//  #293 (17094+9): scx=Cypriot:Cprt
+	0x10100, 0x10102, 0x10107, 0x10133, 0x10137, 0x1013F, 0x10800, 0x10805,
+	0x10808, 0x10808, 0x1080A, 0x10835, 0x10837, 0x10838, 0x1083C, 0x1083C,
+	0x1083F, 0x1083F,
+	//  #294 (17103+3): scx=Buginese:Bugi
+	0x1A00, 0x1A1B, 0x1A1E, 0x1A1F, 0xA9CF, 0xA9CF,
+	//  #295 (17106+4): scx=Coptic:Copt:Qaac
+	0x03E2, 0x03EF, 0x2C80, 0x2CF3, 0x2CF9, 0x2CFF, 0x102E0, 0x102FB,
+	//  #296 (17110+10): scx=Glagolitic:Glag
+	0x0484, 0x0484, 0x0487, 0x0487, 0x2C00, 0x2C5F, 0x2E43, 0x2E43,
+	0xA66F, 0xA66F, 0x1E000, 0x1E006, 0x1E008, 0x1E018, 0x1E01B, 0x1E021,
+	0x1E023, 0x1E024, 0x1E026, 0x1E02A,
+	//  #297 (17120+3): scx=Syloti_Nagri:Sylo
+	0x0964, 0x0965, 0x09E6, 0x09EF, 0xA800, 0xA82C,
+	//  #298 (17123+3): scx=Phags_Pa:Phag
+	0x1802, 0x1803, 0x1805, 0x1805, 0xA840, 0xA877,
+	//  #299 (17126+6): scx=Nko:Nkoo
+	0x060C, 0x060C, 0x061B, 0x061B, 0x061F, 0x061F, 0x07C0, 0x07FA,
+	0x07FD, 0x07FF, 0xFD3E, 0xFD3F,
+	//  #300 (17132+1): scx=Kayah_Li:Kali
+	0xA900, 0xA92F,
+	//  #301 (17133+3): scx=Javanese:Java
+	0xA980, 0xA9CD, 0xA9CF, 0xA9D9, 0xA9DE, 0xA9DF,
+	//  #302 (17136+4): scx=Kaithi:Kthi
+	0x0966, 0x096F, 0xA830, 0xA839, 0x11080, 0x110C2, 0x110CD, 0x110CD,
+	//  #303 (17140+3): scx=Mandaic:Mand
+	0x0640, 0x0640, 0x0840, 0x085B, 0x085E, 0x085E,
+	//  #304 (17143+4): scx=Chakma:Cakm
+	0x09E6, 0x09EF, 0x1040, 0x1049, 0x11100, 0x11134, 0x11136, 0x11147,
+	//  #305 (17147+6): scx=Sharada:Shrd
+	0x0951, 0x0951, 0x1CD7, 0x1CD7, 0x1CD9, 0x1CD9, 0x1CDC, 0x1CDD,
+	0x1CE0, 0x1CE0, 0x11180, 0x111DF,
+	//  #306 (17153+4): scx=Takri:Takr
+	0x0964, 0x0965, 0xA830, 0xA839, 0x11680, 0x116B9, 0x116C0, 0x116C9,
+	//  #307 (17157+5): scx=Duployan:Dupl
+	0x1BC00, 0x1BC6A, 0x1BC70, 0x1BC7C, 0x1BC80, 0x1BC88, 0x1BC90, 0x1BC99,
+	0x1BC9C, 0x1BCA3,
+	//  #308 (17162+25): scx=Grantha:Gran
+	0x0951, 0x0952, 0x0964, 0x0965, 0x0BE6, 0x0BF3, 0x1CD0, 0x1CD0,
+	0x1CD2, 0x1CD3, 0x1CF2, 0x1CF4, 0x1CF8, 0x1CF9, 0x20F0, 0x20F0,
+	0x11300, 0x11303, 0x11305, 0x1130C, 0x1130F, 0x11310, 0x11313, 0x11328,
+	0x1132A, 0x11330, 0x11332, 0x11333, 0x11335, 0x11339, 0x1133B, 0x11344,
+	0x11347, 0x11348, 0x1134B, 0x1134D, 0x11350, 0x11350, 0x11357, 0x11357,
+	0x1135D, 0x11363, 0x11366, 0x1136C, 0x11370, 0x11374, 0x11FD0, 0x11FD1,
+	0x11FD3, 0x11FD3,
+	//  #309 (17187+4): scx=Khojki:Khoj
+	0x0AE6, 0x0AEF, 0xA830, 0xA839, 0x11200, 0x11211, 0x11213, 0x11241,
+	//  #310 (17191+4): scx=Linear_A:Lina
+	0x10107, 0x10133, 0x10600, 0x10736, 0x10740, 0x10755, 0x10760, 0x10767,
+	//  #311 (17195+3): scx=Mahajani:Mahj
+	0x0964, 0x096F, 0xA830, 0xA839, 0x11150, 0x11176,
+	//  #312 (17198+3): scx=Manichaean:Mani
+	0x0640, 0x0640, 0x10AC0, 0x10AE6, 0x10AEB, 0x10AF6,
+	//  #313 (17201+3): scx=Modi:Modi
+	0xA830, 0xA839, 0x11600, 0x11644, 0x11650, 0x11659,
+	//  #314 (17204+2): scx=Old_Permic:Perm
+	0x0483, 0x0483, 0x10350, 0x1037A,
+	//  #315 (17206+4): scx=Psalter_Pahlavi:Phlp
+	0x0640, 0x0640, 0x10B80, 0x10B91, 0x10B99, 0x10B9C, 0x10BA9, 0x10BAF,
+	//  #316 (17210+4): scx=Khudawadi:Sind
+	0x0964, 0x0965, 0xA830, 0xA839, 0x112B0, 0x112EA, 0x112F0, 0x112F9,
+	//  #317 (17214+6): scx=Tirhuta:Tirh
 	0x0951, 0x0952, 0x0964, 0x0965, 0x1CF2, 0x1CF2, 0xA830, 0xA839,
 	0x11480, 0x114C7, 0x114D0, 0x114D9,
-	//  #323 (17265+7): scx=Yezidi:Yezi
+	//  #318 (17220+6): scx=Multani:Mult
+	0x0A66, 0x0A6F, 0x11280, 0x11286, 0x11288, 0x11288, 0x1128A, 0x1128D,
+	0x1128F, 0x1129D, 0x1129F, 0x112A9,
+	//  #319 (17226+5): scx=Adlam:Adlm
+	0x061F, 0x061F, 0x0640, 0x0640, 0x1E900, 0x1E94B, 0x1E950, 0x1E959,
+	0x1E95E, 0x1E95F,
+	//  #320 (17231+8): scx=Masaram_Gondi:Gonm
+	0x0964, 0x0965, 0x11D00, 0x11D06, 0x11D08, 0x11D09, 0x11D0B, 0x11D36,
+	0x11D3A, 0x11D3A, 0x11D3C, 0x11D3D, 0x11D3F, 0x11D47, 0x11D50, 0x11D59,
+	//  #321 (17239+3): scx=Dogra:Dogr
+	0x0964, 0x096F, 0xA830, 0xA839, 0x11800, 0x1183B,
+	//  #322 (17242+7): scx=Gunjala_Gondi:Gong
+	0x0964, 0x0965, 0x11D60, 0x11D65, 0x11D67, 0x11D68, 0x11D6A, 0x11D8E,
+	0x11D90, 0x11D91, 0x11D93, 0x11D98, 0x11DA0, 0x11DA9,
+	//  #323 (17249+7): scx=Hanifi_Rohingya:Rohg
+	0x060C, 0x060C, 0x061B, 0x061B, 0x061F, 0x061F, 0x0640, 0x0640,
+	0x06D4, 0x06D4, 0x10D00, 0x10D27, 0x10D30, 0x10D39,
+	//  #324 (17256+2): scx=Sogdian:Sogd
+	0x0640, 0x0640, 0x10F30, 0x10F59,
+	//  #325 (17258+9): scx=Nandinagari:Nand
+	0x0964, 0x0965, 0x0CE6, 0x0CEF, 0x1CE9, 0x1CE9, 0x1CF2, 0x1CF2,
+	0x1CFA, 0x1CFA, 0xA830, 0xA835, 0x119A0, 0x119A7, 0x119AA, 0x119D7,
+	0x119DA, 0x119E4,
+	//  #326 (17267+7): scx=Yezidi:Yezi
 	0x060C, 0x060C, 0x061B, 0x061B, 0x061F, 0x061F, 0x0660, 0x0669,
 	0x10E80, 0x10EA9, 0x10EAB, 0x10EAD, 0x10EB0, 0x10EB1,
-	//  #324 (17272+7): scx=Yi:Yiii
-	0x3001, 0x3002, 0x3008, 0x3011, 0x3014, 0x301B, 0x30FB, 0x30FB,
-	0xA000, 0xA48C, 0xA490, 0xA4C6, 0xFF61, 0xFF65
+	//  #327 (17274+2): scx=Cypro_Minoan:Cpmn
+	0x10100, 0x10101, 0x12F90, 0x12FF2,
+	//  #328 (17276+3): scx=Old_Uyghur:Ougr
+	0x0640, 0x0640, 0x10AF2, 0x10AF2, 0x10F70, 0x10F89
 #if !defined(SRELL_NO_UNICODE_POS)
 	,
-	//  #325 (17279+12636/2): bp=RGI_Emoji
+	//  #329 (17279+12636/2): bp=RGI_Emoji
 	//  1338/2 + 48/2 + 1966/2 + 774/2 + 24/2 + 8486/2
-	//  #326 (17279+1338/2): bp=Basic_Emoji
+	//  #330 (17279+1338/2): bp=Basic_Emoji
 	1, 0x231A, 0x231B,
 	1, 0x23E9, 0x23EC,
 	2, 0x23F0,
@@ -10158,7 +11316,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	3, 0x1F6F0, 0xFE0F,
 	3, 0x1F6F3, 0xFE0F,
 	0,	//  Padding.
-	//  #327 (17948+48/2): bp=Emoji_Keycap_Sequence
+	//  #331 (17948+48/2): bp=Emoji_Keycap_Sequence
 	4, 0x0023, 0xFE0F, 0x20E3,
 	4, 0x002A, 0xFE0F, 0x20E3,
 	4, 0x0030, 0xFE0F, 0x20E3,
@@ -10171,7 +11329,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	4, 0x0037, 0xFE0F, 0x20E3,
 	4, 0x0038, 0xFE0F, 0x20E3,
 	4, 0x0039, 0xFE0F, 0x20E3,
-	//  #328 (17972+1966/2): bp=RGI_Emoji_Modifier_Sequence
+	//  #332 (17972+1966/2): bp=RGI_Emoji_Modifier_Sequence
 	3, 0x261D, 0x1F3FB,
 	3, 0x261D, 0x1F3FC,
 	3, 0x261D, 0x1F3FD,
@@ -10828,7 +11986,7 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	3, 0x1FAF8, 0x1F3FE,
 	3, 0x1FAF8, 0x1F3FF,
 	0,	//  Padding.
-	//  #329 (18955+774/2): bp=RGI_Emoji_Flag_Sequence
+	//  #333 (18955+774/2): bp=RGI_Emoji_Flag_Sequence
 	3, 0x1F1E6, 0x1F1E8,
 	3, 0x1F1E6, 0x1F1E9,
 	3, 0x1F1E6, 0x1F1EA,
@@ -11087,11 +12245,11 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	3, 0x1F1FF, 0x1F1E6,
 	3, 0x1F1FF, 0x1F1F2,
 	3, 0x1F1FF, 0x1F1FC,
-	//  #330 (19342+24/2): bp=RGI_Emoji_Tag_Sequence
+	//  #334 (19342+24/2): bp=RGI_Emoji_Tag_Sequence
 	8, 0x1F3F4, 0xE0067, 0xE0062, 0xE0065, 0xE006E, 0xE0067, 0xE007F,
 	8, 0x1F3F4, 0xE0067, 0xE0062, 0xE0073, 0xE0063, 0xE0074, 0xE007F,
 	8, 0x1F3F4, 0xE0067, 0xE0062, 0xE0077, 0xE006C, 0xE0073, 0xE007F,
-	//  #331 (19354+8486/2): bp=RGI_Emoji_ZWJ_Sequence
+	//  #335 (19354+8486/2): bp=RGI_Emoji_ZWJ_Sequence
 	7, 0x1F468, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F468,
 	9, 0x1F468, 0x200D, 0x2764, 0xFE0F, 0x200D, 0x1F48B, 0x200D, 0x1F468,
 	4, 0x1F468, 0x200D, 0x1F466,
@@ -12445,816 +13603,38 @@ const T4 unicode_property_data<T3, T4, T5, T6>::rangetable[] =
 	0	//  Padding.
 #endif	//  !defined(SRELL_NO_UNICODE_POS)
 };
+#define SRELL_UPDATA_VERSION 300
+//  ... "srell_updata3.h"]
 
-template <typename T3, typename T4, typename T5, typename T6>
-const T5 unicode_property_data<T3, T4, T5, T6>::rangenumbertable[] =
-{
-	{ uptype_unknown, 0, "*" },	//  #0
-	{ uptype_general_category, 1, "Other:C" },	//  #1
-	{ uptype_general_category, 2, "Control:Cc:cntrl" },	//  #2
-	{ uptype_general_category, 3, "Format:Cf" },	//  #3
-	{ uptype_general_category, 4, "Unassigned:Cn" },	//  #4
-	{ uptype_general_category, 5, "Private_Use:Co" },	//  #5
-	{ uptype_general_category, 6, "Surrogate:Cs" },	//  #6
-	{ uptype_general_category, 7, "Letter:L" },	//  #7
-	{ uptype_general_category, 8, "Cased_Letter:LC" },	//  #8
-	{ uptype_general_category, 9, "Lowercase_Letter:Ll" },	//  #9
-	{ uptype_general_category, 10, "Titlecase_Letter:Lt" },	//  #10
-	{ uptype_general_category, 11, "Uppercase_Letter:Lu" },	//  #11
-	{ uptype_general_category, 12, "Modifier_Letter:Lm" },	//  #12
-	{ uptype_general_category, 13, "Other_Letter:Lo" },	//  #13
-	{ uptype_general_category, 14, "Mark:M:Combining_Mark" },	//  #14
-	{ uptype_general_category, 15, "Spacing_Mark:Mc" },	//  #15
-	{ uptype_general_category, 16, "Enclosing_Mark:Me" },	//  #16
-	{ uptype_general_category, 17, "Nonspacing_Mark:Mn" },	//  #17
-	{ uptype_general_category, 18, "Number:N" },	//  #18
-	{ uptype_general_category, 19, "Decimal_Number:Nd:digit" },	//  #19
-	{ uptype_general_category, 20, "Letter_Number:Nl" },	//  #20
-	{ uptype_general_category, 21, "Other_Number:No" },	//  #21
-	{ uptype_general_category, 22, "Punctuation:P:punct" },	//  #22
-	{ uptype_general_category, 23, "Connector_Punctuation:Pc" },	//  #23
-	{ uptype_general_category, 24, "Dash_Punctuation:Pd" },	//  #24
-	{ uptype_general_category, 25, "Close_Punctuation:Pe" },	//  #25
-	{ uptype_general_category, 26, "Final_Punctuation:Pf" },	//  #26
-	{ uptype_general_category, 27, "Initial_Punctuation:Pi" },	//  #27
-	{ uptype_general_category, 28, "Other_Punctuation:Po" },	//  #28
-	{ uptype_general_category, 29, "Open_Punctuation:Ps" },	//  #29
-	{ uptype_general_category, 30, "Symbol:S" },	//  #30
-	{ uptype_general_category, 31, "Currency_Symbol:Sc" },	//  #31
-	{ uptype_general_category, 32, "Modifier_Symbol:Sk" },	//  #32
-	{ uptype_general_category, 33, "Math_Symbol:Sm" },	//  #33
-	{ uptype_general_category, 34, "Other_Symbol:So" },	//  #34
-	{ uptype_general_category, 35, "Separator:Z" },	//  #35
-	{ uptype_general_category, 36, "Line_Separator:Zl" },	//  #36
-	{ uptype_general_category, 37, "Paragraph_Separator:Zp" },	//  #37
-	{ uptype_general_category, 38, "Space_Separator:Zs" },	//  #38
-	{ uptype_binary, 39, "ASCII" },	//  #39
-	{ uptype_binary, 40, "ASCII_Hex_Digit:AHex" },	//  #40
-	{ uptype_binary, 41, "Alphabetic:Alpha" },	//  #41
-	{ uptype_binary, 42, "Any" },	//  #42
-	{ uptype_binary, 43, "Assigned" },	//  #43
-	{ uptype_binary, 44, "Bidi_Control:Bidi_C" },	//  #44
-	{ uptype_binary, 45, "Bidi_Mirrored:Bidi_M" },	//  #45
-	{ uptype_binary, 46, "Case_Ignorable:CI" },	//  #46
-	{ uptype_binary, 47, "Cased" },	//  #47
-	{ uptype_binary, 48, "Changes_When_Casefolded:CWCF" },	//  #48
-	{ uptype_binary, 49, "Changes_When_Casemapped:CWCM" },	//  #49
-	{ uptype_binary, 50, "Changes_When_Lowercased:CWL" },	//  #50
-	{ uptype_binary, 51, "Changes_When_NFKC_Casefolded:CWKCF" },	//  #51
-	{ uptype_binary, 52, "Changes_When_Titlecased:CWT" },	//  #52
-	{ uptype_binary, 53, "Changes_When_Uppercased:CWU" },	//  #53
-	{ uptype_binary, 54, "Dash" },	//  #54
-	{ uptype_binary, 55, "Default_Ignorable_Code_Point:DI" },	//  #55
-	{ uptype_binary, 56, "Deprecated:Dep" },	//  #56
-	{ uptype_binary, 57, "Diacritic:Dia" },	//  #57
-	{ uptype_binary, 58, "Emoji" },	//  #58
-	{ uptype_binary, 59, "Emoji_Component:EComp" },	//  #59
-	{ uptype_binary, 60, "Emoji_Modifier:EMod" },	//  #60
-	{ uptype_binary, 61, "Emoji_Modifier_Base:EBase" },	//  #61
-	{ uptype_binary, 62, "Emoji_Presentation:EPres" },	//  #62
-	{ uptype_binary, 63, "Extended_Pictographic:ExtPict" },	//  #63
-	{ uptype_binary, 64, "Extender:Ext" },	//  #64
-	{ uptype_binary, 65, "Grapheme_Base:Gr_Base" },	//  #65
-	{ uptype_binary, 66, "Grapheme_Extend:Gr_Ext" },	//  #66
-	{ uptype_binary, 67, "Hex_Digit:Hex" },	//  #67
-	{ uptype_binary, 68, "IDS_Binary_Operator:IDSB" },	//  #68
-	{ uptype_binary, 69, "IDS_Trinary_Operator:IDST" },	//  #69
-	{ uptype_binary, 70, "ID_Continue:IDC" },	//  #70
-	{ uptype_binary, 71, "ID_Start:IDS" },	//  #71
-	{ uptype_binary, 72, "Ideographic:Ideo" },	//  #72
-	{ uptype_binary, 73, "Join_Control:Join_C" },	//  #73
-	{ uptype_binary, 74, "Logical_Order_Exception:LOE" },	//  #74
-	{ uptype_binary, 75, "Lowercase:Lower" },	//  #75
-	{ uptype_binary, 76, "Math" },	//  #76
-	{ uptype_binary, 77, "Noncharacter_Code_Point:NChar" },	//  #77
-	{ uptype_binary, 78, "Pattern_Syntax:Pat_Syn" },	//  #78
-	{ uptype_binary, 79, "Pattern_White_Space:Pat_WS" },	//  #79
-	{ uptype_binary, 80, "Quotation_Mark:QMark" },	//  #80
-	{ uptype_binary, 81, "Radical" },	//  #81
-	{ uptype_binary, 82, "Regional_Indicator:RI" },	//  #82
-	{ uptype_binary, 83, "Sentence_Terminal:STerm" },	//  #83
-	{ uptype_binary, 84, "Soft_Dotted:SD" },	//  #84
-	{ uptype_binary, 85, "Terminal_Punctuation:Term" },	//  #85
-	{ uptype_binary, 86, "Unified_Ideograph:UIdeo" },	//  #86
-	{ uptype_binary, 87, "Uppercase:Upper" },	//  #87
-	{ uptype_binary, 88, "Variation_Selector:VS" },	//  #88
-	{ uptype_binary, 89, "White_Space:space" },	//  #89
-	{ uptype_binary, 90, "XID_Continue:XIDC" },	//  #90
-	{ uptype_binary, 91, "XID_Start:XIDS" },	//  #91
-	{ uptype_script, 92, "Adlam:Adlm" },	//  #92
-	{ uptype_script, 93, "Ahom:Ahom" },	//  #93
-	{ uptype_script, 94, "Anatolian_Hieroglyphs:Hluw" },	//  #94
-	{ uptype_script, 95, "Arabic:Arab" },	//  #95
-	{ uptype_script, 96, "Armenian:Armn" },	//  #96
-	{ uptype_script, 97, "Avestan:Avst" },	//  #97
-	{ uptype_script, 98, "Balinese:Bali" },	//  #98
-	{ uptype_script, 99, "Bamum:Bamu" },	//  #99
-	{ uptype_script, 100, "Bassa_Vah:Bass" },	//  #100
-	{ uptype_script, 101, "Batak:Batk" },	//  #101
-	{ uptype_script, 102, "Bengali:Beng" },	//  #102
-	{ uptype_script, 103, "Bhaiksuki:Bhks" },	//  #103
-	{ uptype_script, 104, "Bopomofo:Bopo" },	//  #104
-	{ uptype_script, 105, "Brahmi:Brah" },	//  #105
-	{ uptype_script, 106, "Braille:Brai" },	//  #106
-	{ uptype_script, 107, "Buginese:Bugi" },	//  #107
-	{ uptype_script, 108, "Buhid:Buhd" },	//  #108
-	{ uptype_script, 109, "Canadian_Aboriginal:Cans" },	//  #109
-	{ uptype_script, 110, "Carian:Cari" },	//  #110
-	{ uptype_script, 111, "Caucasian_Albanian:Aghb" },	//  #111
-	{ uptype_script, 112, "Chakma:Cakm" },	//  #112
-	{ uptype_script, 113, "Cham:Cham" },	//  #113
-	{ uptype_script, 114, "Cherokee:Cher" },	//  #114
-	{ uptype_script, 115, "Chorasmian:Chrs" },	//  #115
-	{ uptype_script, 116, "Common:Zyyy" },	//  #116
-	{ uptype_script, 117, "Coptic:Copt:Qaac" },	//  #117
-	{ uptype_script, 118, "Cuneiform:Xsux" },	//  #118
-	{ uptype_script, 119, "Cypriot:Cprt" },	//  #119
-	{ uptype_script, 120, "Cypro_Minoan:Cpmn" },	//  #120
-	{ uptype_script, 121, "Cyrillic:Cyrl" },	//  #121
-	{ uptype_script, 122, "Deseret:Dsrt" },	//  #122
-	{ uptype_script, 123, "Devanagari:Deva" },	//  #123
-	{ uptype_script, 124, "Dives_Akuru:Diak" },	//  #124
-	{ uptype_script, 125, "Dogra:Dogr" },	//  #125
-	{ uptype_script, 126, "Duployan:Dupl" },	//  #126
-	{ uptype_script, 127, "Egyptian_Hieroglyphs:Egyp" },	//  #127
-	{ uptype_script, 128, "Elbasan:Elba" },	//  #128
-	{ uptype_script, 129, "Elymaic:Elym" },	//  #129
-	{ uptype_script, 130, "Ethiopic:Ethi" },	//  #130
-	{ uptype_script, 131, "Georgian:Geor" },	//  #131
-	{ uptype_script, 132, "Glagolitic:Glag" },	//  #132
-	{ uptype_script, 133, "Gothic:Goth" },	//  #133
-	{ uptype_script, 134, "Grantha:Gran" },	//  #134
-	{ uptype_script, 135, "Greek:Grek" },	//  #135
-	{ uptype_script, 136, "Gujarati:Gujr" },	//  #136
-	{ uptype_script, 137, "Gunjala_Gondi:Gong" },	//  #137
-	{ uptype_script, 138, "Gurmukhi:Guru" },	//  #138
-	{ uptype_script, 139, "Han:Hani" },	//  #139
-	{ uptype_script, 140, "Hangul:Hang" },	//  #140
-	{ uptype_script, 141, "Hanifi_Rohingya:Rohg" },	//  #141
-	{ uptype_script, 142, "Hanunoo:Hano" },	//  #142
-	{ uptype_script, 143, "Hatran:Hatr" },	//  #143
-	{ uptype_script, 144, "Hebrew:Hebr" },	//  #144
-	{ uptype_script, 145, "Hiragana:Hira" },	//  #145
-	{ uptype_script, 146, "Imperial_Aramaic:Armi" },	//  #146
-	{ uptype_script, 147, "Inherited:Zinh:Qaai" },	//  #147
-	{ uptype_script, 148, "Inscriptional_Pahlavi:Phli" },	//  #148
-	{ uptype_script, 149, "Inscriptional_Parthian:Prti" },	//  #149
-	{ uptype_script, 150, "Javanese:Java" },	//  #150
-	{ uptype_script, 151, "Kaithi:Kthi" },	//  #151
-	{ uptype_script, 152, "Kannada:Knda" },	//  #152
-	{ uptype_script, 153, "Katakana:Kana" },	//  #153
-	{ uptype_script, 154, "Kawi:Kawi" },	//  #154
-	{ uptype_script, 155, "Kayah_Li:Kali" },	//  #155
-	{ uptype_script, 156, "Kharoshthi:Khar" },	//  #156
-	{ uptype_script, 157, "Khitan_Small_Script:Kits" },	//  #157
-	{ uptype_script, 158, "Khmer:Khmr" },	//  #158
-	{ uptype_script, 159, "Khojki:Khoj" },	//  #159
-	{ uptype_script, 160, "Khudawadi:Sind" },	//  #160
-	{ uptype_script, 161, "Lao:Laoo" },	//  #161
-	{ uptype_script, 162, "Latin:Latn" },	//  #162
-	{ uptype_script, 163, "Lepcha:Lepc" },	//  #163
-	{ uptype_script, 164, "Limbu:Limb" },	//  #164
-	{ uptype_script, 165, "Linear_A:Lina" },	//  #165
-	{ uptype_script, 166, "Linear_B:Linb" },	//  #166
-	{ uptype_script, 167, "Lisu:Lisu" },	//  #167
-	{ uptype_script, 168, "Lycian:Lyci" },	//  #168
-	{ uptype_script, 169, "Lydian:Lydi" },	//  #169
-	{ uptype_script, 170, "Mahajani:Mahj" },	//  #170
-	{ uptype_script, 171, "Makasar:Maka" },	//  #171
-	{ uptype_script, 172, "Malayalam:Mlym" },	//  #172
-	{ uptype_script, 173, "Mandaic:Mand" },	//  #173
-	{ uptype_script, 174, "Manichaean:Mani" },	//  #174
-	{ uptype_script, 175, "Marchen:Marc" },	//  #175
-	{ uptype_script, 176, "Masaram_Gondi:Gonm" },	//  #176
-	{ uptype_script, 177, "Medefaidrin:Medf" },	//  #177
-	{ uptype_script, 178, "Meetei_Mayek:Mtei" },	//  #178
-	{ uptype_script, 179, "Mende_Kikakui:Mend" },	//  #179
-	{ uptype_script, 180, "Meroitic_Cursive:Merc" },	//  #180
-	{ uptype_script, 181, "Meroitic_Hieroglyphs:Mero" },	//  #181
-	{ uptype_script, 182, "Miao:Plrd" },	//  #182
-	{ uptype_script, 183, "Modi:Modi" },	//  #183
-	{ uptype_script, 184, "Mongolian:Mong" },	//  #184
-	{ uptype_script, 185, "Mro:Mroo" },	//  #185
-	{ uptype_script, 186, "Multani:Mult" },	//  #186
-	{ uptype_script, 187, "Myanmar:Mymr" },	//  #187
-	{ uptype_script, 188, "Nabataean:Nbat" },	//  #188
-	{ uptype_script, 189, "Nag_Mundari:Nagm" },	//  #189
-	{ uptype_script, 190, "Nandinagari:Nand" },	//  #190
-	{ uptype_script, 191, "New_Tai_Lue:Talu" },	//  #191
-	{ uptype_script, 192, "Newa:Newa" },	//  #192
-	{ uptype_script, 193, "Nko:Nkoo" },	//  #193
-	{ uptype_script, 194, "Nushu:Nshu" },	//  #194
-	{ uptype_script, 195, "Nyiakeng_Puachue_Hmong:Hmnp" },	//  #195
-	{ uptype_script, 196, "Ogham:Ogam" },	//  #196
-	{ uptype_script, 197, "Ol_Chiki:Olck" },	//  #197
-	{ uptype_script, 198, "Old_Hungarian:Hung" },	//  #198
-	{ uptype_script, 199, "Old_Italic:Ital" },	//  #199
-	{ uptype_script, 200, "Old_North_Arabian:Narb" },	//  #200
-	{ uptype_script, 201, "Old_Permic:Perm" },	//  #201
-	{ uptype_script, 202, "Old_Persian:Xpeo" },	//  #202
-	{ uptype_script, 203, "Old_Sogdian:Sogo" },	//  #203
-	{ uptype_script, 204, "Old_South_Arabian:Sarb" },	//  #204
-	{ uptype_script, 205, "Old_Turkic:Orkh" },	//  #205
-	{ uptype_script, 206, "Old_Uyghur:Ougr" },	//  #206
-	{ uptype_script, 207, "Oriya:Orya" },	//  #207
-	{ uptype_script, 208, "Osage:Osge" },	//  #208
-	{ uptype_script, 209, "Osmanya:Osma" },	//  #209
-	{ uptype_script, 210, "Pahawh_Hmong:Hmng" },	//  #210
-	{ uptype_script, 211, "Palmyrene:Palm" },	//  #211
-	{ uptype_script, 212, "Pau_Cin_Hau:Pauc" },	//  #212
-	{ uptype_script, 213, "Phags_Pa:Phag" },	//  #213
-	{ uptype_script, 214, "Phoenician:Phnx" },	//  #214
-	{ uptype_script, 215, "Psalter_Pahlavi:Phlp" },	//  #215
-	{ uptype_script, 216, "Rejang:Rjng" },	//  #216
-	{ uptype_script, 217, "Runic:Runr" },	//  #217
-	{ uptype_script, 218, "Samaritan:Samr" },	//  #218
-	{ uptype_script, 219, "Saurashtra:Saur" },	//  #219
-	{ uptype_script, 220, "Sharada:Shrd" },	//  #220
-	{ uptype_script, 221, "Shavian:Shaw" },	//  #221
-	{ uptype_script, 222, "Siddham:Sidd" },	//  #222
-	{ uptype_script, 223, "SignWriting:Sgnw" },	//  #223
-	{ uptype_script, 224, "Sinhala:Sinh" },	//  #224
-	{ uptype_script, 225, "Sogdian:Sogd" },	//  #225
-	{ uptype_script, 226, "Sora_Sompeng:Sora" },	//  #226
-	{ uptype_script, 227, "Soyombo:Soyo" },	//  #227
-	{ uptype_script, 228, "Sundanese:Sund" },	//  #228
-	{ uptype_script, 229, "Syloti_Nagri:Sylo" },	//  #229
-	{ uptype_script, 230, "Syriac:Syrc" },	//  #230
-	{ uptype_script, 231, "Tagalog:Tglg" },	//  #231
-	{ uptype_script, 232, "Tagbanwa:Tagb" },	//  #232
-	{ uptype_script, 233, "Tai_Le:Tale" },	//  #233
-	{ uptype_script, 234, "Tai_Tham:Lana" },	//  #234
-	{ uptype_script, 235, "Tai_Viet:Tavt" },	//  #235
-	{ uptype_script, 236, "Takri:Takr" },	//  #236
-	{ uptype_script, 237, "Tamil:Taml" },	//  #237
-	{ uptype_script, 238, "Tangsa:Tnsa" },	//  #238
-	{ uptype_script, 239, "Tangut:Tang" },	//  #239
-	{ uptype_script, 240, "Telugu:Telu" },	//  #240
-	{ uptype_script, 241, "Thaana:Thaa" },	//  #241
-	{ uptype_script, 242, "Thai:Thai" },	//  #242
-	{ uptype_script, 243, "Tibetan:Tibt" },	//  #243
-	{ uptype_script, 244, "Tifinagh:Tfng" },	//  #244
-	{ uptype_script, 245, "Tirhuta:Tirh" },	//  #245
-	{ uptype_script, 246, "Toto:Toto" },	//  #246
-	{ uptype_script, 247, "Ugaritic:Ugar" },	//  #247
-	{ uptype_script, 248, "Vai:Vaii" },	//  #248
-	{ uptype_script, 249, "Vithkuqi:Vith" },	//  #249
-	{ uptype_script, 250, "Wancho:Wcho" },	//  #250
-	{ uptype_script, 251, "Warang_Citi:Wara" },	//  #251
-	{ uptype_script, 252, "Yezidi:Yezi" },	//  #252
-	{ uptype_script, 253, "Yi:Yiii" },	//  #253
-	{ uptype_script, 254, "Zanabazar_Square:Zanb" },	//  #254
-	{ uptype_script_extensions, 255, "Adlam:Adlm" },	//  #255
-	{ uptype_script_extensions, 93, "Ahom:Ahom" },	//  #256
-	{ uptype_script_extensions, 94, "Anatolian_Hieroglyphs:Hluw" },	//  #257
-	{ uptype_script_extensions, 256, "Arabic:Arab" },	//  #258
-	{ uptype_script_extensions, 96, "Armenian:Armn" },	//  #259
-	{ uptype_script_extensions, 97, "Avestan:Avst" },	//  #260
-	{ uptype_script_extensions, 98, "Balinese:Bali" },	//  #261
-	{ uptype_script_extensions, 99, "Bamum:Bamu" },	//  #262
-	{ uptype_script_extensions, 100, "Bassa_Vah:Bass" },	//  #263
-	{ uptype_script_extensions, 101, "Batak:Batk" },	//  #264
-	{ uptype_script_extensions, 257, "Bengali:Beng" },	//  #265
-	{ uptype_script_extensions, 103, "Bhaiksuki:Bhks" },	//  #266
-	{ uptype_script_extensions, 258, "Bopomofo:Bopo" },	//  #267
-	{ uptype_script_extensions, 105, "Brahmi:Brah" },	//  #268
-	{ uptype_script_extensions, 106, "Braille:Brai" },	//  #269
-	{ uptype_script_extensions, 259, "Buginese:Bugi" },	//  #270
-	{ uptype_script_extensions, 260, "Buhid:Buhd" },	//  #271
-	{ uptype_script_extensions, 109, "Canadian_Aboriginal:Cans" },	//  #272
-	{ uptype_script_extensions, 110, "Carian:Cari" },	//  #273
-	{ uptype_script_extensions, 111, "Caucasian_Albanian:Aghb" },	//  #274
-	{ uptype_script_extensions, 261, "Chakma:Cakm" },	//  #275
-	{ uptype_script_extensions, 113, "Cham:Cham" },	//  #276
-	{ uptype_script_extensions, 114, "Cherokee:Cher" },	//  #277
-	{ uptype_script_extensions, 115, "Chorasmian:Chrs" },	//  #278
-	{ uptype_script_extensions, 262, "Common:Zyyy" },	//  #279
-	{ uptype_script_extensions, 263, "Coptic:Copt:Qaac" },	//  #280
-	{ uptype_script_extensions, 118, "Cuneiform:Xsux" },	//  #281
-	{ uptype_script_extensions, 264, "Cypriot:Cprt" },	//  #282
-	{ uptype_script_extensions, 265, "Cypro_Minoan:Cpmn" },	//  #283
-	{ uptype_script_extensions, 266, "Cyrillic:Cyrl" },	//  #284
-	{ uptype_script_extensions, 122, "Deseret:Dsrt" },	//  #285
-	{ uptype_script_extensions, 267, "Devanagari:Deva" },	//  #286
-	{ uptype_script_extensions, 124, "Dives_Akuru:Diak" },	//  #287
-	{ uptype_script_extensions, 268, "Dogra:Dogr" },	//  #288
-	{ uptype_script_extensions, 269, "Duployan:Dupl" },	//  #289
-	{ uptype_script_extensions, 127, "Egyptian_Hieroglyphs:Egyp" },	//  #290
-	{ uptype_script_extensions, 128, "Elbasan:Elba" },	//  #291
-	{ uptype_script_extensions, 129, "Elymaic:Elym" },	//  #292
-	{ uptype_script_extensions, 130, "Ethiopic:Ethi" },	//  #293
-	{ uptype_script_extensions, 270, "Georgian:Geor" },	//  #294
-	{ uptype_script_extensions, 271, "Glagolitic:Glag" },	//  #295
-	{ uptype_script_extensions, 133, "Gothic:Goth" },	//  #296
-	{ uptype_script_extensions, 272, "Grantha:Gran" },	//  #297
-	{ uptype_script_extensions, 273, "Greek:Grek" },	//  #298
-	{ uptype_script_extensions, 274, "Gujarati:Gujr" },	//  #299
-	{ uptype_script_extensions, 275, "Gunjala_Gondi:Gong" },	//  #300
-	{ uptype_script_extensions, 276, "Gurmukhi:Guru" },	//  #301
-	{ uptype_script_extensions, 277, "Han:Hani" },	//  #302
-	{ uptype_script_extensions, 278, "Hangul:Hang" },	//  #303
-	{ uptype_script_extensions, 279, "Hanifi_Rohingya:Rohg" },	//  #304
-	{ uptype_script_extensions, 280, "Hanunoo:Hano" },	//  #305
-	{ uptype_script_extensions, 143, "Hatran:Hatr" },	//  #306
-	{ uptype_script_extensions, 144, "Hebrew:Hebr" },	//  #307
-	{ uptype_script_extensions, 281, "Hiragana:Hira" },	//  #308
-	{ uptype_script_extensions, 146, "Imperial_Aramaic:Armi" },	//  #309
-	{ uptype_script_extensions, 282, "Inherited:Zinh:Qaai" },	//  #310
-	{ uptype_script_extensions, 148, "Inscriptional_Pahlavi:Phli" },	//  #311
-	{ uptype_script_extensions, 149, "Inscriptional_Parthian:Prti" },	//  #312
-	{ uptype_script_extensions, 283, "Javanese:Java" },	//  #313
-	{ uptype_script_extensions, 284, "Kaithi:Kthi" },	//  #314
-	{ uptype_script_extensions, 285, "Kannada:Knda" },	//  #315
-	{ uptype_script_extensions, 286, "Katakana:Kana" },	//  #316
-	{ uptype_script_extensions, 154, "Kawi:Kawi" },	//  #317
-	{ uptype_script_extensions, 287, "Kayah_Li:Kali" },	//  #318
-	{ uptype_script_extensions, 156, "Kharoshthi:Khar" },	//  #319
-	{ uptype_script_extensions, 157, "Khitan_Small_Script:Kits" },	//  #320
-	{ uptype_script_extensions, 158, "Khmer:Khmr" },	//  #321
-	{ uptype_script_extensions, 288, "Khojki:Khoj" },	//  #322
-	{ uptype_script_extensions, 289, "Khudawadi:Sind" },	//  #323
-	{ uptype_script_extensions, 161, "Lao:Laoo" },	//  #324
-	{ uptype_script_extensions, 290, "Latin:Latn" },	//  #325
-	{ uptype_script_extensions, 163, "Lepcha:Lepc" },	//  #326
-	{ uptype_script_extensions, 291, "Limbu:Limb" },	//  #327
-	{ uptype_script_extensions, 292, "Linear_A:Lina" },	//  #328
-	{ uptype_script_extensions, 293, "Linear_B:Linb" },	//  #329
-	{ uptype_script_extensions, 167, "Lisu:Lisu" },	//  #330
-	{ uptype_script_extensions, 168, "Lycian:Lyci" },	//  #331
-	{ uptype_script_extensions, 169, "Lydian:Lydi" },	//  #332
-	{ uptype_script_extensions, 294, "Mahajani:Mahj" },	//  #333
-	{ uptype_script_extensions, 171, "Makasar:Maka" },	//  #334
-	{ uptype_script_extensions, 295, "Malayalam:Mlym" },	//  #335
-	{ uptype_script_extensions, 296, "Mandaic:Mand" },	//  #336
-	{ uptype_script_extensions, 297, "Manichaean:Mani" },	//  #337
-	{ uptype_script_extensions, 175, "Marchen:Marc" },	//  #338
-	{ uptype_script_extensions, 298, "Masaram_Gondi:Gonm" },	//  #339
-	{ uptype_script_extensions, 177, "Medefaidrin:Medf" },	//  #340
-	{ uptype_script_extensions, 178, "Meetei_Mayek:Mtei" },	//  #341
-	{ uptype_script_extensions, 179, "Mende_Kikakui:Mend" },	//  #342
-	{ uptype_script_extensions, 180, "Meroitic_Cursive:Merc" },	//  #343
-	{ uptype_script_extensions, 181, "Meroitic_Hieroglyphs:Mero" },	//  #344
-	{ uptype_script_extensions, 182, "Miao:Plrd" },	//  #345
-	{ uptype_script_extensions, 299, "Modi:Modi" },	//  #346
-	{ uptype_script_extensions, 300, "Mongolian:Mong" },	//  #347
-	{ uptype_script_extensions, 185, "Mro:Mroo" },	//  #348
-	{ uptype_script_extensions, 301, "Multani:Mult" },	//  #349
-	{ uptype_script_extensions, 302, "Myanmar:Mymr" },	//  #350
-	{ uptype_script_extensions, 188, "Nabataean:Nbat" },	//  #351
-	{ uptype_script_extensions, 189, "Nag_Mundari:Nagm" },	//  #352
-	{ uptype_script_extensions, 303, "Nandinagari:Nand" },	//  #353
-	{ uptype_script_extensions, 191, "New_Tai_Lue:Talu" },	//  #354
-	{ uptype_script_extensions, 192, "Newa:Newa" },	//  #355
-	{ uptype_script_extensions, 304, "Nko:Nkoo" },	//  #356
-	{ uptype_script_extensions, 194, "Nushu:Nshu" },	//  #357
-	{ uptype_script_extensions, 195, "Nyiakeng_Puachue_Hmong:Hmnp" },	//  #358
-	{ uptype_script_extensions, 196, "Ogham:Ogam" },	//  #359
-	{ uptype_script_extensions, 197, "Ol_Chiki:Olck" },	//  #360
-	{ uptype_script_extensions, 198, "Old_Hungarian:Hung" },	//  #361
-	{ uptype_script_extensions, 199, "Old_Italic:Ital" },	//  #362
-	{ uptype_script_extensions, 200, "Old_North_Arabian:Narb" },	//  #363
-	{ uptype_script_extensions, 305, "Old_Permic:Perm" },	//  #364
-	{ uptype_script_extensions, 202, "Old_Persian:Xpeo" },	//  #365
-	{ uptype_script_extensions, 203, "Old_Sogdian:Sogo" },	//  #366
-	{ uptype_script_extensions, 204, "Old_South_Arabian:Sarb" },	//  #367
-	{ uptype_script_extensions, 205, "Old_Turkic:Orkh" },	//  #368
-	{ uptype_script_extensions, 306, "Old_Uyghur:Ougr" },	//  #369
-	{ uptype_script_extensions, 307, "Oriya:Orya" },	//  #370
-	{ uptype_script_extensions, 208, "Osage:Osge" },	//  #371
-	{ uptype_script_extensions, 209, "Osmanya:Osma" },	//  #372
-	{ uptype_script_extensions, 210, "Pahawh_Hmong:Hmng" },	//  #373
-	{ uptype_script_extensions, 211, "Palmyrene:Palm" },	//  #374
-	{ uptype_script_extensions, 212, "Pau_Cin_Hau:Pauc" },	//  #375
-	{ uptype_script_extensions, 308, "Phags_Pa:Phag" },	//  #376
-	{ uptype_script_extensions, 214, "Phoenician:Phnx" },	//  #377
-	{ uptype_script_extensions, 309, "Psalter_Pahlavi:Phlp" },	//  #378
-	{ uptype_script_extensions, 216, "Rejang:Rjng" },	//  #379
-	{ uptype_script_extensions, 217, "Runic:Runr" },	//  #380
-	{ uptype_script_extensions, 218, "Samaritan:Samr" },	//  #381
-	{ uptype_script_extensions, 219, "Saurashtra:Saur" },	//  #382
-	{ uptype_script_extensions, 310, "Sharada:Shrd" },	//  #383
-	{ uptype_script_extensions, 221, "Shavian:Shaw" },	//  #384
-	{ uptype_script_extensions, 222, "Siddham:Sidd" },	//  #385
-	{ uptype_script_extensions, 223, "SignWriting:Sgnw" },	//  #386
-	{ uptype_script_extensions, 311, "Sinhala:Sinh" },	//  #387
-	{ uptype_script_extensions, 312, "Sogdian:Sogd" },	//  #388
-	{ uptype_script_extensions, 226, "Sora_Sompeng:Sora" },	//  #389
-	{ uptype_script_extensions, 227, "Soyombo:Soyo" },	//  #390
-	{ uptype_script_extensions, 228, "Sundanese:Sund" },	//  #391
-	{ uptype_script_extensions, 313, "Syloti_Nagri:Sylo" },	//  #392
-	{ uptype_script_extensions, 314, "Syriac:Syrc" },	//  #393
-	{ uptype_script_extensions, 315, "Tagalog:Tglg" },	//  #394
-	{ uptype_script_extensions, 316, "Tagbanwa:Tagb" },	//  #395
-	{ uptype_script_extensions, 317, "Tai_Le:Tale" },	//  #396
-	{ uptype_script_extensions, 234, "Tai_Tham:Lana" },	//  #397
-	{ uptype_script_extensions, 235, "Tai_Viet:Tavt" },	//  #398
-	{ uptype_script_extensions, 318, "Takri:Takr" },	//  #399
-	{ uptype_script_extensions, 319, "Tamil:Taml" },	//  #400
-	{ uptype_script_extensions, 238, "Tangsa:Tnsa" },	//  #401
-	{ uptype_script_extensions, 239, "Tangut:Tang" },	//  #402
-	{ uptype_script_extensions, 320, "Telugu:Telu" },	//  #403
-	{ uptype_script_extensions, 321, "Thaana:Thaa" },	//  #404
-	{ uptype_script_extensions, 242, "Thai:Thai" },	//  #405
-	{ uptype_script_extensions, 243, "Tibetan:Tibt" },	//  #406
-	{ uptype_script_extensions, 244, "Tifinagh:Tfng" },	//  #407
-	{ uptype_script_extensions, 322, "Tirhuta:Tirh" },	//  #408
-	{ uptype_script_extensions, 246, "Toto:Toto" },	//  #409
-	{ uptype_script_extensions, 247, "Ugaritic:Ugar" },	//  #410
-	{ uptype_script_extensions, 248, "Vai:Vaii" },	//  #411
-	{ uptype_script_extensions, 249, "Vithkuqi:Vith" },	//  #412
-	{ uptype_script_extensions, 250, "Wancho:Wcho" },	//  #413
-	{ uptype_script_extensions, 251, "Warang_Citi:Wara" },	//  #414
-	{ uptype_script_extensions, 323, "Yezidi:Yezi" },	//  #415
-	{ uptype_script_extensions, 324, "Yi:Yiii" },	//  #416
-	{ uptype_script_extensions, 254, "Zanabazar_Square:Zanb" },	//  #417
-#if !defined(SRELL_NO_UNICODE_POS)
-	{ uptype_binary, 325, "RGI_Emoji" },	//  #418
-	{ uptype_binary, 326, "Basic_Emoji" },	//  #419
-	{ uptype_binary, 327, "Emoji_Keycap_Sequence" },	//  #420
-	{ uptype_binary, 328, "RGI_Emoji_Modifier_Sequence" },	//  #421
-	{ uptype_binary, 329, "RGI_Emoji_Flag_Sequence" },	//  #422
-	{ uptype_binary, 330, "RGI_Emoji_Tag_Sequence" },	//  #423
-	{ uptype_binary, 331, "RGI_Emoji_ZWJ_Sequence" },	//  #424
-#endif	//  !defined(SRELL_NO_UNICODE_POS)
-	{ uptype_unknown, 0, "" }
-};
-
-template <typename T3, typename T4, typename T5, typename T6>
-const T6 unicode_property_data<T3, T4, T5, T6>::positiontable[] =
-{
-	{ 0, 0 },	//  #0 unknown
-	{ 0, 734 },	//  #1 gc=Other:C
-	{ 0, 2 },	//  #2 gc=Control:Cc:cntrl
-	{ 2, 21 },	//  #3 gc=Format:Cf
-	{ 23, 707 },	//  #4 gc=Unassigned:Cn
-	{ 730, 3 },	//  #5 gc=Private_Use:Co
-	{ 733, 1 },	//  #6 gc=Surrogate:Cs
-	{ 734, 1895 },	//  #7 gc=Letter:L
-	{ 734, 1314 },	//  #8 gc=Cased_Letter:LC
-	{ 734, 658 },	//  #9 gc=Lowercase_Letter:Ll
-	{ 1392, 10 },	//  #10 gc=Titlecase_Letter:Lt
-	{ 1402, 646 },	//  #11 gc=Uppercase_Letter:Lu
-	{ 2048, 71 },	//  #12 gc=Modifier_Letter:Lm
-	{ 2119, 510 },	//  #13 gc=Other_Letter:Lo
-	{ 2629, 533 },	//  #14 gc=Mark:M:Combining_Mark
-	{ 2629, 182 },	//  #15 gc=Spacing_Mark:Mc
-	{ 2811, 5 },	//  #16 gc=Enclosing_Mark:Me
-	{ 2816, 346 },	//  #17 gc=Nonspacing_Mark:Mn
-	{ 3162, 148 },	//  #18 gc=Number:N
-	{ 3162, 64 },	//  #19 gc=Decimal_Number:Nd:digit
-	{ 3226, 12 },	//  #20 gc=Letter_Number:Nl
-	{ 3238, 72 },	//  #21 gc=Other_Number:No
-	{ 3310, 388 },	//  #22 gc=Punctuation:P:punct
-	{ 3310, 6 },	//  #23 gc=Connector_Punctuation:Pc
-	{ 3316, 19 },	//  #24 gc=Dash_Punctuation:Pd
-	{ 3335, 76 },	//  #25 gc=Close_Punctuation:Pe
-	{ 3411, 10 },	//  #26 gc=Final_Punctuation:Pf
-	{ 3421, 11 },	//  #27 gc=Initial_Punctuation:Pi
-	{ 3432, 187 },	//  #28 gc=Other_Punctuation:Po
-	{ 3619, 79 },	//  #29 gc=Open_Punctuation:Ps
-	{ 3698, 300 },	//  #30 gc=Symbol:S
-	{ 3698, 21 },	//  #31 gc=Currency_Symbol:Sc
-	{ 3719, 31 },	//  #32 gc=Modifier_Symbol:Sk
-	{ 3750, 64 },	//  #33 gc=Math_Symbol:Sm
-	{ 3814, 184 },	//  #34 gc=Other_Symbol:So
-	{ 3998, 9 },	//  #35 gc=Separator:Z
-	{ 3998, 1 },	//  #36 gc=Line_Separator:Zl
-	{ 3999, 1 },	//  #37 gc=Paragraph_Separator:Zp
-	{ 4000, 7 },	//  #38 gc=Space_Separator:Zs
-	{ 4007, 1 },	//  #39 bp=ASCII
-	{ 4008, 3 },	//  #40 bp=ASCII_Hex_Digit:AHex
-	{ 4011, 732 },	//  #41 bp=Alphabetic:Alpha
-	{ 4743, 1 },	//  #42 bp=Any
-	{ 4744, 0 },	//  #43 bp=Assigned
-	{ 4744, 4 },	//  #44 bp=Bidi_Control:Bidi_C
-	{ 4748, 114 },	//  #45 bp=Bidi_Mirrored:Bidi_M
-	{ 4862, 437 },	//  #46 bp=Case_Ignorable:CI
-	{ 5299, 157 },	//  #47 bp=Cased
-	{ 5456, 622 },	//  #48 bp=Changes_When_Casefolded:CWCF
-	{ 6078, 131 },	//  #49 bp=Changes_When_Casemapped:CWCM
-	{ 6209, 609 },	//  #50 bp=Changes_When_Lowercased:CWL
-	{ 6818, 839 },	//  #51 bp=Changes_When_NFKC_Casefolded:CWKCF
-	{ 7657, 626 },	//  #52 bp=Changes_When_Titlecased:CWT
-	{ 8283, 627 },	//  #53 bp=Changes_When_Uppercased:CWU
-	{ 8910, 23 },	//  #54 bp=Dash
-	{ 8933, 17 },	//  #55 bp=Default_Ignorable_Code_Point:DI
-	{ 8950, 8 },	//  #56 bp=Deprecated:Dep
-	{ 8958, 195 },	//  #57 bp=Diacritic:Dia
-	{ 9153, 151 },	//  #58 bp=Emoji
-	{ 9304, 10 },	//  #59 bp=Emoji_Component:EComp
-	{ 9314, 1 },	//  #60 bp=Emoji_Modifier:EMod
-	{ 9315, 40 },	//  #61 bp=Emoji_Modifier_Base:EBase
-	{ 9355, 81 },	//  #62 bp=Emoji_Presentation:EPres
-	{ 9436, 78 },	//  #63 bp=Extended_Pictographic:ExtPict
-	{ 9514, 33 },	//  #64 bp=Extender:Ext
-	{ 9547, 875 },	//  #65 bp=Grapheme_Base:Gr_Base
-	{ 10422, 363 },	//  #66 bp=Grapheme_Extend:Gr_Ext
-	{ 10785, 6 },	//  #67 bp=Hex_Digit:Hex
-	{ 10791, 2 },	//  #68 bp=IDS_Binary_Operator:IDSB
-	{ 10793, 1 },	//  #69 bp=IDS_Trinary_Operator:IDST
-	{ 10794, 768 },	//  #70 bp=ID_Continue:IDC
-	{ 11562, 659 },	//  #71 bp=ID_Start:IDS
-	{ 12221, 20 },	//  #72 bp=Ideographic:Ideo
-	{ 12241, 1 },	//  #73 bp=Join_Control:Join_C
-	{ 12242, 7 },	//  #74 bp=Logical_Order_Exception:LOE
-	{ 12249, 671 },	//  #75 bp=Lowercase:Lower
-	{ 12920, 138 },	//  #76 bp=Math
-	{ 13058, 18 },	//  #77 bp=Noncharacter_Code_Point:NChar
-	{ 13076, 28 },	//  #78 bp=Pattern_Syntax:Pat_Syn
-	{ 13104, 5 },	//  #79 bp=Pattern_White_Space:Pat_WS
-	{ 13109, 13 },	//  #80 bp=Quotation_Mark:QMark
-	{ 13122, 3 },	//  #81 bp=Radical
-	{ 13125, 1 },	//  #82 bp=Regional_Indicator:RI
-	{ 13126, 80 },	//  #83 bp=Sentence_Terminal:STerm
-	{ 13206, 34 },	//  #84 bp=Soft_Dotted:SD
-	{ 13240, 108 },	//  #85 bp=Terminal_Punctuation:Term
-	{ 13348, 16 },	//  #86 bp=Unified_Ideograph:UIdeo
-	{ 13364, 651 },	//  #87 bp=Uppercase:Upper
-	{ 14015, 4 },	//  #88 bp=Variation_Selector:VS
-	{ 14019, 10 },	//  #89 bp=White_Space:space
-	{ 14029, 775 },	//  #90 bp=XID_Continue:XIDC
-	{ 14804, 666 },	//  #91 bp=XID_Start:XIDS
-	{ 15470, 3 },	//  #92 sc=Adlam:Adlm
-	{ 15473, 3 },	//  #93 sc=Ahom:Ahom scx=Ahom:Ahom
-	{ 15476, 1 },	//  #94 sc=Anatolian_Hieroglyphs:Hluw scx=Anatolian_Hieroglyphs:Hluw
-	{ 15477, 58 },	//  #95 sc=Arabic:Arab
-	{ 15535, 4 },	//  #96 sc=Armenian:Armn scx=Armenian:Armn
-	{ 15539, 2 },	//  #97 sc=Avestan:Avst scx=Avestan:Avst
-	{ 15541, 2 },	//  #98 sc=Balinese:Bali scx=Balinese:Bali
-	{ 15543, 2 },	//  #99 sc=Bamum:Bamu scx=Bamum:Bamu
-	{ 15545, 2 },	//  #100 sc=Bassa_Vah:Bass scx=Bassa_Vah:Bass
-	{ 15547, 2 },	//  #101 sc=Batak:Batk scx=Batak:Batk
-	{ 15549, 14 },	//  #102 sc=Bengali:Beng
-	{ 15563, 4 },	//  #103 sc=Bhaiksuki:Bhks scx=Bhaiksuki:Bhks
-	{ 15567, 3 },	//  #104 sc=Bopomofo:Bopo
-	{ 15570, 3 },	//  #105 sc=Brahmi:Brah scx=Brahmi:Brah
-	{ 15573, 1 },	//  #106 sc=Braille:Brai scx=Braille:Brai
-	{ 15574, 2 },	//  #107 sc=Buginese:Bugi
-	{ 15576, 1 },	//  #108 sc=Buhid:Buhd
-	{ 15577, 3 },	//  #109 sc=Canadian_Aboriginal:Cans scx=Canadian_Aboriginal:Cans
-	{ 15580, 1 },	//  #110 sc=Carian:Cari scx=Carian:Cari
-	{ 15581, 2 },	//  #111 sc=Caucasian_Albanian:Aghb scx=Caucasian_Albanian:Aghb
-	{ 15583, 2 },	//  #112 sc=Chakma:Cakm
-	{ 15585, 4 },	//  #113 sc=Cham:Cham scx=Cham:Cham
-	{ 15589, 3 },	//  #114 sc=Cherokee:Cher scx=Cherokee:Cher
-	{ 15592, 1 },	//  #115 sc=Chorasmian:Chrs scx=Chorasmian:Chrs
-	{ 15593, 173 },	//  #116 sc=Common:Zyyy
-	{ 15766, 3 },	//  #117 sc=Coptic:Copt:Qaac
-	{ 15769, 4 },	//  #118 sc=Cuneiform:Xsux scx=Cuneiform:Xsux
-	{ 15773, 6 },	//  #119 sc=Cypriot:Cprt
-	{ 15779, 1 },	//  #120 sc=Cypro_Minoan:Cpmn
-	{ 15780, 10 },	//  #121 sc=Cyrillic:Cyrl
-	{ 15790, 1 },	//  #122 sc=Deseret:Dsrt scx=Deseret:Dsrt
-	{ 15791, 5 },	//  #123 sc=Devanagari:Deva
-	{ 15796, 8 },	//  #124 sc=Dives_Akuru:Diak scx=Dives_Akuru:Diak
-	{ 15804, 1 },	//  #125 sc=Dogra:Dogr
-	{ 15805, 5 },	//  #126 sc=Duployan:Dupl
-	{ 15810, 1 },	//  #127 sc=Egyptian_Hieroglyphs:Egyp scx=Egyptian_Hieroglyphs:Egyp
-	{ 15811, 1 },	//  #128 sc=Elbasan:Elba scx=Elbasan:Elba
-	{ 15812, 1 },	//  #129 sc=Elymaic:Elym scx=Elymaic:Elym
-	{ 15813, 36 },	//  #130 sc=Ethiopic:Ethi scx=Ethiopic:Ethi
-	{ 15849, 10 },	//  #131 sc=Georgian:Geor
-	{ 15859, 6 },	//  #132 sc=Glagolitic:Glag
-	{ 15865, 1 },	//  #133 sc=Gothic:Goth scx=Gothic:Goth
-	{ 15866, 15 },	//  #134 sc=Grantha:Gran
-	{ 15881, 36 },	//  #135 sc=Greek:Grek
-	{ 15917, 14 },	//  #136 sc=Gujarati:Gujr
-	{ 15931, 6 },	//  #137 sc=Gunjala_Gondi:Gong
-	{ 15937, 16 },	//  #138 sc=Gurmukhi:Guru
-	{ 15953, 21 },	//  #139 sc=Han:Hani
-	{ 15974, 14 },	//  #140 sc=Hangul:Hang
-	{ 15988, 2 },	//  #141 sc=Hanifi_Rohingya:Rohg
-	{ 15990, 1 },	//  #142 sc=Hanunoo:Hano
-	{ 15991, 3 },	//  #143 sc=Hatran:Hatr scx=Hatran:Hatr
-	{ 15994, 9 },	//  #144 sc=Hebrew:Hebr scx=Hebrew:Hebr
-	{ 16003, 6 },	//  #145 sc=Hiragana:Hira
-	{ 16009, 2 },	//  #146 sc=Imperial_Aramaic:Armi scx=Imperial_Aramaic:Armi
-	{ 16011, 29 },	//  #147 sc=Inherited:Zinh:Qaai
-	{ 16040, 2 },	//  #148 sc=Inscriptional_Pahlavi:Phli scx=Inscriptional_Pahlavi:Phli
-	{ 16042, 2 },	//  #149 sc=Inscriptional_Parthian:Prti scx=Inscriptional_Parthian:Prti
-	{ 16044, 3 },	//  #150 sc=Javanese:Java
-	{ 16047, 2 },	//  #151 sc=Kaithi:Kthi
-	{ 16049, 13 },	//  #152 sc=Kannada:Knda
-	{ 16062, 14 },	//  #153 sc=Katakana:Kana
-	{ 16076, 3 },	//  #154 sc=Kawi:Kawi scx=Kawi:Kawi
-	{ 16079, 2 },	//  #155 sc=Kayah_Li:Kali
-	{ 16081, 8 },	//  #156 sc=Kharoshthi:Khar scx=Kharoshthi:Khar
-	{ 16089, 2 },	//  #157 sc=Khitan_Small_Script:Kits scx=Khitan_Small_Script:Kits
-	{ 16091, 4 },	//  #158 sc=Khmer:Khmr scx=Khmer:Khmr
-	{ 16095, 2 },	//  #159 sc=Khojki:Khoj
-	{ 16097, 2 },	//  #160 sc=Khudawadi:Sind
-	{ 16099, 11 },	//  #161 sc=Lao:Laoo scx=Lao:Laoo
-	{ 16110, 39 },	//  #162 sc=Latin:Latn
-	{ 16149, 3 },	//  #163 sc=Lepcha:Lepc scx=Lepcha:Lepc
-	{ 16152, 5 },	//  #164 sc=Limbu:Limb
-	{ 16157, 3 },	//  #165 sc=Linear_A:Lina
-	{ 16160, 7 },	//  #166 sc=Linear_B:Linb
-	{ 16167, 2 },	//  #167 sc=Lisu:Lisu scx=Lisu:Lisu
-	{ 16169, 1 },	//  #168 sc=Lycian:Lyci scx=Lycian:Lyci
-	{ 16170, 2 },	//  #169 sc=Lydian:Lydi scx=Lydian:Lydi
-	{ 16172, 1 },	//  #170 sc=Mahajani:Mahj
-	{ 16173, 1 },	//  #171 sc=Makasar:Maka scx=Makasar:Maka
-	{ 16174, 7 },	//  #172 sc=Malayalam:Mlym
-	{ 16181, 2 },	//  #173 sc=Mandaic:Mand
-	{ 16183, 2 },	//  #174 sc=Manichaean:Mani
-	{ 16185, 3 },	//  #175 sc=Marchen:Marc scx=Marchen:Marc
-	{ 16188, 7 },	//  #176 sc=Masaram_Gondi:Gonm
-	{ 16195, 1 },	//  #177 sc=Medefaidrin:Medf scx=Medefaidrin:Medf
-	{ 16196, 3 },	//  #178 sc=Meetei_Mayek:Mtei scx=Meetei_Mayek:Mtei
-	{ 16199, 2 },	//  #179 sc=Mende_Kikakui:Mend scx=Mende_Kikakui:Mend
-	{ 16201, 3 },	//  #180 sc=Meroitic_Cursive:Merc scx=Meroitic_Cursive:Merc
-	{ 16204, 1 },	//  #181 sc=Meroitic_Hieroglyphs:Mero scx=Meroitic_Hieroglyphs:Mero
-	{ 16205, 3 },	//  #182 sc=Miao:Plrd scx=Miao:Plrd
-	{ 16208, 2 },	//  #183 sc=Modi:Modi
-	{ 16210, 6 },	//  #184 sc=Mongolian:Mong
-	{ 16216, 3 },	//  #185 sc=Mro:Mroo scx=Mro:Mroo
-	{ 16219, 5 },	//  #186 sc=Multani:Mult
-	{ 16224, 3 },	//  #187 sc=Myanmar:Mymr
-	{ 16227, 2 },	//  #188 sc=Nabataean:Nbat scx=Nabataean:Nbat
-	{ 16229, 1 },	//  #189 sc=Nag_Mundari:Nagm scx=Nag_Mundari:Nagm
-	{ 16230, 3 },	//  #190 sc=Nandinagari:Nand
-	{ 16233, 4 },	//  #191 sc=New_Tai_Lue:Talu scx=New_Tai_Lue:Talu
-	{ 16237, 2 },	//  #192 sc=Newa:Newa scx=Newa:Newa
-	{ 16239, 2 },	//  #193 sc=Nko:Nkoo
-	{ 16241, 2 },	//  #194 sc=Nushu:Nshu scx=Nushu:Nshu
-	{ 16243, 4 },	//  #195 sc=Nyiakeng_Puachue_Hmong:Hmnp scx=Nyiakeng_Puachue_Hmong:Hmnp
-	{ 16247, 1 },	//  #196 sc=Ogham:Ogam scx=Ogham:Ogam
-	{ 16248, 1 },	//  #197 sc=Ol_Chiki:Olck scx=Ol_Chiki:Olck
-	{ 16249, 3 },	//  #198 sc=Old_Hungarian:Hung scx=Old_Hungarian:Hung
-	{ 16252, 2 },	//  #199 sc=Old_Italic:Ital scx=Old_Italic:Ital
-	{ 16254, 1 },	//  #200 sc=Old_North_Arabian:Narb scx=Old_North_Arabian:Narb
-	{ 16255, 1 },	//  #201 sc=Old_Permic:Perm
-	{ 16256, 2 },	//  #202 sc=Old_Persian:Xpeo scx=Old_Persian:Xpeo
-	{ 16258, 1 },	//  #203 sc=Old_Sogdian:Sogo scx=Old_Sogdian:Sogo
-	{ 16259, 1 },	//  #204 sc=Old_South_Arabian:Sarb scx=Old_South_Arabian:Sarb
-	{ 16260, 1 },	//  #205 sc=Old_Turkic:Orkh scx=Old_Turkic:Orkh
-	{ 16261, 1 },	//  #206 sc=Old_Uyghur:Ougr
-	{ 16262, 14 },	//  #207 sc=Oriya:Orya
-	{ 16276, 2 },	//  #208 sc=Osage:Osge scx=Osage:Osge
-	{ 16278, 2 },	//  #209 sc=Osmanya:Osma scx=Osmanya:Osma
-	{ 16280, 5 },	//  #210 sc=Pahawh_Hmong:Hmng scx=Pahawh_Hmong:Hmng
-	{ 16285, 1 },	//  #211 sc=Palmyrene:Palm scx=Palmyrene:Palm
-	{ 16286, 1 },	//  #212 sc=Pau_Cin_Hau:Pauc scx=Pau_Cin_Hau:Pauc
-	{ 16287, 1 },	//  #213 sc=Phags_Pa:Phag
-	{ 16288, 2 },	//  #214 sc=Phoenician:Phnx scx=Phoenician:Phnx
-	{ 16290, 3 },	//  #215 sc=Psalter_Pahlavi:Phlp
-	{ 16293, 2 },	//  #216 sc=Rejang:Rjng scx=Rejang:Rjng
-	{ 16295, 2 },	//  #217 sc=Runic:Runr scx=Runic:Runr
-	{ 16297, 2 },	//  #218 sc=Samaritan:Samr scx=Samaritan:Samr
-	{ 16299, 2 },	//  #219 sc=Saurashtra:Saur scx=Saurashtra:Saur
-	{ 16301, 1 },	//  #220 sc=Sharada:Shrd
-	{ 16302, 1 },	//  #221 sc=Shavian:Shaw scx=Shavian:Shaw
-	{ 16303, 2 },	//  #222 sc=Siddham:Sidd scx=Siddham:Sidd
-	{ 16305, 3 },	//  #223 sc=SignWriting:Sgnw scx=SignWriting:Sgnw
-	{ 16308, 13 },	//  #224 sc=Sinhala:Sinh
-	{ 16321, 1 },	//  #225 sc=Sogdian:Sogd
-	{ 16322, 2 },	//  #226 sc=Sora_Sompeng:Sora scx=Sora_Sompeng:Sora
-	{ 16324, 1 },	//  #227 sc=Soyombo:Soyo scx=Soyombo:Soyo
-	{ 16325, 2 },	//  #228 sc=Sundanese:Sund scx=Sundanese:Sund
-	{ 16327, 1 },	//  #229 sc=Syloti_Nagri:Sylo
-	{ 16328, 4 },	//  #230 sc=Syriac:Syrc
-	{ 16332, 2 },	//  #231 sc=Tagalog:Tglg
-	{ 16334, 3 },	//  #232 sc=Tagbanwa:Tagb
-	{ 16337, 2 },	//  #233 sc=Tai_Le:Tale
-	{ 16339, 5 },	//  #234 sc=Tai_Tham:Lana scx=Tai_Tham:Lana
-	{ 16344, 2 },	//  #235 sc=Tai_Viet:Tavt scx=Tai_Viet:Tavt
-	{ 16346, 2 },	//  #236 sc=Takri:Takr
-	{ 16348, 18 },	//  #237 sc=Tamil:Taml
-	{ 16366, 2 },	//  #238 sc=Tangsa:Tnsa scx=Tangsa:Tnsa
-	{ 16368, 4 },	//  #239 sc=Tangut:Tang scx=Tangut:Tang
-	{ 16372, 13 },	//  #240 sc=Telugu:Telu
-	{ 16385, 1 },	//  #241 sc=Thaana:Thaa
-	{ 16386, 2 },	//  #242 sc=Thai:Thai scx=Thai:Thai
-	{ 16388, 7 },	//  #243 sc=Tibetan:Tibt scx=Tibetan:Tibt
-	{ 16395, 3 },	//  #244 sc=Tifinagh:Tfng scx=Tifinagh:Tfng
-	{ 16398, 2 },	//  #245 sc=Tirhuta:Tirh
-	{ 16400, 1 },	//  #246 sc=Toto:Toto scx=Toto:Toto
-	{ 16401, 2 },	//  #247 sc=Ugaritic:Ugar scx=Ugaritic:Ugar
-	{ 16403, 1 },	//  #248 sc=Vai:Vaii scx=Vai:Vaii
-	{ 16404, 8 },	//  #249 sc=Vithkuqi:Vith scx=Vithkuqi:Vith
-	{ 16412, 2 },	//  #250 sc=Wancho:Wcho scx=Wancho:Wcho
-	{ 16414, 2 },	//  #251 sc=Warang_Citi:Wara scx=Warang_Citi:Wara
-	{ 16416, 3 },	//  #252 sc=Yezidi:Yezi
-	{ 16419, 2 },	//  #253 sc=Yi:Yiii
-	{ 16421, 1 },	//  #254 sc=Zanabazar_Square:Zanb scx=Zanabazar_Square:Zanb
-	{ 16422, 5 },	//  #255 scx=Adlam:Adlm
-	{ 16427, 52 },	//  #256 scx=Arabic:Arab
-	{ 16479, 26 },	//  #257 scx=Bengali:Beng
-	{ 16505, 12 },	//  #258 scx=Bopomofo:Bopo
-	{ 16517, 3 },	//  #259 scx=Buginese:Bugi
-	{ 16520, 2 },	//  #260 scx=Buhid:Buhd
-	{ 16522, 4 },	//  #261 scx=Chakma:Cakm
-	{ 16526, 147 },	//  #262 scx=Common:Zyyy
-	{ 16673, 4 },	//  #263 scx=Coptic:Copt:Qaac
-	{ 16677, 9 },	//  #264 scx=Cypriot:Cprt
-	{ 16686, 2 },	//  #265 scx=Cypro_Minoan:Cpmn
-	{ 16688, 11 },	//  #266 scx=Cyrillic:Cyrl
-	{ 16699, 8 },	//  #267 scx=Devanagari:Deva
-	{ 16707, 3 },	//  #268 scx=Dogra:Dogr
-	{ 16710, 5 },	//  #269 scx=Duployan:Dupl
-	{ 16715, 9 },	//  #270 scx=Georgian:Geor
-	{ 16724, 10 },	//  #271 scx=Glagolitic:Glag
-	{ 16734, 25 },	//  #272 scx=Grantha:Gran
-	{ 16759, 38 },	//  #273 scx=Greek:Grek
-	{ 16797, 17 },	//  #274 scx=Gujarati:Gujr
-	{ 16814, 7 },	//  #275 scx=Gunjala_Gondi:Gong
-	{ 16821, 19 },	//  #276 scx=Gurmukhi:Guru
-	{ 16840, 38 },	//  #277 scx=Han:Hani
-	{ 16878, 21 },	//  #278 scx=Hangul:Hang
-	{ 16899, 7 },	//  #279 scx=Hanifi_Rohingya:Rohg
-	{ 16906, 1 },	//  #280 scx=Hanunoo:Hano
-	{ 16907, 17 },	//  #281 scx=Hiragana:Hira
-	{ 16924, 20 },	//  #282 scx=Inherited:Zinh:Qaai
-	{ 16944, 3 },	//  #283 scx=Javanese:Java
-	{ 16947, 4 },	//  #284 scx=Kaithi:Kthi
-	{ 16951, 21 },	//  #285 scx=Kannada:Knda
-	{ 16972, 20 },	//  #286 scx=Katakana:Kana
-	{ 16992, 1 },	//  #287 scx=Kayah_Li:Kali
-	{ 16993, 4 },	//  #288 scx=Khojki:Khoj
-	{ 16997, 4 },	//  #289 scx=Khudawadi:Sind
-	{ 17001, 47 },	//  #290 scx=Latin:Latn
-	{ 17048, 6 },	//  #291 scx=Limbu:Limb
-	{ 17054, 4 },	//  #292 scx=Linear_A:Lina
-	{ 17058, 10 },	//  #293 scx=Linear_B:Linb
-	{ 17068, 3 },	//  #294 scx=Mahajani:Mahj
-	{ 17071, 11 },	//  #295 scx=Malayalam:Mlym
-	{ 17082, 3 },	//  #296 scx=Mandaic:Mand
-	{ 17085, 3 },	//  #297 scx=Manichaean:Mani
-	{ 17088, 8 },	//  #298 scx=Masaram_Gondi:Gonm
-	{ 17096, 3 },	//  #299 scx=Modi:Modi
-	{ 17099, 5 },	//  #300 scx=Mongolian:Mong
-	{ 17104, 6 },	//  #301 scx=Multani:Mult
-	{ 17110, 4 },	//  #302 scx=Myanmar:Mymr
-	{ 17114, 9 },	//  #303 scx=Nandinagari:Nand
-	{ 17123, 6 },	//  #304 scx=Nko:Nkoo
-	{ 17129, 2 },	//  #305 scx=Old_Permic:Perm
-	{ 17131, 3 },	//  #306 scx=Old_Uyghur:Ougr
-	{ 17134, 18 },	//  #307 scx=Oriya:Orya
-	{ 17152, 3 },	//  #308 scx=Phags_Pa:Phag
-	{ 17155, 4 },	//  #309 scx=Psalter_Pahlavi:Phlp
-	{ 17159, 6 },	//  #310 scx=Sharada:Shrd
-	{ 17165, 14 },	//  #311 scx=Sinhala:Sinh
-	{ 17179, 2 },	//  #312 scx=Sogdian:Sogd
-	{ 17181, 3 },	//  #313 scx=Syloti_Nagri:Sylo
-	{ 17184, 12 },	//  #314 scx=Syriac:Syrc
-	{ 17196, 3 },	//  #315 scx=Tagalog:Tglg
-	{ 17199, 4 },	//  #316 scx=Tagbanwa:Tagb
-	{ 17203, 3 },	//  #317 scx=Tai_Le:Tale
-	{ 17206, 4 },	//  #318 scx=Takri:Takr
-	{ 17210, 25 },	//  #319 scx=Tamil:Taml
-	{ 17235, 17 },	//  #320 scx=Telugu:Telu
-	{ 17252, 7 },	//  #321 scx=Thaana:Thaa
-	{ 17259, 6 },	//  #322 scx=Tirhuta:Tirh
-	{ 17265, 7 },	//  #323 scx=Yezidi:Yezi
-	{ 17272, 7 },	//  #324 scx=Yi:Yiii
-	{ 17279, 6318 },	//  #325 bp=RGI_Emoji
-	{ 17279, 669 },	//  #326 bp=Basic_Emoji
-	{ 17948, 24 },	//  #327 bp=Emoji_Keycap_Sequence
-	{ 17972, 983 },	//  #328 bp=RGI_Emoji_Modifier_Sequence
-	{ 18955, 387 },	//  #329 bp=RGI_Emoji_Flag_Sequence
-	{ 19342, 12 },	//  #330 bp=RGI_Emoji_Tag_Sequence
-	{ 19354, 4243 }	//  #331 bp=RGI_Emoji_ZWJ_Sequence
-};
-#define SRELL_UPDATA_VERSION 201
-//  ... "srell_updata2.hpp"]
+#if !defined(SRELL_UPDATA_VERSION) || (SRELL_UPDATA_VERSION < 300)
+#error "srell_updata3.h is a old version."
+#endif
 
 			static const ui_l32 error_property = static_cast<ui_l32>(-1);
 		}	//  namespace up_constants
 
 		namespace up_internal
 		{
-			typedef up_constants::up_type pname_type;
-			typedef const char *pname_string_type;
+			typedef int up_type;
+			typedef const char *pname_type;
 
-#if defined(SRELL_UPDATA_VERSION) && (SRELL_UPDATA_VERSION >= 200)
-			struct pvalue_type
+			struct pnameno_map_type
 			{
-				pname_type pname;
-				ui_l32 pnumber;
-				pname_string_type csstrings;
+				pname_type name;
+				up_type pno;
 			};
-#else
-			struct pvalue_type
-			{
-				pname_type pname;
-				pname_string_type csstrings;
-				ui_l32 pnumber;
-			};
-#endif
 
-			struct offset_and_number
+			struct posinfo
 			{
-				std::size_t offset;
-				std::size_t number_of_pairs;
+				ui_l32 offset;
+				ui_l32 numofpairs;
 			};
 
 			typedef up_constants::unicode_property_data<
-				pname_string_type,
-				ui_l32,
-				pvalue_type,
-				offset_and_number
-				>
-				updata;
+				pnameno_map_type,
+				posinfo,
+				ui_l32
+				> updata;
 
 		}	//  namespace up_internal
 
@@ -13283,47 +13663,33 @@ public:
 
 	static ui_l32 lookup_property(const pstring &name, const pstring &value)
 	{
-		pname_type ptype = name.size() ? lookup_property_name(name) : up_constants::uptype_general_category;
-//		property_type property_number = lookup_property_value(ptype, value);
-		ui_l32 property_number = lookup_property_value(ptype, value);
+		up_type ptype = name.size() > 1 ? lookup_property_name(name) : up_constants::uptype_gc;
+		const posinfo *pos = &updata::positiontable[ptype];
+		ui_l32 pno = lookup_property_value(value, pos->offset, pos->numofpairs);
 
-		if (property_number == static_cast<ui_l32>(up_constants::upid_unknown) && name.size() == 0)
+		if (pno == static_cast<ui_l32>(up_constants::upid_unknown) && name.size() < 2)
 		{
-			ptype = up_constants::uptype_binary;
-			property_number = lookup_property_value(ptype, value);
+			ptype = up_constants::uptype_bp;
+			pos = &updata::positiontable[ptype];
+			pno = lookup_property_value(value, pos->offset, pos->numofpairs);
 		}
 
-		return property_number != static_cast<ui_l32>(up_constants::upid_unknown) ? property_number : up_constants::error_property;
+		return pno != static_cast<ui_l32>(up_constants::upid_unknown) ? pno : up_constants::error_property;
 	}
 
-	static std::size_t ranges_offset(const ui_l32 property_number)
+	static ui_l32 ranges_offset(const ui_l32 property_number)
 	{
-#if defined(SRELL_UPDATA_VERSION)
 		return updata::positiontable[property_number].offset;
-#else
-		const offset_and_number *const postable = updata::position_table();
-		return postable[property_number].offset;
-#endif
 	}
 
-	static std::size_t number_of_ranges(const ui_l32 property_number)
+	static ui_l32 number_of_ranges(const ui_l32 property_number)
 	{
-#if defined(SRELL_UPDATA_VERSION)
-		return updata::positiontable[property_number].number_of_pairs;
-#else
-		const offset_and_number *const postable = updata::position_table();
-		return postable[property_number].number_of_pairs;
-#endif
+		return updata::positiontable[property_number].numofpairs;
 	}
 
-	static const ui_l32 *ranges_address(const ui_l32 property_number)
+	static const ui_l32 *ranges_address(const ui_l32 pno)
 	{
-#if defined(SRELL_UPDATA_VERSION)
-		return &updata::rangetable[ranges_offset(property_number) << 1];
-#else
-		const ui_l32 *const ranges = updata::ranges();
-		return &ranges[ranges_offset(property_number) << 1];
-#endif
+		return &updata::rangetable[ranges_offset(pno) << 1];
 	}
 
 	static bool is_valid_pno(const ui_l32 pno)
@@ -13338,82 +13704,59 @@ public:
 
 private:
 
+	typedef up_internal::up_type up_type;
 	typedef up_internal::pname_type pname_type;
-	typedef up_internal::pname_string_type pname_string_type;
-	typedef up_internal::pvalue_type pvalue_type;
-	typedef up_internal::offset_and_number offset_and_number;
+	typedef up_internal::pnameno_map_type pnameno_map_type;
+	typedef up_internal::posinfo posinfo;
 	typedef up_internal::updata updata;
 
-	static pname_type lookup_property_name(const pstring &name)
+	static up_type lookup_property_name(const pstring &name)
 	{
-#if defined(SRELL_UPDATA_VERSION)
-		for (std::size_t pno = 0; *updata::propertynametable[pno]; ++pno)
-		{
-			if (check_if_included(name, updata::propertynametable[pno]))
-				return static_cast<pname_type>(pno);
-		}
-#else
-		const pname_string_type *const pname_table = updata::propertyname_table();
-
-		for (std::size_t pno = 0; *pname_table[pno]; ++pno)
-		{
-			if (check_if_included(name, pname_table[pno]))
-				return static_cast<pname_type>(pno);
-		}
-#endif
-		return up_constants::uptype_unknown;
+		return lookup_property_value(name, 1, updata::propertynumbertable[0].pno);
 	}
 
-	//  Checks if value is included in colon-separated strings.
-	static bool check_if_included(const pstring &value, pname_string_type csstrings)
+	static ui_l32 lookup_property_value(const pstring &value, const ui_l32 offset, ui_l32 count)
 	{
-		if (static_cast<ui_l32>(*csstrings) != meta_char::mc_astrsk)	//  '*'
+		const pnameno_map_type *base = &updata::propertynumbertable[offset];
+
+		while (count)
 		{
-			while (*csstrings)
+			ui_l32 mid = count >> 1;
+			const pnameno_map_type &map = base[mid];
+			const int cmp = compare(value, map.name);
+
+			if (cmp < 0)
 			{
-				const pname_string_type begin = csstrings;
-
-				for (; static_cast<ui_l32>(*csstrings) != meta_char::mc_colon && static_cast<ui_l32>(*csstrings) != char_ctrl::cc_nul; ++csstrings);
-
-				const std::size_t length = csstrings - begin;
-
-				if (static_cast<std::size_t>(value.size()) == length)
-					if (value.compare(0, value.size(), begin, length) == 0)
-						return true;
-
-				if (static_cast<ui_l32>(*csstrings) == meta_char::mc_colon)
-					++csstrings;
+				count = mid;
 			}
+			else if (cmp > 0)
+			{
+				++mid;
+				count -= mid;
+				base += mid;
+			}
+			else	//if (cmp == 0)
+				return static_cast<ui_l32>(map.pno);
 		}
-		return false;
+		return static_cast<ui_l32>(up_constants::upid_unknown);
 	}
 
-	static ui_l32 lookup_property_value(const pname_type ptype, const pstring &value)
+	static int compare(const pstring &value, pname_type pname)
 	{
-#if defined(SRELL_UPDATA_VERSION)
-		for (std::size_t pno = 0; *updata::rangenumbertable[pno].csstrings; ++pno)
+		for (pstring::size_type i = 0;; ++i, ++pname)
 		{
-			const pvalue_type &pvalue = updata::rangenumbertable[pno];
-			if (pvalue.pname == ptype && check_if_included(value, pvalue.csstrings))
-				return pvalue.pnumber;
-		}
-#else
-		const pvalue_type *const pvalue_table = updata::rangenumber_table();
+			if (value[i] == 0)
+				return (*pname == 0) ? 0 : (value[i] < *pname ? -1 : 1);
 
-		for (std::size_t pno = 0; *pvalue_table[pno].csstrings; ++pno)
-		{
-			const pvalue_type &pvalue = pvalue_table[pno];
-			if (pvalue.pname == ptype && check_if_included(value, pvalue.csstrings))
-				return pvalue.pnumber;
+			if (value[i] != *pname)
+				return value[i] < *pname ? -1 : 1;
 		}
-#endif
-		return static_cast<ui_l32>(up_constants::upid_unknown);
 	}
 
 private:
 
-	static const std::size_t max_property_number = static_cast<std::size_t>(up_constants::upid_max_property_number);
-	static const std::size_t max_pos_number = static_cast<std::size_t>(up_constants::upid_max_pos_number);
+	static const ui_l32 max_property_number = static_cast<ui_l32>(up_constants::upid_max_property_number);
+	static const ui_l32 max_pos_number = static_cast<ui_l32>(up_constants::upid_max_pos_number);
 };
 //  unicode_property
 
@@ -13698,7 +14041,7 @@ public:
 		return false;
 	}
 
-	void load_from_memory(const ui_l32 *array, size_type number_of_pairs)
+	void load_from_memory(const ui_l32 *array, ui_l32 number_of_pairs)
 	{
 		for (; number_of_pairs; --number_of_pairs, array += 2)
 			join(range_pair_helper(array[0], array[1]));
@@ -14061,7 +14404,7 @@ public:
 			//  For reg_exp_identifier_start.
 			{
 				const ui_l32 *const IDs_address = unicode_property::ranges_address(upid_bp_ID_Start);
-				const std::size_t IDs_number = unicode_property::number_of_ranges(upid_bp_ID_Start);
+				const ui_l32 IDs_number = unicode_property::number_of_ranges(upid_bp_ID_Start);
 				ranges.load_from_memory(IDs_address, IDs_number);
 			}
 			ranges.load_from_memory(&additions[0], 2);
@@ -14071,7 +14414,7 @@ public:
 			ranges.clear();
 			{
 				const ui_l32 *const IDc_address = unicode_property::ranges_address(upid_bp_ID_Continue);
-				const std::size_t IDc_number = unicode_property::number_of_ranges(upid_bp_ID_Continue);
+				const ui_l32 IDc_number = unicode_property::number_of_ranges(upid_bp_ID_Continue);
 				ranges.load_from_memory(IDc_address, IDc_number);
 			}
 			ranges.load_from_memory(&additions[0], 3);
@@ -14313,8 +14656,8 @@ public:
 				property_number = upid_gc_Cn;
 
 			const ui_l32 *const address = unicode_property::ranges_address(property_number);
-//			const std::size_t offset = unicode_property::ranges_offset(property_number);
-			const std::size_t number = unicode_property::number_of_ranges(property_number) * 2;
+//			const ui_l32 offset = unicode_property::ranges_offset(property_number);
+			const ui_l32 number = unicode_property::number_of_ranges(property_number) * 2;
 
 			seq.resize(number);
 			for (ui_l32 i = 0; i < number; ++i)
@@ -14348,8 +14691,8 @@ private:
 	void load_updata(range_pairs &newranges, const ui_l32 property_number) const
 	{
 		const ui_l32 *const address = unicode_property::ranges_address(property_number);
-//		const std::size_t offset = unicode_property::ranges_offset(property_number);
-		const std::size_t number = unicode_property::number_of_ranges(property_number);
+//		const ui_l32 offset = unicode_property::ranges_offset(property_number);
+		const ui_l32 number = unicode_property::number_of_ranges(property_number);
 
 		newranges.load_from_memory(address, number);
 	}
@@ -14373,8 +14716,8 @@ private:
 	{
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
 		const ui_l32 *const Zs_address = unicode_property::ranges_address(upid_gc_Zs);
-//		const std::size_t Zs_offset = unicode_property::ranges_offset(upid_gc_Zs);
-		const std::size_t Zs_number = unicode_property::number_of_ranges(upid_gc_Zs);
+//		const ui_l32 Zs_offset = unicode_property::ranges_offset(upid_gc_Zs);
+		const ui_l32 Zs_number = unicode_property::number_of_ranges(upid_gc_Zs);
 #else
 		static const ui_l32 Zs[] = {
 			0x1680, 0x1680, 0x2000, 0x200a,	// 0x2028, 0x2029,
@@ -17876,6 +18219,9 @@ private:
 
 		get_property_name_and_value(pname, pvalue, curpos, end);
 
+		pname.push_backncr(0);
+		pvalue.push_backncr(0);
+
 		return this->character_class.get_propertynumber(pname, pvalue);
 	}
 
@@ -17884,12 +18230,12 @@ private:
 		if (curpos == end || *curpos != meta_char::mc_cbraop)	//  '{'
 			this->throw_error(regex_constants::error_escape);
 
-		get_property_name_or_value(pvalue, ++curpos, end);
+		const bool digit_seen = get_property_name_or_value(pvalue, ++curpos, end);
 
 		if (!pvalue.size())
 			this->throw_error(regex_constants::error_escape);
 
-		if (static_cast<ui_l32>(pvalue[pvalue.size() - 1]) != char_other::co_sp)	//  ' ', not a value.
+		if (!digit_seen)
 		{
 			if (curpos == end)
 				this->throw_error(regex_constants::error_escape);
@@ -17906,13 +18252,10 @@ private:
 		if (curpos == end || *curpos != meta_char::mc_cbracl)	//  '}'
 			this->throw_error(regex_constants::error_escape);
 
-		if (static_cast<ui_l32>(pvalue[pvalue.size() - 1]) == char_other::co_sp)	//  ' ', value.
-			pvalue.resize(pvalue.size() - 1);
-
 		++curpos;
 	}
 
-	void get_property_name_or_value(pstring &name_or_value, const ui_l32 *&curpos, const ui_l32 *const end) const
+	bool get_property_name_or_value(pstring &name_or_value, const ui_l32 *&curpos, const ui_l32 *const end) const
 	{
 		bool number_found = false;
 
@@ -17938,9 +18281,9 @@ private:
 
 			name_or_value.append(1, static_cast<typename pstring::value_type>(curchar));
 		}
-		if (number_found)
-			name_or_value.append(1, char_other::co_sp);	//  ' '
 
+		//  A string containing a digit cannot be a property name.
+		return number_found;
 	}
 
 #endif	//  !defined(SRELL_NO_UNICODE_PROPERTY)
@@ -19934,6 +20277,11 @@ private:
 				}
 			}
 			else if (state.type == st_roundbracket_open)
+			{
+				cur += state.next1;
+				continue;
+			}
+			else if (state.type == st_bol || state.type == st_eol || state.type == st_boundary)
 			{
 				cur += state.next1;
 				continue;
@@ -23259,6 +23607,17 @@ public:
 		pregex_ = &re;
 		rewind(m);
 	}
+	template <typename ST, typename SA>
+	void assign(
+		const std::basic_string<char_type, ST, SA> &s,
+		const regex_type &re,
+		const regex_constants::match_flag_type m = regex_constants::match_default)
+	{
+		begin_ = regex_internal::pos0_<char_type>(s, BidirectionalIterator());
+		end_ = regex_internal::pos1_<char_type>(s, BidirectionalIterator());
+		pregex_ = &re;
+		rewind(m);
+	}
 	void assign(const regex_iterator2 &right)
 	{
 		operator=(right);
@@ -23371,15 +23730,14 @@ public:
 
 	//  Returns if this->prefix() holds a range that is worthy of being
 	//  treated as a split substring.
-//	bool splittable() const
 	bool split_ready()	//const
 	{
 		if (match_.size())
 		{
 			if (match_[0].first != end_)
-			{
 				return match_.prefix().first != match_[0].second;
-			}
+
+			//  [end_, end_) is not appropriate as a split range. Invalidates the current match.
 			match_.clear_();
 		}
 		return false;	//  Iterating complete.
@@ -23421,7 +23779,6 @@ public:
 		if (split_ready())
 			return true;
 
-//		submatch_ = 0u;
 		operator++();
 		return split_ready();
 	}

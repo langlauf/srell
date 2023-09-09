@@ -1,3 +1,16 @@
+20230909; version 4.030:
+  * Modified the pattern compiler not to create a rewinder only for ^,
+    $, or \b/\B.
+  * Introduced the binary search to look up names and values for Unicode
+    properties.
+  * In accordance with the change above, updated unicode/updataout2.cpp
+    to updataout3.cpp.
+    Furthermore, since the ECMAScript specification ceased to list the
+    script names that must be supported, modified to read them from
+    Scripts.txt and PropertyValueAliases.txt.
+  * Changed the suffix of Unicode data files from *.hpp to *.h.
+  * Updated unicode/ucfdataout2.cpp to follow the suffix change above.
+
 20230903; version 4.029:
   * Updated unicode/updataout2.cpp to fix an issue that caused
     compilation error because internal integer types were unified in

@@ -1,3 +1,13 @@
+20230909; version 4.030:
+  ・^ $ \b \Bだけのrewinderが作られることのないようにパターンコンパイラ
+    を変更。
+  ・Unicode propertyの名前や値の照合を二分探索で行うように。
+  ・上記変更に併せてunicode/updataout2.cppを更新し、updataout3.cppに。
+    また、ECMAScript仕様書が対応すべきscript名を一覧表で示すことをやめた
+    ため、Scripts.txtとPropertyValueAliases.txtとから読み取るように。
+  ・Unicodeデータファイルの拡張子を*.hppから*.hに変更。
+  ・unicode/ucfdataout2.cppを更新。上記の拡張子変更に対応。
+
 20230903; version 4.029:
   ・unicode/updataout2.cppを更新。SRELL内部で使う型を4.023で統合したせい
     でコンパイルが通らなくなっていた問題を修正。

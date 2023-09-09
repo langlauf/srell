@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.029
+**  SRELL (std::regex-like library) version 4.030
 **
 **  Copyright (c) 2012-2023, Nozomu Katoo. All rights reserved.
 **
@@ -1470,19 +1470,6 @@ public:
 		return buffer_;
 	}
 
-	int compare(size_type pos, const size_type count1, const_pointer p, const size_type count2) const
-	{
-		size_type count = count1 <= count2 ? count1 : count2;
-
-		for (; count; ++pos, ++p, --count)
-		{
-			const value_type &v = buffer_[pos];
-			if (v != *p)
-				return v < *p ? -1 : 1;
-		}
-		return count1 == count2 ? 0 : (count1 < count2 ? -1 : 1);
-	}
-
 	size_type max_size() const
 	{
 		return maxsize_;
@@ -1743,7 +1730,7 @@ private:
 		namespace ucf_constants
 		{
 
-#include "srell_ucfdata2.hpp"
+#include "srell_ucfdata2.h"
 
 		}	//  namespace ucf_constants
 
@@ -1876,45 +1863,37 @@ public:	//  For debug.
 		namespace up_constants
 		{
 
-#include "srell_updata2.hpp"
+#include "srell_updata3.h"
+
+#if !defined(SRELL_UPDATA_VERSION) || (SRELL_UPDATA_VERSION < 300)
+#error "srell_updata3.h is a old version."
+#endif
 
 			static const ui_l32 error_property = static_cast<ui_l32>(-1);
 		}	//  namespace up_constants
 
 		namespace up_internal
 		{
-			typedef up_constants::up_type pname_type;
-			typedef const char *pname_string_type;
+			typedef int up_type;
+			typedef const char *pname_type;
 
-#if defined(SRELL_UPDATA_VERSION) && (SRELL_UPDATA_VERSION >= 200)
-			struct pvalue_type
+			struct pnameno_map_type
 			{
-				pname_type pname;
-				ui_l32 pnumber;
-				pname_string_type csstrings;
+				pname_type name;
+				up_type pno;
 			};
-#else
-			struct pvalue_type
-			{
-				pname_type pname;
-				pname_string_type csstrings;
-				ui_l32 pnumber;
-			};
-#endif
 
-			struct offset_and_number
+			struct posinfo
 			{
-				std::size_t offset;
-				std::size_t number_of_pairs;
+				ui_l32 offset;
+				ui_l32 numofpairs;
 			};
 
 			typedef up_constants::unicode_property_data<
-				pname_string_type,
-				ui_l32,
-				pvalue_type,
-				offset_and_number
-				>
-				updata;
+				pnameno_map_type,
+				posinfo,
+				ui_l32
+				> updata;
 
 		}	//  namespace up_internal
 
@@ -1943,47 +1922,33 @@ public:
 
 	static ui_l32 lookup_property(const pstring &name, const pstring &value)
 	{
-		pname_type ptype = name.size() ? lookup_property_name(name) : up_constants::uptype_general_category;
-//		property_type property_number = lookup_property_value(ptype, value);
-		ui_l32 property_number = lookup_property_value(ptype, value);
+		up_type ptype = name.size() > 1 ? lookup_property_name(name) : up_constants::uptype_gc;
+		const posinfo *pos = &updata::positiontable[ptype];
+		ui_l32 pno = lookup_property_value(value, pos->offset, pos->numofpairs);
 
-		if (property_number == static_cast<ui_l32>(up_constants::upid_unknown) && name.size() == 0)
+		if (pno == static_cast<ui_l32>(up_constants::upid_unknown) && name.size() < 2)
 		{
-			ptype = up_constants::uptype_binary;
-			property_number = lookup_property_value(ptype, value);
+			ptype = up_constants::uptype_bp;
+			pos = &updata::positiontable[ptype];
+			pno = lookup_property_value(value, pos->offset, pos->numofpairs);
 		}
 
-		return property_number != static_cast<ui_l32>(up_constants::upid_unknown) ? property_number : up_constants::error_property;
+		return pno != static_cast<ui_l32>(up_constants::upid_unknown) ? pno : up_constants::error_property;
 	}
 
-	static std::size_t ranges_offset(const ui_l32 property_number)
+	static ui_l32 ranges_offset(const ui_l32 property_number)
 	{
-#if defined(SRELL_UPDATA_VERSION)
 		return updata::positiontable[property_number].offset;
-#else
-		const offset_and_number *const postable = updata::position_table();
-		return postable[property_number].offset;
-#endif
 	}
 
-	static std::size_t number_of_ranges(const ui_l32 property_number)
+	static ui_l32 number_of_ranges(const ui_l32 property_number)
 	{
-#if defined(SRELL_UPDATA_VERSION)
-		return updata::positiontable[property_number].number_of_pairs;
-#else
-		const offset_and_number *const postable = updata::position_table();
-		return postable[property_number].number_of_pairs;
-#endif
+		return updata::positiontable[property_number].numofpairs;
 	}
 
-	static const ui_l32 *ranges_address(const ui_l32 property_number)
+	static const ui_l32 *ranges_address(const ui_l32 pno)
 	{
-#if defined(SRELL_UPDATA_VERSION)
-		return &updata::rangetable[ranges_offset(property_number) << 1];
-#else
-		const ui_l32 *const ranges = updata::ranges();
-		return &ranges[ranges_offset(property_number) << 1];
-#endif
+		return &updata::rangetable[ranges_offset(pno) << 1];
 	}
 
 	static bool is_valid_pno(const ui_l32 pno)
@@ -1998,82 +1963,59 @@ public:
 
 private:
 
+	typedef up_internal::up_type up_type;
 	typedef up_internal::pname_type pname_type;
-	typedef up_internal::pname_string_type pname_string_type;
-	typedef up_internal::pvalue_type pvalue_type;
-	typedef up_internal::offset_and_number offset_and_number;
+	typedef up_internal::pnameno_map_type pnameno_map_type;
+	typedef up_internal::posinfo posinfo;
 	typedef up_internal::updata updata;
 
-	static pname_type lookup_property_name(const pstring &name)
+	static up_type lookup_property_name(const pstring &name)
 	{
-#if defined(SRELL_UPDATA_VERSION)
-		for (std::size_t pno = 0; *updata::propertynametable[pno]; ++pno)
-		{
-			if (check_if_included(name, updata::propertynametable[pno]))
-				return static_cast<pname_type>(pno);
-		}
-#else
-		const pname_string_type *const pname_table = updata::propertyname_table();
-
-		for (std::size_t pno = 0; *pname_table[pno]; ++pno)
-		{
-			if (check_if_included(name, pname_table[pno]))
-				return static_cast<pname_type>(pno);
-		}
-#endif
-		return up_constants::uptype_unknown;
+		return lookup_property_value(name, 1, updata::propertynumbertable[0].pno);
 	}
 
-	//  Checks if value is included in colon-separated strings.
-	static bool check_if_included(const pstring &value, pname_string_type csstrings)
+	static ui_l32 lookup_property_value(const pstring &value, const ui_l32 offset, ui_l32 count)
 	{
-		if (static_cast<ui_l32>(*csstrings) != meta_char::mc_astrsk)	//  '*'
+		const pnameno_map_type *base = &updata::propertynumbertable[offset];
+
+		while (count)
 		{
-			while (*csstrings)
+			ui_l32 mid = count >> 1;
+			const pnameno_map_type &map = base[mid];
+			const int cmp = compare(value, map.name);
+
+			if (cmp < 0)
 			{
-				const pname_string_type begin = csstrings;
-
-				for (; static_cast<ui_l32>(*csstrings) != meta_char::mc_colon && static_cast<ui_l32>(*csstrings) != char_ctrl::cc_nul; ++csstrings);
-
-				const std::size_t length = csstrings - begin;
-
-				if (static_cast<std::size_t>(value.size()) == length)
-					if (value.compare(0, value.size(), begin, length) == 0)
-						return true;
-
-				if (static_cast<ui_l32>(*csstrings) == meta_char::mc_colon)
-					++csstrings;
+				count = mid;
 			}
+			else if (cmp > 0)
+			{
+				++mid;
+				count -= mid;
+				base += mid;
+			}
+			else	//if (cmp == 0)
+				return static_cast<ui_l32>(map.pno);
 		}
-		return false;
+		return static_cast<ui_l32>(up_constants::upid_unknown);
 	}
 
-	static ui_l32 lookup_property_value(const pname_type ptype, const pstring &value)
+	static int compare(const pstring &value, pname_type pname)
 	{
-#if defined(SRELL_UPDATA_VERSION)
-		for (std::size_t pno = 0; *updata::rangenumbertable[pno].csstrings; ++pno)
+		for (pstring::size_type i = 0;; ++i, ++pname)
 		{
-			const pvalue_type &pvalue = updata::rangenumbertable[pno];
-			if (pvalue.pname == ptype && check_if_included(value, pvalue.csstrings))
-				return pvalue.pnumber;
-		}
-#else
-		const pvalue_type *const pvalue_table = updata::rangenumber_table();
+			if (value[i] == 0)
+				return (*pname == 0) ? 0 : (value[i] < *pname ? -1 : 1);
 
-		for (std::size_t pno = 0; *pvalue_table[pno].csstrings; ++pno)
-		{
-			const pvalue_type &pvalue = pvalue_table[pno];
-			if (pvalue.pname == ptype && check_if_included(value, pvalue.csstrings))
-				return pvalue.pnumber;
+			if (value[i] != *pname)
+				return value[i] < *pname ? -1 : 1;
 		}
-#endif
-		return static_cast<ui_l32>(up_constants::upid_unknown);
 	}
 
 private:
 
-	static const std::size_t max_property_number = static_cast<std::size_t>(up_constants::upid_max_property_number);
-	static const std::size_t max_pos_number = static_cast<std::size_t>(up_constants::upid_max_pos_number);
+	static const ui_l32 max_property_number = static_cast<ui_l32>(up_constants::upid_max_property_number);
+	static const ui_l32 max_pos_number = static_cast<ui_l32>(up_constants::upid_max_pos_number);
 };
 //  unicode_property
 
@@ -2358,7 +2300,7 @@ public:
 		return false;
 	}
 
-	void load_from_memory(const ui_l32 *array, size_type number_of_pairs)
+	void load_from_memory(const ui_l32 *array, ui_l32 number_of_pairs)
 	{
 		for (; number_of_pairs; --number_of_pairs, array += 2)
 			join(range_pair_helper(array[0], array[1]));
@@ -2721,7 +2663,7 @@ public:
 			//  For reg_exp_identifier_start.
 			{
 				const ui_l32 *const IDs_address = unicode_property::ranges_address(upid_bp_ID_Start);
-				const std::size_t IDs_number = unicode_property::number_of_ranges(upid_bp_ID_Start);
+				const ui_l32 IDs_number = unicode_property::number_of_ranges(upid_bp_ID_Start);
 				ranges.load_from_memory(IDs_address, IDs_number);
 			}
 			ranges.load_from_memory(&additions[0], 2);
@@ -2731,7 +2673,7 @@ public:
 			ranges.clear();
 			{
 				const ui_l32 *const IDc_address = unicode_property::ranges_address(upid_bp_ID_Continue);
-				const std::size_t IDc_number = unicode_property::number_of_ranges(upid_bp_ID_Continue);
+				const ui_l32 IDc_number = unicode_property::number_of_ranges(upid_bp_ID_Continue);
 				ranges.load_from_memory(IDc_address, IDc_number);
 			}
 			ranges.load_from_memory(&additions[0], 3);
@@ -2973,8 +2915,8 @@ public:
 				property_number = upid_gc_Cn;
 
 			const ui_l32 *const address = unicode_property::ranges_address(property_number);
-//			const std::size_t offset = unicode_property::ranges_offset(property_number);
-			const std::size_t number = unicode_property::number_of_ranges(property_number) * 2;
+//			const ui_l32 offset = unicode_property::ranges_offset(property_number);
+			const ui_l32 number = unicode_property::number_of_ranges(property_number) * 2;
 
 			seq.resize(number);
 			for (ui_l32 i = 0; i < number; ++i)
@@ -3008,8 +2950,8 @@ private:
 	void load_updata(range_pairs &newranges, const ui_l32 property_number) const
 	{
 		const ui_l32 *const address = unicode_property::ranges_address(property_number);
-//		const std::size_t offset = unicode_property::ranges_offset(property_number);
-		const std::size_t number = unicode_property::number_of_ranges(property_number);
+//		const ui_l32 offset = unicode_property::ranges_offset(property_number);
+		const ui_l32 number = unicode_property::number_of_ranges(property_number);
 
 		newranges.load_from_memory(address, number);
 	}
@@ -3033,8 +2975,8 @@ private:
 	{
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
 		const ui_l32 *const Zs_address = unicode_property::ranges_address(upid_gc_Zs);
-//		const std::size_t Zs_offset = unicode_property::ranges_offset(upid_gc_Zs);
-		const std::size_t Zs_number = unicode_property::number_of_ranges(upid_gc_Zs);
+//		const ui_l32 Zs_offset = unicode_property::ranges_offset(upid_gc_Zs);
+		const ui_l32 Zs_number = unicode_property::number_of_ranges(upid_gc_Zs);
 #else
 		static const ui_l32 Zs[] = {
 			0x1680, 0x1680, 0x2000, 0x200a,	// 0x2028, 0x2029,
@@ -6536,6 +6478,9 @@ private:
 
 		get_property_name_and_value(pname, pvalue, curpos, end);
 
+		pname.push_backncr(0);
+		pvalue.push_backncr(0);
+
 		return this->character_class.get_propertynumber(pname, pvalue);
 	}
 
@@ -6544,12 +6489,12 @@ private:
 		if (curpos == end || *curpos != meta_char::mc_cbraop)	//  '{'
 			this->throw_error(regex_constants::error_escape);
 
-		get_property_name_or_value(pvalue, ++curpos, end);
+		const bool digit_seen = get_property_name_or_value(pvalue, ++curpos, end);
 
 		if (!pvalue.size())
 			this->throw_error(regex_constants::error_escape);
 
-		if (static_cast<ui_l32>(pvalue[pvalue.size() - 1]) != char_other::co_sp)	//  ' ', not a value.
+		if (!digit_seen)
 		{
 			if (curpos == end)
 				this->throw_error(regex_constants::error_escape);
@@ -6566,13 +6511,10 @@ private:
 		if (curpos == end || *curpos != meta_char::mc_cbracl)	//  '}'
 			this->throw_error(regex_constants::error_escape);
 
-		if (static_cast<ui_l32>(pvalue[pvalue.size() - 1]) == char_other::co_sp)	//  ' ', value.
-			pvalue.resize(pvalue.size() - 1);
-
 		++curpos;
 	}
 
-	void get_property_name_or_value(pstring &name_or_value, const ui_l32 *&curpos, const ui_l32 *const end) const
+	bool get_property_name_or_value(pstring &name_or_value, const ui_l32 *&curpos, const ui_l32 *const end) const
 	{
 		bool number_found = false;
 
@@ -6598,9 +6540,9 @@ private:
 
 			name_or_value.append(1, static_cast<typename pstring::value_type>(curchar));
 		}
-		if (number_found)
-			name_or_value.append(1, char_other::co_sp);	//  ' '
 
+		//  A string containing a digit cannot be a property name.
+		return number_found;
 	}
 
 #endif	//  !defined(SRELL_NO_UNICODE_PROPERTY)
@@ -8594,6 +8536,11 @@ private:
 				}
 			}
 			else if (state.type == st_roundbracket_open)
+			{
+				cur += state.next1;
+				continue;
+			}
+			else if (state.type == st_bol || state.type == st_eol || state.type == st_boundary)
 			{
 				cur += state.next1;
 				continue;
@@ -11919,6 +11866,17 @@ public:
 		pregex_ = &re;
 		rewind(m);
 	}
+	template <typename ST, typename SA>
+	void assign(
+		const std::basic_string<char_type, ST, SA> &s,
+		const regex_type &re,
+		const regex_constants::match_flag_type m = regex_constants::match_default)
+	{
+		begin_ = regex_internal::pos0_<char_type>(s, BidirectionalIterator());
+		end_ = regex_internal::pos1_<char_type>(s, BidirectionalIterator());
+		pregex_ = &re;
+		rewind(m);
+	}
 	void assign(const regex_iterator2 &right)
 	{
 		operator=(right);
@@ -12031,15 +11989,14 @@ public:
 
 	//  Returns if this->prefix() holds a range that is worthy of being
 	//  treated as a split substring.
-//	bool splittable() const
 	bool split_ready()	//const
 	{
 		if (match_.size())
 		{
 			if (match_[0].first != end_)
-			{
 				return match_.prefix().first != match_[0].second;
-			}
+
+			//  [end_, end_) is not appropriate as a split range. Invalidates the current match.
 			match_.clear_();
 		}
 		return false;	//  Iterating complete.
@@ -12081,7 +12038,6 @@ public:
 		if (split_ready())
 			return true;
 
-//		submatch_ = 0u;
 		operator++();
 		return split_ready();
 	}
