@@ -1,15 +1,15 @@
 //
-//  updataout.cpp: version 3.000 (2023/09/09).
+//  updataout.cpp: version 3.001 (2023/09/14).
 //
 //  This is a program that generates srell_updata3.h from:
 //    DerivedCoreProperties.txt
 //    DerivedNormalizationProps.txt
-//    emoji-data.txt
-//    PropertyValueAliases.txt
 //    PropList.txt
+//    PropertyValueAliases.txt
 //    ScriptExtensions.txt
 //    Scripts.txt
 //    UnicodeData.txt
+//    emoji-data.txt
 //    emoji-sequences.txt
 //    emoji-zwj-sequences.txt
 //  provided by the Unicode Consortium. The latese versions of them are
@@ -231,7 +231,7 @@ struct up_options
 	up_options(const int argc, const char *const *const argv)
 		: outfilename("srell_updata3.h")
 		, indir("")
-		, version(300)
+		, version(301)
 		, errorno(0)
 	{
 		for (int index = 1; index < argc; ++index)
@@ -566,7 +566,10 @@ private:
 		}
 
 		if (opts.version >= 300)
+		{
+			seennames["Unknown"] = count++;
 			sn_aliases.resize(count);
+		}
 
 		typedef std::vector<srell::csub_match> scnames_type;
 		canonicalname_mapper aliases_tmp;
@@ -602,7 +605,8 @@ private:
 							const std::string scname(scnames[i].str());
 
 							sn_maps[scname] = canonicalname;
-							if (i != 1)
+							if ((opts.version < 300 && i != 1)
+								|| (opts.version >= 300 && scname != canonicalname))
 							{
 								aliases += ':';
 								aliases += scname;
@@ -830,6 +834,7 @@ private:
 		std::string data;
 		matchranges_type lines;
 		srell::cmatch cmatch;
+		ucprange_array assigned_ranges;
 
 		data.clear();
 		unishared::read_file(data, filename, indir);
@@ -854,8 +859,11 @@ private:
 				range.second = end.matched ? static_cast<ui_l32>(std::strtol(end.first, NULL, 16)) : range.first;
 
 				sc[scriptname].join(range);
+				assigned_ranges.join(range);
 			}
 		}
+		assigned_ranges.negation();
+		sc["Unknown"] = assigned_ranges;
 	}
 
 	canonicalname_mapper load_canonicalnames(const char *const *names)
@@ -1293,7 +1301,11 @@ private:
 		namenumber_mapper rangeno_map;
 
 		if (version >= 300)
+		{
+			pnumbers += t1head + t1prefix + "invalid = 0" + t1tail + "\n";
+			pnumbers += t1head + t1prefix + "error = 0" + t1tail + "\n";
 			pnumbers += ptypes;
+		}
 
 		do_formatting2(rangeno_map, lookup_numbers, lookup_ranges, rangetable, pnumbers, property_id_number, property_number, offset, pno_base, maxorlast, t2scope, t1prefix, t1finaltail, t1tail, t1head, ptype_mappings, indent, alldata, emsq, version);
 

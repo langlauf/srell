@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.030
+**  SRELL (std::regex-like library) version 4.031
 **
 **  Copyright (c) 2012-2023, Nozomu Katoo. All rights reserved.
 **
@@ -1865,10 +1865,6 @@ public:	//  For debug.
 
 #include "srell_updata3.h"
 
-#if !defined(SRELL_UPDATA_VERSION) || (SRELL_UPDATA_VERSION < 300)
-#error "srell_updata3.h is a old version."
-#endif
-
 			static const ui_l32 error_property = static_cast<ui_l32>(-1);
 		}	//  namespace up_constants
 
@@ -1926,14 +1922,14 @@ public:
 		const posinfo *pos = &updata::positiontable[ptype];
 		ui_l32 pno = lookup_property_value(value, pos->offset, pos->numofpairs);
 
-		if (pno == static_cast<ui_l32>(up_constants::upid_unknown) && name.size() < 2)
+		if (pno == upid_error && name.size() < 2)
 		{
 			ptype = up_constants::uptype_bp;
 			pos = &updata::positiontable[ptype];
 			pno = lookup_property_value(value, pos->offset, pos->numofpairs);
 		}
 
-		return pno != static_cast<ui_l32>(up_constants::upid_unknown) ? pno : up_constants::error_property;
+		return pno != upid_error ? pno : up_constants::error_property;
 	}
 
 	static ui_l32 ranges_offset(const ui_l32 property_number)
@@ -1997,7 +1993,7 @@ private:
 			else	//if (cmp == 0)
 				return static_cast<ui_l32>(map.pno);
 		}
-		return static_cast<ui_l32>(up_constants::upid_unknown);
+		return upid_error;
 	}
 
 	static int compare(const pstring &value, pname_type pname)
@@ -2016,6 +2012,11 @@ private:
 
 	static const ui_l32 max_property_number = static_cast<ui_l32>(up_constants::upid_max_property_number);
 	static const ui_l32 max_pos_number = static_cast<ui_l32>(up_constants::upid_max_pos_number);
+#if (SRELL_UPDATA_VERSION > 300)
+	static const ui_l32 upid_error = static_cast<ui_l32>(up_constants::upid_error);
+#else
+	static const ui_l32 upid_error = static_cast<ui_l32>(up_constants::upid_unknown);
+#endif
 };
 //  unicode_property
 
@@ -10605,7 +10606,6 @@ private:
 			case st_lookaround_open:
 				{
 					const state_type *const lostate = sstate.ssc.state;
-						//  g++ re.cpp				g++ re.cpp -O3
 
 					for (ui_l32 i = 1; i < this->number_of_brackets; ++i)
 					{

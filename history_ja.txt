@@ -1,3 +1,12 @@
+20230913; version 4.031:
+  ・ucfdata2.h, updata3.hをUnicode 15.1.0対応に更新。
+  ・updataout3.cppを更新。Unicode property escapeのScriptsまたは
+    Script_Extensionsで指定できる値に"Unknown"を追加。
+    この値はScripts.txt内で言及されているものの、ECMAScript仕様書の「対
+    応すべきscript名一覧」になかったのでこれまで対応していませんでした。
+    しかし仕様書から一覧表が削除され、除外する理由がなくなったのでV8に倣
+    ってSRELLも対応することにしました。
+
 20230909; version 4.030:
   ・^ $ \b \Bだけのrewinderが作られることのないようにパターンコンパイラ
     を変更。
