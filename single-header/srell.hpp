@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.031
+**  SRELL (std::regex-like library) version 4.032
 **
 **  Copyright (c) 2012-2023, Nozomu Katoo. All rights reserved.
 **
@@ -504,6 +504,14 @@ private:
 	namespace regex_internal
 	{
 
+#if defined(_MSC_VER)
+#define SRELL_FORCEINLINE __forceinline
+#elif defined(__GNUC__)
+#define SRELL_FORCEINLINE __attribute__((always_inline))
+#else
+#define SRELL_FORCEINLINE
+#endif
+
 template <typename charT>
 struct utf_traits_core
 {
@@ -590,7 +598,6 @@ template <typename charT>
 struct utf_traits : public utf_traits_core<charT>
 {
 	static const int utftype = 32;
-
 };
 template <typename charT> const int utf_traits<charT>::utftype;
 //  utf_traits
@@ -611,10 +618,8 @@ public:
 	static const ui_l32 maxcpvalue = 0x10ffff;
 
 	template <typename ForwardIterator>
-	static ui_l32 codepoint(ForwardIterator begin, const ForwardIterator end)
+	static SRELL_FORCEINLINE ui_l32 codepoint(ForwardIterator begin, const ForwardIterator end)
 	{
-//		return codepoint_inc(begin, end);
-
 		ui_l32 codepoint = static_cast<ui_l32>(*begin & 0xff);
 
 		if ((codepoint & 0x80) == 0)	//  1 octet.
@@ -649,7 +654,7 @@ public:
 	}
 
 	template <typename ForwardIterator>
-	static ui_l32 codepoint_inc(ForwardIterator &begin, const ForwardIterator end)
+	static SRELL_FORCEINLINE ui_l32 codepoint_inc(ForwardIterator &begin, const ForwardIterator end)
 	{
 		ui_l32 codepoint = static_cast<ui_l32>(*begin++ & 0xff);
 
@@ -692,10 +697,6 @@ public:
 					if (codepoint <= 0x3dfffff)	//  4 octets.
 						return static_cast<ui_l32>(codepoint & 0x1fffff);
 						//  11 110a aabb bbbb cccc ccdd dddd
-
-					--begin;
-					--begin;
-					--begin;
 				}
 			}
 		}
@@ -705,7 +706,7 @@ public:
 	}
 
 	template <typename BidirectionalIterator>
-	static ui_l32 prevcodepoint(BidirectionalIterator cur, const BidirectionalIterator begin)
+	static SRELL_FORCEINLINE ui_l32 prevcodepoint(BidirectionalIterator cur, const BidirectionalIterator begin)
 	{
 		ui_l32 codepoint = static_cast<ui_l32>(*--cur);
 
@@ -737,7 +738,7 @@ public:
 	}
 
 	template <typename BidirectionalIterator>
-	static ui_l32 dec_codepoint(BidirectionalIterator &cur, const BidirectionalIterator begin)
+	static SRELL_FORCEINLINE ui_l32 dec_codepoint(BidirectionalIterator &cur, const BidirectionalIterator begin)
 	{
 		ui_l32 codepoint = static_cast<ui_l32>(*--cur);
 
@@ -750,23 +751,19 @@ public:
 
 			//  11 0bbb bbaa aaaa?
 			if ((codepoint & 0x3800) == 0x3000)	//  2 octets.
-//			if ((*cur & 0xe0) == 0xc0)
 				return static_cast<ui_l32>(codepoint & 0x7ff);
 
 			//  10 bbbb bbaa aaaa?
 			if ((codepoint & 0x3000) == 0x2000 && cur != begin)	//  [\x80-\xbf]{2}.
-//			if ((*cur & 0xc0) == 0x80 && cur != begin)
 			{
 				codepoint = static_cast<ui_l32>((codepoint & 0xfff) | (*--cur << 12));
 
 				//  1110 cccc bbbb bbaa aaaa?
 				if ((codepoint & 0xf0000) == 0xe0000)	//  3 octets.
-//				if ((*cur & 0xf0) == 0xe0)
 					return static_cast<ui_l32>(codepoint & 0xffff);
 
 				//  10cc cccc bbbb bbaa aaaa?
 				if ((codepoint & 0xc0000) == 0x80000 && cur != begin)	//  [\x80-\xbf]{3}.
-//				if ((*cur & 0xc0) == 0x80 && cur != begin)
 				{
 					if ((*--cur & 0xf8) == 0xf0)	//  4 octets.
 						return static_cast<ui_l32>((codepoint & 0x3ffff) | ((*cur & 7) << 18));
@@ -783,7 +780,7 @@ public:
 			//else	//  [\0-\x7f\xe0-\xff][\x80-\xbf].
 			++cur;	//  Rewinds to give a chance to [\0-\x7f].
 		}
-		//else	//  [\xc0-\xff].
+		//else	//  c0-ff.
 
 		return regex_internal::constants::invalid_u32value;
 	}
@@ -819,13 +816,12 @@ public:
 			return 3;
 		}
 //		else	//  if (cp < 0x110000)
-		{
-			out[0] = static_cast<charT>(((cp >> 18) & 0x07) | 0xf0);
-			out[1] = static_cast<charT>(((cp >> 12) & 0x3f) | 0x80);
-			out[2] = static_cast<charT>(((cp >> 6) & 0x3f) | 0x80);
-			out[3] = static_cast<charT>((cp & 0x3f) | 0x80);
-			return 4;
-		}
+
+		out[0] = static_cast<charT>(((cp >> 18) & 0x07) | 0xf0);
+		out[1] = static_cast<charT>(((cp >> 12) & 0x3f) | 0x80);
+		out[2] = static_cast<charT>(((cp >> 6) & 0x3f) | 0x80);
+		out[3] = static_cast<charT>((cp & 0x3f) | 0x80);
+		return 4;
 	}
 
 	static ui_l32 firstcodeunit(const ui_l32 cp)
@@ -878,7 +874,7 @@ public:
 	static const ui_l32 maxcpvalue = 0x10ffff;
 
 	template <typename ForwardIterator>
-	static ui_l32 codepoint(ForwardIterator begin, const ForwardIterator end)
+	static SRELL_FORCEINLINE ui_l32 codepoint(ForwardIterator begin, const ForwardIterator end)
 	{
 		const ui_l32 codeunit = *begin;
 
@@ -892,7 +888,7 @@ public:
 	}
 
 	template <typename ForwardIterator>
-	static ui_l32 codepoint_inc(ForwardIterator &begin, const ForwardIterator end)
+	static SRELL_FORCEINLINE ui_l32 codepoint_inc(ForwardIterator &begin, const ForwardIterator end)
 	{
 		const ui_l32 codeunit = *begin++;
 
@@ -906,7 +902,7 @@ public:
 	}
 
 	template <typename BidirectionalIterator>
-	static ui_l32 prevcodepoint(BidirectionalIterator cur, const BidirectionalIterator begin)
+	static SRELL_FORCEINLINE ui_l32 prevcodepoint(BidirectionalIterator cur, const BidirectionalIterator begin)
 	{
 		const ui_l32 codeunit = *--cur;
 
@@ -920,7 +916,7 @@ public:
 	}
 
 	template <typename BidirectionalIterator>
-	static ui_l32 dec_codepoint(BidirectionalIterator &cur, const BidirectionalIterator begin)
+	static SRELL_FORCEINLINE ui_l32 dec_codepoint(BidirectionalIterator &cur, const BidirectionalIterator begin)
 	{
 		const ui_l32 codeunit = *--cur;
 
@@ -954,12 +950,11 @@ public:
 			return 1;
 		}
 //		else	//  if (cp < 0x110000)
-		{
-			cp -= 0x10000;
-			out[0] = static_cast<charT>(((cp >> 10) & 0x3ff) | 0xd800);
-			out[1] = static_cast<charT>((cp & 0x3ff) | 0xdc00);
-			return 2;
-		}
+
+		cp -= 0x10000;
+		out[0] = static_cast<charT>(((cp >> 10) & 0x3ff) | 0xd800);
+		out[1] = static_cast<charT>((cp & 0x3ff) | 0xdc00);
+		return 2;
 	}
 
 	static ui_l32 firstcodeunit(const ui_l32 cp)
@@ -1497,30 +1492,27 @@ private:
 
 	void reserve(const size_type newsize)
 	{
-//		if (newsize > capacity_)
+		if (newsize <= maxsize_)
 		{
-			if (newsize <= maxsize_)
-			{
-//				capacity_ = newsize + (newsize >> 1);	//  newsize * 1.5.
-				capacity_ = ((newsize >> 8) + 1) << 8;	//  Round up to a multiple of 256.
+//			capacity_ = newsize + (newsize >> 1);	//  newsize * 1.5.
+			capacity_ = ((newsize >> 8) + 1) << 8;	//  Round up to a multiple of 256.
 
-				if (capacity_ > maxsize_)
-					capacity_ = maxsize_;
+			if (capacity_ > maxsize_)
+				capacity_ = maxsize_;
 
-				const size_type newsize_in_byte = capacity_ * sizeof (ElemT);
-				const pointer oldbuffer = buffer_;
+			const size_type newsize_in_byte = capacity_ * sizeof (ElemT);
+			const pointer oldbuffer = buffer_;
 
-				buffer_ = static_cast<pointer>(std::realloc(buffer_, newsize_in_byte));
-				if (buffer_ != NULL)
-					return;
+			buffer_ = static_cast<pointer>(std::realloc(buffer_, newsize_in_byte));
+			if (buffer_ != NULL)
+				return;
 
-				//  Even if realloc() failed, already-existing buffer remains valid.
-				std::free(oldbuffer);
-//				buffer_ = NULL;
-				size_ = capacity_ = 0;
-			}
-			throw std::bad_alloc();
+			//  Even if realloc() failed, already-existing buffer remains valid.
+			std::free(oldbuffer);
+//			buffer_ = NULL;
+			size_ = capacity_ = 0;
 		}
+		throw std::bad_alloc();
 	}
 
 	void move_forward(const size_type pos, const size_type count)
@@ -15798,8 +15790,6 @@ public:
 		counter.resize(num_of_counters);
 		repeat.resize(num_of_repeats);
 
-		ssc.iter = (flags & regex_constants::match_continuous) ? srchbegin : srchend;
-
 		while (num_of_submatches > 1)
 			bracket[--num_of_submatches].init(this->srchend);
 			//  15.10.2.9; AtomEscape:
@@ -21909,69 +21899,77 @@ public:
 		const BidirectionalIterator end,
 		const BidirectionalIterator lookbehind_limit,
 		match_results<BidirectionalIterator, Allocator> &results,
-		const regex_constants::match_flag_type flags /* = regex_constants::match_default */
+		const regex_constants::match_flag_type flags
 	) const
 	{
 		results.clear_();
 
 		if (this->NFA_states.size())
 		{
-//			results.sstate_.template init<utf_traits>(begin, end, lookbehind_limit, flags);
-			results.sstate_.init(begin, end, lookbehind_limit, flags);
+			re_search_state<BidirectionalIterator> &sstate = results.sstate_;
+
+			sstate.init(begin, end, lookbehind_limit, flags);
 
 #if !defined(SRELLDBG_NO_BMH)
-			if (this->bmdata && !results.sstate_.match_continuous_flag())
+			if (this->bmdata && !sstate.match_continuous_flag())
 			{
-//				if (this->bmdata->search(results.sstate_, typename std::iterator_traits<BidirectionalIterator>::iterator_category()))
 #if !defined(SRELL_NO_ICASE)
-				if (!this->is_ricase() ? this->bmdata->do_casesensitivesearch(results.sstate_, typename std::iterator_traits<BidirectionalIterator>::iterator_category()) : this->bmdata->do_icasesearch(results.sstate_, typename std::iterator_traits<BidirectionalIterator>::iterator_category()))
+				if (!this->is_ricase() ? this->bmdata->do_casesensitivesearch(sstate, typename std::iterator_traits<BidirectionalIterator>::iterator_category()) : this->bmdata->do_icasesearch(sstate, typename std::iterator_traits<BidirectionalIterator>::iterator_category()))
 #else
-				if (this->bmdata->do_casesensitivesearch(results.sstate_, typename std::iterator_traits<BidirectionalIterator>::iterator_category()))
+				if (this->bmdata->do_casesensitivesearch(sstate, typename std::iterator_traits<BidirectionalIterator>::iterator_category()))
 #endif	//  !defined(SRELL_NO_ICASE)
 					return results.set_match_results_bmh_();
-			}
-			else
-#endif
-			{
-				results.sstate_.init_for_automaton(this->number_of_brackets, this->number_of_counters, this->number_of_repeats);
 
-				if (results.sstate_.match_continuous_flag())
-				{
-					results.sstate_.entry_state = this->NFA_states[0].next_state2;
-				}
-				else
-				{
-					results.sstate_.entry_state = this->NFA_states[0].next_state1;
+				goto NOT_FOUND;
+			}
+#endif	//  !defined(SRELLDBG_NO_BMH)
+
+			sstate.init_for_automaton(this->number_of_brackets, this->number_of_counters, this->number_of_repeats);
+
+			if (sstate.match_continuous_flag())
+			{
+				sstate.entry_state = this->NFA_states[0].next_state2;
+
+				sstate.ssc.iter = sstate.nextpos;
+
+#if defined(SRELL_NO_LIMIT_COUNTER)
+				sstate.reset();
+#else
+				sstate.reset(this->limit_counter);
+#endif
+				if (!this->is_ricase() ? run_automaton<false, false>(sstate) : run_automaton<true, false>(sstate))
+					goto FOUND;
+
+				goto NOT_FOUND;
+			}
+
+			sstate.entry_state = this->NFA_states[0].next_state1;
 
 #if !defined(SRELLDBG_NO_SCFINDER)
-					if (this->NFA_states[0].char_num != constants::invalid_u32value)
-					{
-						if (!this->is_ricase() ? do_search_sc<false>(results, typename std::iterator_traits<BidirectionalIterator>::iterator_category()) : do_search_sc<true>(results, typename std::iterator_traits<BidirectionalIterator>::iterator_category()))
-							goto FOUND;
+			if (this->NFA_states[0].char_num != constants::invalid_u32value)
+			{
+				if (!this->is_ricase() ? do_search_sc<false>(sstate, typename std::iterator_traits<BidirectionalIterator>::iterator_category()) : do_search_sc<true>(sstate, typename std::iterator_traits<BidirectionalIterator>::iterator_category()))
+					goto FOUND;
 
-						goto NOT_FOUND;
-					}
+				goto NOT_FOUND;
+			}
 #endif	//  !defined(SRELLDBG_NO_SCFINDER)
-				}
 
 #if !defined(SRELL_NO_ICASE)
-				if (!this->is_ricase() ? do_search<false>(results) : do_search<true>(results))
+			if (!this->is_ricase() ? do_search<false>(sstate) : do_search<true>(sstate))
 #else
-				if (do_search<false>(results))
+			if (do_search<false>(results))
 #endif
-				{
-#if !defined(SRELLDBG_NO_SCFINDER)
-					FOUND:
-#endif
+			{
+				FOUND:
 #if !defined(SRELL_NO_NAMEDCAPTURE)
-					return results.set_match_results_(this->namedcaptures);
+				return results.set_match_results_(this->namedcaptures);
 #else
-					return results.set_match_results_();
+				return results.set_match_results_();
 #endif
-				}
 			}
 		}
-#if !defined(SRELLDBG_NO_SCFINDER)
+#if !defined(SRELLDBG_NO_BMH) || !defined(SRELLDBG_NO_SCFINDER)
 		NOT_FOUND:
 #endif
 		return results.mark_as_failed_();
@@ -21981,38 +21979,29 @@ private:
 
 	typedef typename traits::utf_traits utf_traits;
 
-	template <const bool icase, typename BidirectionalIterator, typename Allocator>
-	bool do_search
-	(
-		match_results<BidirectionalIterator, Allocator> &results
-	) const
+	template <const bool icase, typename BidirectionalIterator>
+	bool do_search(re_search_state<BidirectionalIterator> &sstate) const
 	{
-		re_search_state</*charT, */BidirectionalIterator> &sstate = results.sstate_;
-		const BidirectionalIterator searchend = sstate.ssc.iter;
-
 		for (;;)
 		{
-			const bool final = sstate.nextpos == searchend;
+			const bool final = sstate.nextpos == sstate.srchend;
 
 			sstate.ssc.iter = sstate.nextpos;
 
 			if (!final)
 			{
-
-#ifdef SRELLDBG_NO_1STCHRCLS
+#if defined(SRELLDBG_NO_1STCHRCLS)
 				utf_traits::codepoint_inc(sstate.nextpos, sstate.srchend);
 #else
-				{
 	#if !defined(SRELLDBG_NO_BITSET)
-					if (!this->firstchar_class_bs.test((*sstate.nextpos++) & utf_traits::bitsetmask))
+				if (!this->firstchar_class_bs.test((*sstate.nextpos++) & utf_traits::bitsetmask))
 	#else
-					const ui_l32 firstchar = utf_traits::codepoint_inc(sstate.nextpos, sstate.srchend);
+				const ui_l32 firstchar = utf_traits::codepoint_inc(sstate.nextpos, sstate.srchend);
 
-					if (!this->firstchar_class.is_included(firstchar))
+				if (!this->firstchar_class.is_included(firstchar))
 	#endif
-						continue;
-				}
-#endif
+					continue;
+#endif	//  defined(SRELLDBG_NO_1STCHRCLS)
 			}
 			//  Even when final == true, we have to try for such expressions
 			//  as "" =~ /^$/ or "..." =~ /$/.
@@ -22033,19 +22022,17 @@ private:
 
 #if !defined(SRELLDBG_NO_SCFINDER)
 
-	template <const bool icase, typename ContiguousIterator, typename Allocator>
-	bool do_search_sc(match_results<ContiguousIterator, Allocator> &results, const std::random_access_iterator_tag) const
+	template <const bool icase, typename ContiguousIterator>
+	bool do_search_sc(re_search_state<ContiguousIterator> &sstate, const std::random_access_iterator_tag) const
 	{
-		if (is_contiguous(results.sstate_.srchbegin))
+		if (is_contiguous(sstate.srchbegin))
 		{
 			typedef typename std::iterator_traits<ContiguousIterator>::value_type char_type;
-			re_search_state<ContiguousIterator> &sstate = results.sstate_;
-			const ContiguousIterator searchend = sstate.ssc.iter;
 			const char_type ec = static_cast<char_type>(this->NFA_states[0].char_num);
 
 			for (;;)
 			{
-				if (sstate.nextpos >= searchend)
+				if (sstate.nextpos >= sstate.srchend)
 					break;
 
 				sstate.ssc.iter = sstate.nextpos;
@@ -22068,24 +22055,20 @@ private:
 						return true;
 				}
 				else
-				{
 					break;
-				}
 			}
 			return false;
 		}
-		return do_search_sc<icase>(results, std::bidirectional_iterator_tag());
+		return do_search_sc<icase>(sstate, std::bidirectional_iterator_tag());
 	}
 
-	template <const bool icase, typename BidirectionalIterator, typename Allocator>
-	bool do_search_sc(match_results<BidirectionalIterator, Allocator> &results, const std::bidirectional_iterator_tag) const
+	template <const bool icase, typename BidirectionalIterator>
+	bool do_search_sc(re_search_state<BidirectionalIterator> &sstate, const std::bidirectional_iterator_tag) const
 	{
 		typedef typename std::iterator_traits<BidirectionalIterator>::value_type char_type;
-		re_search_state<BidirectionalIterator> &sstate = results.sstate_;
-		const BidirectionalIterator searchend = sstate.ssc.iter;
 		const char_type ec = static_cast<char_type>(this->NFA_states[0].char_num);
 
-		for (; sstate.nextpos != searchend;)
+		for (; sstate.nextpos != sstate.srchend;)
 		{
 			sstate.ssc.iter = find(sstate.nextpos, sstate.srchend, ec);
 
@@ -22103,9 +22086,7 @@ private:
 					return true;
 			}
 			else
-			{
 				break;
-			}
 		}
 		return false;
 	}
@@ -22942,7 +22923,6 @@ private:
 			default:
 				//  Reaching here means that this->NFA_states is corrupted.
 				throw regex_error(regex_constants::error_internal);
-
 				}
 			}
 		}
