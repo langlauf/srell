@@ -1,3 +1,9 @@
+20230926; version 4.033:
+  * Fixed a bug that could cause a crash on 64-bit systems since version
+    4.020 (Thanks for the bug report).
+  * Removed an unused member function from utf_traits.
+  * Some clean-ups.
+
 20230916; version 4.032:
   * Added directives for decoders of UTF-8/UTF-16 to be always inlined.
   * Improved several internal functions that call the automaton.
