@@ -1,3 +1,10 @@
+20231229; version 4.035:
+  * Improved case folding of character classes. (Compilation of \p{Any}
+    was a bit slow when the icase flag was set).
+  * Several preparations for (?i:) support.
+  * Updated updataout3.cpp. It could not be compiled because an internal
+    namespace was changed in the previous version.
+
 20231209; version 4.034:
   * Modified to use std::contiguous_iterator when it is available, to
     check if the iterator passed to an algorithm function is a

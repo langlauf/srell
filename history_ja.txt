@@ -1,3 +1,10 @@
+20231229; version 4.035:
+  ・文字クラスのcase foldingを改良（Icase時の\p{Any}のコンパイル速度の改
+    善）。
+  ・(?i:)対応の下準備。
+  ・updataout3.cppを更新。前版で内部のnamespaceを変更した影響でコンパイ
+    ルできなくなっていました。
+
 20231209; version 4.034:
   ・アルゴリズム函数に渡されたiteratorがcontiguous_iteratorかどうかを調
     べる時、std::contiguous_iteratorが使えるならそれを使うように。

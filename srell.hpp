@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.034
+**  SRELL (std::regex-like library) version 4.035
 **
 **  Copyright (c) 2012-2023, Nozomu Katoo. All rights reserved.
 **
@@ -382,11 +382,18 @@ private:
 			static const ui_l32 unicode_max_codepoint = 0x10ffff;
 			static const ui_l32 invalid_u32value = static_cast<ui_l32>(-1);
 			static const ui_l32 max_u32value = static_cast<ui_l32>(-2);
-			static const ui_l32 asc_icase = 0x20;
 			static const ui_l32 ccstr_empty = static_cast<ui_l32>(-1);
 			static const ui_l32 infinity = static_cast<ui_l32>(~0);
+			static const ui_l32 pos_charbits = 21;
 		}
 		//  constants
+
+		namespace masks
+		{
+			static const ui_l32 asc_icase = 0x20;
+			static const ui_l32 pos_cf = 0x200000;	//  1 << 21.
+			static const ui_l32 pos_char = 0x1fffff;
+		}
 
 		namespace meta_char
 		{
@@ -522,10 +529,11 @@ public:
 	static const std::size_t maxseqlen = 1;
 	static const int utftype = 0;
 
+	static const ui_l32 one = 1;
 	static const ui_l32 charbit = (sizeof (charT) * CHAR_BIT) > 21 ? 21 : (sizeof (charT) * CHAR_BIT);
-	static const ui_l32 bitsetsize = 1 << (charbit > 16 ? 16 : charbit);
+	static const ui_l32 bitsetsize = one << (charbit > 16 ? 16 : charbit);
 	static const ui_l32 bitsetmask = bitsetsize - 1;
-	static const ui_l32 maxcpvalue = charbit == 21 ? 0x10ffff : ((1 << charbit) - 1);
+	static const ui_l32 maxcpvalue = charbit == 21 ? 0x10ffff : ((one << charbit) - 1);
 
 	//  *iter
 	template <typename ForwardIterator>
@@ -1698,8 +1706,10 @@ typedef ucf_constants::unicode_casefolding<ui_l32, ui_l32> ucfdata;
 		{
 #if !defined(SRELL_NO_UNICODE_ICASE)
 			static const ui_l32 rev_maxset = ucf_internal::ucfdata::rev_maxset;
+			static const ui_l32 rev_maxcp = ucf_internal::ucfdata::rev_maxcodepoint;
 #else
 			static const ui_l32 rev_maxset = 2;
+			static const ui_l32 rev_maxcp = char_alnum::ch_z;
 #endif
 		}	//  namespace ucf_constants
 
@@ -1737,41 +1747,35 @@ public:
 
 		return count;
 #else
-		const ui_l32 nocase = static_cast<ui_l32>(cp | constants::asc_icase);
+		const ui_l32 nocase = static_cast<ui_l32>(cp | masks::asc_icase);
 
 		out[0] = cp;
-//		if (nocase >= char_alnum::ch_A && nocase <= char_alnum::ch_Z)
 		if (nocase >= char_alnum::ch_a && nocase <= char_alnum::ch_z)
 		{
-			out[1] = static_cast<ui_l32>(cp ^ constants::asc_icase);
+			out[1] = static_cast<ui_l32>(cp ^ masks::asc_icase);
 			return 2u;
 		}
 		return 1u;
 #endif
 	}
 
-	static ui_l32 count_caseunfolding(const ui_l32 cp)
+	static ui_l32 try_casefolding(const ui_l32 cp)
 	{
 #if !defined(SRELL_NO_UNICODE_ICASE)
-		ui_l32 count = 0u;
-
 		if (cp <= ucf_internal::ucfdata::rev_maxcodepoint)
 		{
 			const ui_l32 offset_of_charset = ucf_internal::ucfdata::rev_indextable[ucf_internal::ucfdata::rev_segmenttable[cp >> 8] + (cp & 0xff)];
-			const ui_l32 *ptr = &ucf_internal::ucfdata::rev_charsettable[offset_of_charset];
+			const ui_l32 uf0 = ucf_internal::ucfdata::rev_charsettable[offset_of_charset];
 
-			for (; *ptr != cfcharset_eos_; ++ptr)
-				++count;
+			return uf0 != cfcharset_eos_ ? uf0 : constants::invalid_u32value;
 		}
-		if (count == 0u)
-			++count;
-
-		return count;
 #else
-		const ui_l32 nocase = static_cast<ui_l32>(cp | constants::asc_icase);
+		const ui_l32 nocase = static_cast<ui_l32>(cp | masks::asc_icase);
 
-		return (nocase >= char_alnum::ch_a && nocase <= char_alnum::ch_z) ? 2u : 1u;
+		if (nocase >= char_alnum::ch_a && nocase <= char_alnum::ch_z)
+			return nocase;
 #endif
+		return constants::invalid_u32value;
 	}
 
 	unicode_case_folding &operator=(const unicode_case_folding &)
@@ -2019,30 +2023,6 @@ struct range_pair	//  , public std::pair<charT, charT>
 		*this = right;
 		right = tmp;
 	}
-
-	bool unify_range(const range_pair &right)
-	{
-		range_pair &left = *this;
-
-		if (right.first <= left.second || left.second + 1 == right.first)	//  r1 <= l2 || l2+1 == r1
-		{
-			//  l1 l2+1 < r1 r2 excluded.
-
-			if (left.first <= right.second || right.second + 1 == left.first)	//  l1 <= r2 || r2+1 == l1
-			{
-				//  r1 r2+1 < l1 l2 excluded.
-
-				if (left.first > right.first)
-					left.first = right.first;
-
-				if (left.second < right.second)
-					left.second = right.second;
-
-				return true;
-			}
-		}
-		return false;
-	}
 };
 //  range_pair
 
@@ -2152,27 +2132,87 @@ public:
 
 	void join(const range_pair &right)
 	{
-		size_type pos = 0;
+		range_pair *base = &rparray_[0];
+		size_type count = rparray_.size();
 
-		for (; pos < rparray_.size(); ++pos)
+		while (count)
 		{
-			range_pair &curpair = rparray_[pos];
+			size_type mid = count / 2;
+			range_pair *cp = &base[mid];
 
-			if (curpair.unify_range(right))
+			if (cp->first && (right.second < cp->first - 1))
 			{
-				for (++pos; pos < rparray_.size();)
+				count = mid;
+			}
+			else if (right.first && (cp->second < right.first - 1))
+			{
+				++mid;
+				base += mid;
+				count -= mid;
+			}
+			else
+			{
+				if (cp->first > right.first)
+					cp->first = right.first;
+
+				if (cp->second < right.second)
+					cp->second = right.second;
+
+				range_pair *lw = cp;
+
+				if (cp->first > 0u)
 				{
-					if (curpair.unify_range(rparray_[pos]))
-						rparray_.erase(pos);
-					else
-						break;
+					for (--cp->first; lw != &rparray_[0];)
+					{
+						if ((--lw)->second < cp->first)
+						{
+							++lw;
+							break;
+						}
+					}
+					++cp->first;
+				}
+				else
+					lw = &rparray_[0];
+
+				if (lw != cp)
+				{
+					if (cp->first > lw->first)
+						cp->first = lw->first;
+
+					rparray_.erase(lw - &rparray_[0], cp - lw);
+					cp = lw;
+				}
+
+				range_pair *const rend = &rparray_[0] + rparray_.size();
+				range_pair *rw = cp;
+
+				if (++cp->second > 0u)
+				{
+					for (; ++rw != rend;)
+					{
+						if (cp->second < rw->first)
+							break;
+					}
+					--rw;
+				}
+				else
+					rw = rend - 1;
+
+				--cp->second;
+
+				if (rw != cp)
+				{
+					if (rw->second < cp->second)
+						rw->second = cp->second;
+
+					rw->first = cp->first;
+					rparray_.erase(cp - &rparray_[0], rw - cp);
 				}
 				return;
 			}
-			if (right.second < curpair.first)
-				break;
 		}
-		rparray_.insert(pos, right);
+		rparray_.insert(base - &rparray_[0], right);
 	}
 
 	void merge(const range_pairs &right)
@@ -2262,21 +2302,24 @@ public:
 	void make_caseunfoldedcharset()
 	{
 		ui_l32 table[ucf_constants::rev_maxset] = {};
-		bitset<constants::unicode_max_codepoint + 1> bs;
+		range_pairs newranges;
 
 		for (size_type i = 0; i < rparray_.size(); ++i)
 		{
 			const range_pair &range = rparray_[i];
 
-			for (ui_l32 ucp = range.first; ucp <= range.second; ++ucp)
+			for (ui_l32 ucp = range.first; ucp <= range.second && ucp <= ucf_constants::rev_maxcp; ++ucp)
 			{
 				const ui_l32 setnum = unicode_case_folding::do_caseunfolding(table, ucp);
 
 				for (ui_l32 j = 0; j < setnum; ++j)
-					bs.set(table[j]);
+				{
+					if (table[j] != ucp)
+						newranges.join(range_pair_helper(table[j]));
+				}
 			}
 		}
-		load_from_bitset(bs);
+		merge(newranges);
 	}
 
 	//  For updataout.hpp.
@@ -2286,41 +2329,44 @@ public:
 		{
 			range_pair &left = rparray_[pos];
 
-			if (right.first <= left.first && left.first <= right.second)	//  r1 <= l1 <= r2.
+			if (right.first <= left.first)	//  r1 <= l1
 			{
-				if (left.second > right.second)	//  r1 <= l1 <= r2 < l2.
+				if (left.first <= right.second)	//  r1 <= l1 <= r2.
 				{
-					left.first = right.second + 1;	//  carry doesn't happen.
-					++pos;
+					if (right.second < left.second)	//  r1 <= l1 <= r2 < l2.
+					{
+						left.first = right.second + 1;
+						return;
+					}
+					else	//  r1 <= l1 <= l2 <= r2.
+						rparray_.erase(pos);
 				}
-				else	//  r1 <= l1 <= l2 <= r2.
-					rparray_.erase(pos);
+				else	//  r1 <= r2 < l1
+					return;
 			}
-			else if (right.first <= left.second && left.second <= right.second)	//  r1 <= l2 <= r2.
+			//else	//  l1 < r1
+			else if (right.first <= left.second)	//  l1 < r1 <= l2.
 			{
-				if (left.first < right.first)	//  l1 < r1 <= l2 <= r2.
+				if (left.second <= right.second)	//  l1 < r1 <= l2 <= r2.
 				{
 					left.second = right.first - 1;
 					++pos;
 				}
-				else	//  r1 <= l1 <= l2 <= r2.
-					rparray_.erase(pos);
-			}
-			else if (left.first < right.first && right.second < left.second)	//  l1 < r1 && r2 < l2.
-			{
-				range_pair newrange(left);
+				else	//  l1 < r1 <= r2 < l2
+				{
+					range_pair newrange(left);
 
-				left.second = right.first - 1;
-				newrange.first = right.second + 1;
-				rparray_.insert(++pos, newrange);
-				++pos;
+					left.second = right.first - 1;
+					newrange.first = right.second + 1;
+					rparray_.insert(++pos, newrange);
+					return;
+				}
 			}
-			else
+			else	//  l1 <= l2 < r1
 				++pos;
 		}
 	}
 
-//	template <typename ucf>
 	ui_l32 consists_of_one_character(const bool icase) const
 	{
 		if (rparray_.size() >= 1)
@@ -2348,6 +2394,7 @@ public:
 
 	void split_ranges(range_pairs &kept, range_pairs &removed, const range_pairs &rightranges) const
 	{
+		size_type prevolj = 0;
 		range_pair newpair;
 
 		kept.rparray_ = this->rparray_;	//  Subtraction set.
@@ -2361,45 +2408,46 @@ public:
 
 			range_pair &left = kept.rparray_[i];
 
-			for (size_type j = 0; j < rightranges.rparray_.size(); ++j)
+			for (size_type j = prevolj; j < rightranges.rparray_.size(); ++j)
 			{
 				const range_pair &right = rightranges.rparray_[j];
 
-				if (right.first <= left.second)	//  Excludes l1 l2 < r1 r2.
-				{
-					if (left.first <= right.second)	//  Excludes r1 r2 < l1 l2.
-					{
-						if (left.first < right.first)
-						{
-							if (right.second < left.second)
-							{
-								removed.join(range_pair_helper(right.first, right.second));
+				if (left.second < right.first)	//  Excludes l1 l2 < r1 r2.
+					break;
 
-								newpair.set(right.second + 1, left.second);
-								left.second = right.first - 1;
-								kept.rparray_.insert(i + 1, newpair);
-							}
-							else
-							{
-								removed.join(range_pair_helper(right.first, left.second));
-								left.second = right.first - 1;
-							}
-						}
-						else if (right.second < left.second)
+				if (left.first <= right.second)	//  Excludes r1 r2 < l1 l2.
+				{
+					prevolj = j;
+
+					if (left.first < right.first)	//  l1 < r1 <= r2.
+					{
+						if (right.second < left.second)	//  l1 < r1 <= r2 < l2.
 						{
-							removed.join(range_pair_helper(left.first, right.second));
-							left.first = right.second + 1;
+							removed.join(range_pair_helper(right.first, right.second));
+
+							newpair.set(right.second + 1, left.second);
+							left.second = right.first - 1;
+							kept.rparray_.insert(i + 1, newpair);
 						}
-						else
+						else	//  l1 < r1 <= l2 <= r2.
 						{
-							removed.join(range_pair_helper(left.first, left.second));
-							kept.rparray_.erase(i);
-							goto RETRY_SAMEINDEXNO;
+							removed.join(range_pair_helper(right.first, left.second));
+							left.second = right.first - 1;
 						}
 					}
+					//else	//  r1 <= l1.
+					else if (right.second < left.second)	//  r1 <= l1 <= r2 < l2.
+					{
+						removed.join(range_pair_helper(left.first, right.second));
+						left.first = right.second + 1;
+					}
+					else	//  r1 <= l1 <= l2 <= r2.
+					{
+						removed.join(range_pair_helper(left.first, left.second));
+						kept.rparray_.erase(i);
+						goto RETRY_SAMEINDEXNO;
+					}
 				}
-				else
-					break;
 			}
 		}
 	}
@@ -2407,19 +2455,12 @@ public:
 #if defined(SRELLDBG_NO_BITSET)
 	bool is_included(const ui_l32 ch) const
 	{
-#if 01
 		const range_pair *const end = rparray_.data() + rparray_.size();
 
 		for (const range_pair *cur = rparray_.data(); cur != end; ++cur)
 		{
 			if (ch <= cur->second)
 				return ch >= cur->first;
-#else
-		for (size_type i = 0; i < rparray_.size(); ++i)
-		{
-			if (rparray_[i].is_included(ch))
-				return true;
-#endif
 		}
 		return false;
 	}
@@ -2548,30 +2589,6 @@ private:
 	static ui_l32 do_nothing(const ui_l32 cp)
 	{
 		return cp;
-	}
-
-	template <typename BitSetT>
-	void load_from_bitset(const BitSetT &bs)
-	{
-		ui_l32 begin = constants::invalid_u32value;
-		range_pairs newranges;
-
-		for (ui_l32 ucp = 0;; ++ucp)
-		{
-			if (ucp > constants::unicode_max_codepoint || !bs.test(ucp))
-			{
-				if (begin != constants::invalid_u32value)
-				{
-					newranges.join(range_pair_helper(begin, ucp - 1));
-					begin = constants::invalid_u32value;
-				}
-				if (ucp > constants::unicode_max_codepoint)
-					break;
-			}
-			else if (begin == constants::invalid_u32value && bs.test(ucp))
-				begin = ucp;
-		}
-		rparray_.swap(newranges.rparray_);
 	}
 
 	array_type rparray_;
@@ -3325,8 +3342,8 @@ struct re_state
 		ui_l32 multiline;	//  For bol, eol.
 
 		ui_l32 icase_backrefno_unresolved;	//  For backreference.
-			//  Bit 0: Used across compiler and algorithm.
-			//  Bit 1: Used only in compiler.
+			//  Bit 0: icase. Used across compiler and algorithm.
+			//  Bit 1: backrefno_unresolved. Used only in compiler.
 	};
 
 	void reset(const re_state_type t = st_character, const ui_l32 c = char_ctrl::cc_nul)
@@ -4341,7 +4358,12 @@ struct posdata_holder
 				if (icase)
 				{
 					for (simple_array<ui_l32>::size_type i = 0; i < curseq.size(); ++i)
-						curseq[i] = unicode_case_folding::do_casefolding(curseq[i]);
+					{
+						const ui_l32 cf = unicode_case_folding::try_casefolding(curseq[i]);
+
+						if (cf != constants::invalid_u32value)
+							curseq[i] = cf | masks::pos_cf;
+					}
 				}
 
 				const std::size_t complen = seqlen * sizeof (ui_l32);
@@ -4888,11 +4910,6 @@ private:
 		if (!check_backreferences(cvars))
 			return this->set_error(regex_constants::error_backref);
 
-#if !defined(SRELL_NO_ICASE)
-		if (this->is_icase())
-			this->NFA_states[0].icase = check_if_really_needs_icase_search();
-#endif
-
 #if !defined(SRELLDBG_NO_BMH)
 		setup_bmhdata();
 #endif
@@ -4969,12 +4986,14 @@ private:
 		re_quantifier quantifier;
 		re_quantifier piecesize;
 		state_type astate;
+#if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
+		posdata_holder pos;
+#endif
 
 		branchsize.reset(0);
 
 		for (;;)
 		{
-
 			if (curpos == end || *curpos == meta_char::mc_bar || *curpos == meta_char::mc_rbracl /* || *curpos == char_ctrl::cc_nul */)	//  '|', ')', '\0'.
 				return true;
 
@@ -4992,12 +5011,29 @@ private:
 
 			case meta_char::mc_sbraop:	//  '[':
 #if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
-				if (this->is_vmode())	//  vmode.
+				if (this->is_vmode())
 				{
-					if (!parse_charclass_v(piece, piecesize, curpos, end, cvars))
+					pos.clear();
+
+					if (!parse_unicharset(pos, curpos, end, cvars))
 						return false;
-					goto AFTER_PIECE_SET;
+
+					if (pos.may_contain_strings())
+					{
+						transform_seqdata(piece, pos);
+						piecesize.set(pos.length.first, pos.length.second);
+						goto AFTER_PIECE_SET;
+					}
+
+					astate.reset(st_character, pos.ranges.consists_of_one_character(this->is_icase()));
+
+					if (astate.char_num == constants::invalid_u32value)
+					{
+						astate.type = st_character_class;
+						astate.char_num = this->character_class.register_newclass(pos.ranges);
+					}
 				}
+				else	//  U-mode.
 #endif
 				if (!register_character_class(astate, curpos, end, cvars))
 					return false;
@@ -5011,26 +5047,24 @@ private:
 				astate.char_num = *curpos;
 
 #if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
-				if (this->is_vmode() && ((astate.char_num | constants::asc_icase) == char_alnum::ch_p))
+				if (this->is_vmode() && ((astate.char_num | masks::asc_icase) == char_alnum::ch_p))
 				{
-					posdata_holder pos;
+					pos.clear();
 
 					if (!parse_escape_p_vmode(pos, astate, ++curpos, end, cvars))
 						return false;
 
-					if (astate.type == st_character_class)
-						astate.char_num = this->character_class.register_newclass(pos.ranges);
-					else
+					if (astate.type != st_character_class)
+					{
 						transform_seqdata(piece, pos);
-
-					piecesize.set(astate.quantifier.atleast, astate.quantifier.atmost);
-
-					if (piece.size())
+						piecesize.set(astate.quantifier.atleast, astate.quantifier.atmost);
 						goto AFTER_PIECE_SET;
+					}
 
+					astate.char_num = this->character_class.register_newclass(pos.ranges);
 					break;
 				}
-#endif	//  !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
+#endif
 
 				switch (astate.char_num)
 				{
@@ -5107,7 +5141,7 @@ private:
 						astate.quantifier.atleast = 0;
 
 						if (this->is_icase())
-							astate.icase |= 1u;
+							astate.icase_backrefno_unresolved |= 1u;
 
 						goto AFTER_INCREMENT;
 					}
@@ -5133,7 +5167,6 @@ private:
 				else
 #endif
 				{
-//					astate.char_num = static_cast<ui_l32>(re_character_class::newline);
 					range_pairs nlclass = this->character_class[static_cast<ui_l32>(re_character_class::newline)];
 
 					nlclass.negation();
@@ -5168,10 +5201,15 @@ private:
 			default:;
 			}
 
-			if (astate.type == st_character)
+			if (astate.type == st_character && this->is_icase())
 			{
-				if (this->is_icase())
-					astate.char_num = unicode_case_folding::do_casefolding(astate.char_num);
+				const ui_l32 cf = unicode_case_folding::try_casefolding(astate.char_num);
+
+				if (cf != constants::invalid_u32value)
+				{
+					astate.char_num = cf;
+					astate.icase = this->NFA_states[0].icase = 1u;
+				}
 			}
 
 			piece.push_back(astate);
@@ -5864,16 +5902,12 @@ private:
 			castate.is_not = 0u;
 		}
 
-//		castate.char_num = this->is_icase() ? ranges.template consists_of_one_character<unicode_case_folding>() : ranges.template consists_of_one_character<nocase_faketraits>();
 		castate.char_num = ranges.consists_of_one_character(this->is_icase());
 
 		if (castate.char_num != constants::invalid_u32value)
-		{
 			castate.type = st_character;
-			return true;
-		}
-
-		castate.char_num = this->character_class.register_newclass(ranges);
+		else
+			castate.char_num = this->character_class.register_newclass(ranges);
 
 		return true;
 	}
@@ -5906,37 +5940,6 @@ private:
 	}
 
 #if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
-
-	bool parse_charclass_v(state_array &piece, re_quantifier &piecesize, const ui_l32 *&curpos, const ui_l32 *const end, cvars_type &cvars)
-	{
-		posdata_holder pos;
-
-		if (!parse_unicharset(pos, curpos, end, cvars))
-			return false;
-
-		if (!pos.may_contain_strings())
-		{
-			state_type castate;
-
-			castate.reset(st_character, pos.ranges.consists_of_one_character(this->is_icase()));
-
-			if (castate.char_num == constants::invalid_u32value)
-			{
-				castate.type = st_character_class;
-				castate.char_num = this->character_class.register_newclass(pos.ranges);
-			}
-
-			piece.push_back(castate);
-		}
-		else
-		{
-			transform_seqdata(piece, pos);
-
-		}
-		piecesize.atleast = pos.length.first;
-		piecesize.atmost = pos.length.second;
-		return true;
-	}
 
 	bool parse_unicharset(posdata_holder &basepos, const ui_l32 *&curpos, const ui_l32 *const end, const cvars_type &cvars)
 	{
@@ -6131,13 +6134,10 @@ private:
 		//  *curpos == ']'
 		++curpos;
 
-		if (this->is_icase())
-			basepos.ranges.make_caseunfoldedcharset();
-
 		if (invert)
 		{
 			if (basepos.may_contain_strings())
-				goto ERROR_NOT_INVERTIBLE;
+				return this->set_error(regex_constants::error_complement);
 
 			basepos.ranges.negation();
 		}
@@ -6149,9 +6149,6 @@ private:
 
 		ERROR_BROKEN_RANGE:
 		return this->set_error(regex_constants::error_range);
-
-		ERROR_NOT_INVERTIBLE:
-		return this->set_error(regex_constants::error_complement);
 
 		ERROR_DOUBLE_PUNCT:
 		return this->set_error(regex_constants::error_operator);
@@ -6200,7 +6197,7 @@ private:
 
 		if (!no_ccesc)
 		{
-			if (((castate.char_num | constants::asc_icase) == char_alnum::ch_p))
+			if (((castate.char_num | masks::asc_icase) == char_alnum::ch_p))
 			{
 				return parse_escape_p_vmode(pos, castate, curpos, end, cvars);
 			}
@@ -6413,7 +6410,7 @@ private:
 		case char_alnum::ch_c:	//  \cX
 			if (curpos != end)
 			{
-				eastate.char_num = static_cast<ui_l32>(*curpos | constants::asc_icase);
+				eastate.char_num = static_cast<ui_l32>(*curpos | masks::asc_icase);
 
 				if (eastate.char_num >= char_alnum::ch_a && eastate.char_num <= char_alnum::ch_z)
 					eastate.char_num = static_cast<ui_l32>(*curpos++ & 0x1f);
@@ -6652,7 +6649,6 @@ private:
 		if (curpos == end)
 			return this->set_error(regex_constants::error_escape);
 
-//		ccepastate.is_not = (ccepastate.char_num & constants::asc_icase) ? false : true;
 		if (ccepastate.char_num == char_alnum::ch_P)	//  \P{...}
 			ccepastate.is_not = 1u;
 
@@ -6740,7 +6736,11 @@ private:
 
 					for (ui_l32 count = 0; offset < seqend; ++offset)
 					{
-						branch[count++].char_num = pos.seqs[offset];
+						const ui_l32 seqch = pos.seqs[offset];
+						state_type *const ost = &branch[count++];
+
+						ost->char_num = seqch & masks::pos_char;
+						this->NFA_states[0].icase |= ost->icase = seqch >> constants::pos_charbits;
 
 						if (count == seqlen)
 						{
@@ -7599,23 +7599,6 @@ private:
 		}
 	}
 #endif	//  !defined(SRELLDBG_NO_BRANCH_OPT)
-
-#if !defined(SRELL_NO_ICASE)
-	ui_l32 check_if_really_needs_icase_search()
-	{
-		for (state_size_type i = 0; i < this->NFA_states.size(); ++i)
-		{
-			const state_type &state = this->NFA_states[i];
-
-			if (state.type == st_character)
-			{
-				if (unicode_case_folding::count_caseunfolding(state.char_num) > 1)
-					return 1u;
-			}
-		}
-		return 0u;
-	}
-#endif	//  !defined(SRELL_NO_ICASE)
 
 #if !defined(SRELLDBG_NO_BMH)
 	void setup_bmhdata()
