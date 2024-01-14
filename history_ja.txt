@@ -1,3 +1,10 @@
+20240114; version 4.036:
+  ・Lookaround （lookaheadとlookbehind）の改良とバグ修正：
+    1. 不要なスタック処理を削除。
+    2. "abc"に対する/(?:(?=(\w))|b)c$/の1番括弧が"b"ではなく未定義になる
+       ように、version 3.003で廃止したstateを復活。
+  ・misc/sample01.cppをconftest.cppに置き換え。
+
 20231229; version 4.035:
   ・文字クラスのcase foldingを改良（Icase時の\p{Any}のコンパイル速度の改
     善）。

@@ -1,8 +1,8 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.035
+**  SRELL (std::regex-like library) version 4.036
 **
-**  Copyright (c) 2012-2023, Nozomu Katoo. All rights reserved.
+**  Copyright (c) 2012-2024, Nozomu Katoo. All rights reserved.
 **
 **  Redistribution and use in source and binary forms, with or without
 **  modification, are permitted provided that the following conditions are
@@ -360,16 +360,16 @@ private:
 
 			st_lookaround_open,         //  0x0e
 
-//			st_lookaround_pop,          //  0x10
+			st_lookaround_pop,          //  0x0f
 
-			st_bol,                     //  0x0f
-			st_eol,                     //  0x10
-			st_boundary,                //  0x11
+			st_bol,                     //  0x10
+			st_eol,                     //  0x11
+			st_boundary,                //  0x12
 
-			st_success,                 //  0x12
+			st_success,                 //  0x13
 
 #if defined(SRELLTEST_NEXTPOS_OPT)
-			st_move_nextpos,            //  0x13
+			st_move_nextpos,            //  0x14
 #endif
 
 			st_lookaround_close        = st_success,
@@ -15278,21 +15278,23 @@ struct re_quantifier
 	//    the minimum and maximum bracket numbers respectively inside the brackets itself.
 	//  (Special case 3) in repeat_in_push and repeat_in_pop atleast and atmost represent the
 	//    minimum and maximum bracket numbers respectively inside the repetition.
+	//  (Special case 4) in lookaround_open and lookaround_pop atleast and atmost represent the
+	//    minimum and maximum bracket numbers respectively inside the lookaround.
 
 	ui_l32 atleast;
-		//  (Special case 4: v1) in lookaround_open represents the number of characters to be rewound.
-		//  (Special case 4: v2) in lookaround_open represents: 0=lookaheads, 1=lookbehinds,
-		//    2=matchpointrewinder, 3=rewinder+rerun.
 		//  (Special case 5) in NFA_states[0] represents the class number of the first character class.
 
 	ui_l32 atmost;
 
 	ui_l32 is_greedy;
+		//  (Special case 1: v1) in lookaround_open represents the number of characters to be rewound.
+		//  (Special case 2: v2) in lookaround_open represents: 0=lookaheads, 1=lookbehinds,
+		//    2=matchpointrewinder, 3=rewinder+rerun.
 
 	void reset(const ui_l32 len = 1)
 	{
 		atleast = atmost = len;
-		is_greedy = true;
+		is_greedy = 1;
 	}
 
 	void set(const ui_l32 min, const ui_l32 max)
@@ -15406,6 +15408,7 @@ struct re_state
 		std::ptrdiff_t next1;
 		re_state *next_state1;
 		//  (Special case 1) in lookaround_open points to the next of lookaround_close.
+		//  (Special case 2) in lookaround_pop points to the content of brackets instead of lookaround_open.
 	};
 	union
 	{
@@ -17446,9 +17449,9 @@ private:
 #endif
 			}
 			else
-				rbstate.quantifier.atleast = 0;
-				//  Sets .atleast to 0 for other assertions than lookbehinds. The automaton
-				//  checks .atleast to know whether lookbehinds or other assertions.
+				rbstate.quantifier.is_greedy = 0;
+				//  Sets .is_greedy to 0 for other assertions than lookbehinds. The automaton
+				//  checks .is_greedy to know whether lookbehinds or other assertions.
 
 			switch (rbstate.char_num)
 			{
@@ -17469,6 +17472,11 @@ private:
 #endif
 				rbstate.type = st_lookaround_open;
 				rbstate.next2 = 1;
+				rbstate.quantifier.atleast = this->number_of_brackets;
+				piece.push_back(rbstate);
+				rbstate.next1 = 1;
+				rbstate.next2 = 0;
+				rbstate.type = st_lookaround_pop;
 				break;
 
 			default:
@@ -17625,19 +17633,17 @@ private:
 			}
 			break;
 
-//		case st_lookaround_pop:
-		case st_lookaround_open:
+		case st_lookaround_pop:
 			{
 				state_type &firststate = piece[0];
 
 #if defined(SRELL_FIXEDWIDTHLOOKBEHIND)
-//				if (firststate.reverse)
-				if (firststate.quantifier.atleast)	//  > 0 means lookbehind.
+				if (firststate.quantifier.is_greedy)	//  > 0 means lookbehind.
 				{
 					if (!piecesize.is_same() || piecesize.is_infinity())
 						return this->set_error(regex_constants::error_lookbehind);
 
-					firststate.quantifier = piecesize;
+					firststate.quantifier.is_greedy = piecesize.atleast;
 				}
 #endif
 
@@ -17647,6 +17653,7 @@ private:
 					piecesize.reset(0);
 
 				firststate.next1 = static_cast<std::ptrdiff_t>(piece.size()) + 1;
+				firststate.quantifier.atmost = piece[1].quantifier.atmost = this->number_of_brackets - 1;
 
 				rbstate.type  = st_lookaround_close;
 				rbstate.next1 = 0;
@@ -19218,9 +19225,9 @@ private:
 
 			case st_lookaround_open:
 //				if (!state.is_not && !state.reverse)
-				if (!state.is_not && state.quantifier.atleast == 0)
+				if (!state.is_not && state.quantifier.is_greedy == 0)
 				{
-					gather_nextchars(nextcharclass, pos + 1, checked, 0u, subsequent);
+					gather_nextchars(nextcharclass, pos + 2, checked, 0u, subsequent);
 				}
 				else if (subsequent)
 					nextcharclass.set_solerange(range_pair_helper(0, constants::unicode_max_codepoint));
@@ -19957,6 +19964,7 @@ private:
 			case st_restore_counter:
 			case st_decrement_counter:
 			case st_repeat_in_pop:
+			case st_lookaround_pop:
 				break;	//  NFA_states broken.
 
 			case st_roundbracket_open:
@@ -20115,10 +20123,14 @@ private:
 		if (!reverse_atoms(newNFAs) || newNFAs.size() == 0u)
 			return;
 
-		rwstate.reset(st_lookaround_open, meta_char::mc_eq);
+		rwstate.reset(st_lookaround_pop, meta_char::mc_eq);
+		rwstate.quantifier.atmost = 0;
+		newNFAs.insert(0, rwstate);
+
+		rwstate.type = st_lookaround_open;
 		rwstate.next1 = static_cast<std::ptrdiff_t>(end + newNFAs.size() + 2) - 1;
 		rwstate.next2 = 1;
-		rwstate.quantifier.atleast = needs_rerun ? 3 : 2; //  Match point rewinder.
+		rwstate.quantifier.is_greedy = needs_rerun ? 3 : 2; //  Match point rewinder.
 			//  "singing" problem: /\w+ing/ against "singing" matches the
 			//  entire "singing". However, if modified like /(?<=\K\w+)ing/
 			//  it matches "sing" only, which is not correct (but correct if
@@ -20429,6 +20441,7 @@ private:
 			case st_decrement_counter:
 			case st_restore_counter:
 			case st_repeat_in_pop:
+			case st_lookaround_pop:
 				return 0u;
 
 			default:
@@ -22529,26 +22542,22 @@ private:
 				{
 					const state_type *const lostate = sstate.ssc.state;
 
-					for (ui_l32 i = 1; i < this->number_of_brackets; ++i)
+					for (ui_l32 brno = lostate->quantifier.atleast; brno <= lostate->quantifier.atmost; ++brno)
 					{
-						const submatch_type &sm = sstate.bracket[i];
+						const submatch_type &sm = sstate.bracket[brno];
 						sstate.capture_stack.push_back(sm.core);
 						sstate.counter_stack.push_back(sm.counter);
 					}
 
-					for (ui_l32 i = 0; i < this->number_of_counters; ++i)
-						sstate.counter_stack.push_back(sstate.counter[i]);
-
-					for (ui_l32 i = 0; i < this->number_of_repeats; ++i)
-						sstate.repeat_stack.push_back(sstate.repeat[i]);
-
 					const typename ss_type::bottom_state backup_bottom(sstate.btstack_size, sstate.capture_stack.size(), sstate.counter_stack.size(), sstate.repeat_stack.size());
 					const BidirectionalIterator orgpos = sstate.ssc.iter;
 
+					if (lostate->quantifier.atleast <= lostate->quantifier.atmost)
+						sstate.bt_stack.push_back(sstate.ssc);
 					sstate.btstack_size = sstate.bt_stack.size();
 
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
-					if (lostate->quantifier.atleast >= 2)
+					if (lostate->quantifier.is_greedy >= 2)
 					{
 						sstate.repeat_stack.push_back(sstate.lblim);
 						sstate.lblim = sstate.srchbegin;
@@ -22559,7 +22568,7 @@ private:
 
 //					if (lostate->reverse)
 					{
-						for (ui_l32 i = 0; i < lostate->quantifier.atleast; ++i)
+						for (ui_l32 i = 0; i < lostate->quantifier.is_greedy; ++i)
 						{
 							if (!sstate.is_at_lookbehindlimit())
 							{
@@ -22571,7 +22580,7 @@ private:
 						}
 					}
 #endif
-					sstate.ssc.state = lostate->next_state2;
+					sstate.ssc.state = lostate->next_state2->next_state1;
 
 					//  sstate.ssc.state is no longer pointing to lookaround_open!
 
@@ -22581,7 +22590,7 @@ private:
 					is_matched =
 #endif
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
-						(lostate->quantifier.atleast == 0 ? run_automaton<icase, false>(sstate) : run_automaton<icase, true>(sstate));
+						(lostate->quantifier.is_greedy == 0 ? run_automaton<icase, false>(sstate) : run_automaton<icase, true>(sstate));
 #else
 						run_automaton<icase, false>(sstate);
 #endif
@@ -22598,7 +22607,7 @@ private:
 #endif
 
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
-					if (lostate->quantifier.atleast >= 2)
+					if (lostate->quantifier.is_greedy >= 2)
 					{
 						sstate.lblim = sstate.repeat_stack[backup_bottom.repeatstack_size];
 						if (is_matched)
@@ -22611,7 +22620,7 @@ private:
 #endif
 					{
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
-						if (lostate->quantifier.atleast < 3)
+						if (lostate->quantifier.is_greedy < 3)
 #endif
 							sstate.ssc.iter = orgpos;
 					}
@@ -22627,31 +22636,24 @@ private:
 					if (is_matched)
 					{
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
-						if (lostate->quantifier.atleast == 3)
+						if (lostate->quantifier.is_greedy == 3)
 							sstate.ssc.state = this->NFA_states[0].next_state2;
 						else
 #endif
 							sstate.ssc.state = lostate->next_state1;
 						continue;
 					}
-				}
 
-//			case st_lookaround_pop:
-				for (ui_l32 i = this->number_of_repeats; i;)
-				{
-					sstate.repeat[--i] = sstate.repeat_stack.back();
-					sstate.repeat_stack.pop_back();
+					if (lostate->quantifier.atleast <= lostate->quantifier.atmost)
+						sstate.bt_stack.pop_back();
+					sstate.ssc.state = lostate->next_state2;
 				}
+				//@fallthrough@
 
-				for (ui_l32 i = this->number_of_counters; i;)
+			case st_lookaround_pop:
+				for (ui_l32 brno = sstate.ssc.state->quantifier.atmost; brno >= sstate.ssc.state->quantifier.atleast; --brno)
 				{
-					sstate.counter[--i] = sstate.counter_stack.back();
-					sstate.counter_stack.pop_back();
-				}
-
-				for (ui_l32 i = this->number_of_brackets; i > 1;)
-				{
-					submatch_type &sm = sstate.bracket[--i];
+					submatch_type &sm = sstate.bracket[brno];
 
 					sm.counter = sstate.counter_stack.back();
 					sm.core = sstate.capture_stack.back();
