@@ -1,9 +1,20 @@
+20240122; version 4.037:
+  * Fixed an optimisation bug that caused /(?:a|ab|abc)$/ to match "ac"
+    since version 4.021.
+  * Other minor improvements and fixes.
+
 20240114; version 4.036:
   * Improvement and bugfix of lookaround (lookahead and lookbehind):
     1. Removed unnecessary stack operations.
-    2. Restored the state that had been removed in version 3.003 so that
-       the value of the first capturing group in /(?:(?=(\w))|b)c$/
+    2. Restored the state type that had been removed in version 3.003 so
+       that the value of the first capturing group in /(?:(?=(\w))|b)c$/
        against "abc" will be undefined, not "b".
+       Condition: 1. A lookaround assertion contains a capturing group,
+       2. After the lookaround assertion is successful, matching with
+       succeeding expressions fails, 3, Tries another subpattern
+       separated by '|' and finds a match with total expressions.
+       -> A subsequence captured by the group in the lookaround remained
+          without being reverted to "undefined".
   * Replaced misc/sample01.cpp with conftest.cpp.
 
 20231229; version 4.035:

@@ -1,4 +1,4 @@
-//  Generated on 2024/01/14.
+//  Generated on 2024/01/21.
 
 struct testdata
 {
@@ -1004,6 +1004,15 @@ testdata tests[] = {
 	STR("a0b0c"),
 	0, 1,
 	STR0("a0b0c")
+},
+	//  branch_optimisation2().
+{
+	0, "OSEC, BO2 01: Wrong shortcut.\n",
+	"M",
+	RE("a|ab|abc"),
+	STR("ac"),
+	0, 0,
+	STR0("")
 },
 	//  Bugfixes.
 {

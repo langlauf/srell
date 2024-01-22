@@ -1,8 +1,18 @@
+20240122; version 4.037:
+  ・Version 4.021以降最適化のバグにより、/(?:a|ab|abc)$/が"ac"にマッチす
+    るようになっていた問題を修正。
+  ・その他、細々とした修正や改良など。
+
 20240114; version 4.036:
   ・Lookaround （lookaheadとlookbehind）の改良とバグ修正：
     1. 不要なスタック処理を削除。
     2. "abc"に対する/(?:(?=(\w))|b)c$/の1番括弧が"b"ではなく未定義になる
        ように、version 3.003で廃止したstateを復活。
+       発生条件：1: Lookaroundが捕獲括弧を含んでいて、2: そのlookaround
+       が成功した後、後続のマッチに失敗し、3: '|'で区切られた別の
+       subpatternを試し、正規表現全体のマッチが成功する。
+       →Lookaround内で捕獲された文字列がundefinedに戻らず残ってしまって
+         いた。
   ・misc/sample01.cppをconftest.cppに置き換え。
 
 20231229; version 4.035:
