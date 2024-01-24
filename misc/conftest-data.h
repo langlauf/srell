@@ -1,4 +1,4 @@
-//  Generated on 2024/01/21.
+//  Generated on 2024/01/24.
 
 struct testdata
 {
@@ -1004,6 +1004,15 @@ testdata tests[] = {
 	STR("a0b0c"),
 	0, 1,
 	STR0("a0b0c")
+},
+	//  branch_optimisation().
+{
+	0, "OSEC, BO1 01: Do not enter repeated group.\n",
+	"",
+	RE("(?:ab)+|cd"),
+	STR("ababcd"),
+	0, 1,
+	STR0("abab")
 },
 	//  branch_optimisation2().
 {

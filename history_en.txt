@@ -1,7 +1,18 @@
+20240124; version 4.038:
+  * Fixed a bug that caused /(?:ab)+|cd/ to match "ababcd".
+    Condition: Both sides of | begin with different characters, and the
+    left side character is contained in (?:)+.
+  * Minor improvements.
+
 20240122; version 4.037:
   * Fixed an optimisation bug that caused /(?:a|ab|abc)$/ to match "ac"
     since version 4.021.
-  * Other minor improvements and fixes.
+    Condition: (?:A|B|C) where A is a prefix of B, and B is a prefix of
+    C.
+    -> A path from the end of A to a suffix of C occured through the
+       wrong optimisation. This path was usually hidden, but could be
+       used when backtracking is performed.
+  * Other various improvements and fixes.
 
 20240114; version 4.036:
   * Improvement and bugfix of lookaround (lookahead and lookbehind):
@@ -16,6 +27,7 @@
        -> A subsequence captured by the group in the lookaround remained
           without being reverted to "undefined".
   * Replaced misc/sample01.cpp with conftest.cpp.
+  * Tagged each kind of epsilon.
 
 20231229; version 4.035:
   * Improved case folding of character classes. (Compilation of \p{Any}

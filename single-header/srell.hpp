@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.037
+**  SRELL (std::regex-like library) version 4.038
 **
 **  Copyright (c) 2012-2024, Nozomu Katoo. All rights reserved.
 **
@@ -19553,29 +19553,21 @@ private:
 				--offset;
 		}
 
+		state_array newpiece(piece.size());
+
 		for (state_size_type indx = 0; indx < piece.size(); ++indx)
 		{
 			state_type &st = piece[indx];
 
 			if (st.next1 != 0)
-			{
-				const ui_l32 newn1abs = newpos[indx + st.next1];
-				st.next1 = static_cast<std::ptrdiff_t>(newn1abs) - newpos[indx];
-			}
+				st.next1 = static_cast<std::ptrdiff_t>(newpos[indx + st.next1]) - newpos[indx];
 
 			if (st.next2 != 0)
-			{
-				const ui_l32 newn2abs = newpos[indx + st.next2];
-				st.next2 = static_cast<std::ptrdiff_t>(newn2abs) - newpos[indx];
-			}
+				st.next2 = static_cast<std::ptrdiff_t>(newpos[indx + st.next2]) - newpos[indx];
+
+			newpiece[newpos[indx]] = piece[indx];
 		}
-
-		state_array newpiece(piece.size());
-
-		for (state_size_type indx = 0; indx < piece.size(); newpiece[newpos[indx]] = piece[indx], ++indx);
-
 		newpiece.swap(piece);
-
 	}
 
 #endif	//  !defined(SRELLDBG_NO_STATEHOOK)
@@ -19594,29 +19586,31 @@ private:
 
 #if !defined(SRELLDBG_NO_BRANCH_OPT) || !defined(SRELLDBG_NO_BRANCH_OPT2)
 
-	state_size_type gather_if_char_or_charclass(range_pairs &charclass, state_size_type pos, const bool strictly) const
+	state_size_type gather_if_char_or_charclass(range_pairs &charclass, state_size_type pos) const
 	{
 		for (;;)
 		{
-			const state_type &curstate = this->NFA_states[pos];
+			const state_type &cst = this->NFA_states[pos];
 
-			if (curstate.type == st_character && curstate.next2 == 0)
+			if (cst.next2 != 0)
+				break;
+
+			if (cst.type == st_character)
 			{
-				charclass.set_solerange(range_pair_helper(curstate.char_num));
+				charclass.set_solerange(range_pair_helper(cst.char_num));
 				return pos;
 			}
-			else if (curstate.type == st_character_class && curstate.next2 == 0)
+			else if (cst.type == st_character_class)
 			{
-				charclass = this->character_class[curstate.char_num];
+				charclass = this->character_class[cst.char_num];
 				return pos;
 			}
-			else if (curstate.type == st_epsilon && curstate.next2 == 0 && !strictly)
+			else if (cst.type == st_epsilon && cst.char_num != epsilon_type::et_jmpinlp)
 			{
+				pos += cst.next1;
 			}
 			else
 				break;
-
-			pos += curstate.next1;
 		}
 		return 0;
 	}
@@ -19633,7 +19627,7 @@ private:
 
 			if (state.is_branch())
 			{
-				const state_size_type nextcharpos = gather_if_char_or_charclass(nextcharclass1, pos + state.next1, false);
+				const state_size_type nextcharpos = gather_if_char_or_charclass(nextcharclass1, pos + state.next1);
 
 				if (nextcharpos)
 				{
@@ -19726,7 +19720,7 @@ private:
 				const state_size_type next1pos = pos + curstate.next1;
 				state_size_type precharchainpos = pos;
 
-				if (gather_if_char_or_charclass(basealt1stch, next1pos, true) != 0)
+				if (gather_if_char_or_charclass(basealt1stch, next1pos) != 0)
 				{
 					state_type &next1ref = this->NFA_states[next1pos];
 					state_size_type next2pos = precharchainpos + curstate.next2;
@@ -19748,7 +19742,7 @@ private:
 							next2next1pos += nstate2.next1;
 						}
 
-						if (gather_if_char_or_charclass(nextalt1stch, next2next1pos, true) != 0)
+						if (gather_if_char_or_charclass(nextalt1stch, next2next1pos) != 0)
 						{
 							const int relation = basealt1stch.relationship(nextalt1stch);
 
