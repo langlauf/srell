@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.039
+**  SRELL (std::regex-like library) version 4.040
 **
 **  Copyright (c) 2012-2024, Nozomu Katoo. All rights reserved.
 **
@@ -17688,6 +17688,7 @@ private:
 		qstate.reset(st_epsilon, firststate.is_character_or_class()
 			? epsilon_type::et_ccastrsk
 			: epsilon_type::et_dfastrsk);
+		qstate.quantifier = quantifier;
 
 		if (quantifier.atmost == 1)
 		{
