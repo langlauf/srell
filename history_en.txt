@@ -1,3 +1,9 @@
+20240519; version 4.041:
+  * Completed the temporary fix in 4.040.
+  * Removed unused functions.
+  * Fixed a potential issue on systems where memory of more than 64GB
+    can be allocated.
+
 20240131; version 4.040:
   * Restored one more line for ?? (non-greedy {0,1}) not to cause an
     optimisation bug.

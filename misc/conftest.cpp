@@ -474,12 +474,12 @@ bool conf_test(
 	const unsigned int max)
 {
 	typedef RegexType regex_type;
-	typedef CharT char_type;
+	typedef CharT char_type2;
 	typedef UtfTag utf_tag;
-	typedef std::basic_string<char_type> string_type;
+	typedef std::basic_string<char_type2> string_type;
 
-	string_type str(to_utf<char_type>(str1, utf_tag()));
-	string_type exp(to_utf<char_type>(exp1, utf_tag()));
+	string_type str(to_utf<char_type2>(str1, utf_tag()));
+	string_type exp(to_utf<char_type2>(exp1, utf_tag()));
 	std::vector<string_type> expected;
 	srell::regex_constants::syntax_option_type so = srell::regex_constants::ECMAScript;
 	srell::regex_constants::match_flag_type mf = srell::regex_constants::match_default;
@@ -494,7 +494,7 @@ bool conf_test(
 
 	for (unsigned int i = 0; i < num; ++i)
 	{
-		const string_type s(to_utf<char_type>(expected1, utf_tag()));
+		const string_type s(to_utf<char_type2>(expected1, utf_tag()));
 
 		expected.push_back(s);
 		++expected1;
