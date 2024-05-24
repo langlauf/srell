@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.041
+**  SRELL (std::regex-like library) version 4.042
 **
 **  Copyright (c) 2012-2024, Nozomu Katoo. All rights reserved.
 **
@@ -47,6 +47,11 @@
 #include <iterator>
 #include <memory>
 #include <algorithm>
+
+#if !defined(SRELL_NO_UNISTACK) && (defined(__cplusplus) && (__cplusplus >= 201103L)) || (defined(_MSC_VER) && (_MSC_VER >= 1900))
+#include <type_traits>
+#define SRELL_HAS_TYPE_TRAITS
+#endif
 
 #ifdef __cpp_unicode_characters
   #ifndef SRELL_CPP11_CHAR1632_ENABLED
@@ -1523,6 +1528,48 @@ protected:
 template <typename ElemT>
 const typename simple_array<ElemT>::size_type simple_array<ElemT>::npos;
 //  simple_array
+
+struct simple_stack : protected simple_array<char>
+{
+	using simple_array<char>::size_type;
+	using simple_array<char>::clear;
+	using simple_array<char>::size;
+	using simple_array<char>::resize;
+
+	template <typename T>
+	void push_back_t(const T &n)
+	{
+		const size_type oldsize = size_;
+
+		size_ += (sizeof (T) + sizeof (void *) - 1) / sizeof (void *) * sizeof (void *);
+		if (size_ > capacity_)
+			reserve(size_);
+
+		*reinterpret_cast<T *>(buffer_ + oldsize) = n;
+	}
+
+	template <typename T>
+	T pop_back_t()
+	{
+		size_ -= (sizeof (T) + sizeof (void *) - 1) / sizeof (void *) * sizeof (void *);
+		return *reinterpret_cast<const T *>(buffer_ + size_);
+	}
+
+	size_type capacity() const
+	{
+		return capacity_;
+	}
+
+#if 0
+
+	template <typename Type>
+	const Type &back_t() const
+	{
+		return *reinterpret_cast<const Type *>(buffer_ + size_ - sizeof (Type));
+	}
+#endif
+};
+//  simple_stack
 
 	}	//  namespace re_detail
 
@@ -3470,9 +3517,6 @@ struct re_compiler_state : public re_flags
 	namespace re_detail
 	{
 
-//template <typename charT>
-struct re_state;
-
 template </* typename charT, */typename BidirectionalIterator>
 struct re_search_state_core
 {
@@ -3491,7 +3535,11 @@ template <typename BidirectionalIterator>
 struct re_submatch_type
 {
 	re_submatch_core<BidirectionalIterator> core;
-	ui_l32 counter;
+	union
+	{
+		ui_l32 counter;
+		void *padding_;
+	};
 
 	void init(const BidirectionalIterator b)
 	{
@@ -3500,7 +3548,11 @@ struct re_submatch_type
 	}
 };
 
+#if defined(SRELL_HAS_TYPE_TRAITS)
+template <typename BidirectionalIterator, const bool>
+#else
 template </*typename charT, */typename BidirectionalIterator>
+#endif
 struct re_search_state_types
 {
 	typedef re_submatch_core<BidirectionalIterator> submatch_core;
@@ -3516,33 +3568,210 @@ struct re_search_state_types
 	typedef std::vector<submatch_core> capture_array;
 	typedef simple_array<counter_type> counter_array;
 	typedef std::vector<position_type> repeat_array;
+
+	typedef typename backtracking_array::size_type btstack_size_type;
+
+private:
+
+	backtracking_array bt_stack;
+	capture_array capture_stack;
+	counter_array counter_stack;
+	repeat_array repeat_stack;
+
+public:
+
+	void clear_stacks()
+	{
+		bt_stack.clear();
+		capture_stack.clear();
+		repeat_stack.clear();
+		counter_stack.clear();
+	}
+
+	btstack_size_type bt_size() const
+	{
+		return bt_stack.size();
+	}
+	void bt_resize(const btstack_size_type s)
+	{
+		bt_stack.resize(s);
+	}
+
+	void push_bt(const search_state_core &ssc)
+	{
+		bt_stack.push_back(ssc);
+	}
+	void push_sm(const submatch_core &smc)
+	{
+		capture_stack.push_back(smc);
+	}
+	void push_c(const counter_type c)
+	{
+		counter_stack.push_back(c);
+	}
+	void push_rp(const position_type p)
+	{
+		repeat_stack.push_back(p);
+	}
+
+	void pop_bt(search_state_core &ssc)
+	{
+		ssc = bt_stack.back();
+		bt_stack.pop_back();
+	}
+	void pop_sm(submatch_core &smc)
+	{
+		smc = capture_stack.back();
+		capture_stack.pop_back();
+	}
+	void pop_c(counter_type &c)
+	{
+		c = counter_stack.back();
+		counter_stack.pop_back();
+	}
+	void pop_rp(position_type &p)
+	{
+		p = repeat_stack.back();
+		repeat_stack.pop_back();
+	}
+
+public:
+
+	struct bottom_state
+	{
+		btstack_size_type btstack_size;
+		typename capture_array::size_type capturestack_size;
+		typename counter_array::size_type counterstack_size;
+		typename repeat_array::size_type repeatstack_size;
+
+		bottom_state(const btstack_size_type bt, const re_search_state_types &ss)
+			: btstack_size(bt)
+			, capturestack_size(ss.capture_stack.size())
+			, counterstack_size(ss.counter_stack.size())
+			, repeatstack_size(ss.repeat_stack.size())
+		{
+		}
+		void restore(btstack_size_type &bt, re_search_state_types &ss) const
+		{
+			bt = btstack_size;
+			ss.capture_stack.resize(capturestack_size);
+			ss.counter_stack.resize(counterstack_size);
+			ss.repeat_stack.resize(repeatstack_size);
+		}
+	};
 };
 
+#if !defined(SRELL_NO_UNISTACK)
+#if defined(SRELL_HAS_TYPE_TRAITS)
+template <typename BidirectionalIterator>
+struct re_search_state_types<BidirectionalIterator, true>
+{
+#else
 template </*typename charT1, */typename charT2>
 struct re_search_state_types</*charT1, */const charT2 *>
 {
-	typedef re_submatch_core<const charT2 *> submatch_core;
-	typedef re_submatch_type<const charT2 *> submatch_type;
+	typedef const charT2 * BidirectionalIterator;
+#endif
+	typedef re_submatch_core<BidirectionalIterator> submatch_core;
+	typedef re_submatch_type<BidirectionalIterator> submatch_type;
 	typedef ui_l32 counter_type;
-	typedef const charT2 *position_type;
+	typedef BidirectionalIterator position_type;
 
 	typedef simple_array<submatch_type> submatch_array;
 
-	typedef re_search_state_core</*charT1, */const charT2 *> search_state_core;
+	typedef re_search_state_core</*charT, */BidirectionalIterator> search_state_core;
 
-	typedef simple_array<search_state_core> backtracking_array;
-	typedef simple_array<submatch_core> capture_array;
+	typedef simple_stack backtracking_array;
 	typedef simple_array<counter_type> counter_array;
 	typedef simple_array<position_type> repeat_array;
+
+	typedef typename backtracking_array::size_type btstack_size_type;
+
+private:
+
+	backtracking_array bt_stack;
+
+public:
+
+	void clear_stacks()
+	{
+		bt_stack.clear();
+	}
+	void bt_resize(const btstack_size_type s)
+	{
+		bt_stack.resize(s);
+	}
+
+	btstack_size_type bt_size() const
+	{
+		return bt_stack.size();
+	}
+
+	void push_bt(const search_state_core &ssc)
+	{
+		bt_stack.push_back_t<search_state_core>(ssc);
+	}
+	void push_sm(const submatch_core &smc)
+	{
+		bt_stack.push_back_t<submatch_core>(smc);
+	}
+	void push_c(const counter_type c)
+	{
+		bt_stack.push_back_t<counter_type>(c);
+	}
+	void push_rp(const position_type p)
+	{
+		bt_stack.push_back_t<position_type>(p);
+	}
+
+	void pop_bt(search_state_core &ssc)
+	{
+		ssc = bt_stack.pop_back_t<search_state_core>();
+	}
+	void pop_sm(submatch_core &smc)
+	{
+		smc = bt_stack.pop_back_t<submatch_core>();
+	}
+	void pop_c(counter_type &c)
+	{
+		c = bt_stack.pop_back_t<counter_type>();
+	}
+	void pop_rp(position_type &p)
+	{
+		p = bt_stack.pop_back_t<position_type>();
+	}
+
+public:
+
+	struct bottom_state
+	{
+		btstack_size_type btstack_size;
+
+		bottom_state(const btstack_size_type bt, const re_search_state_types &)
+			: btstack_size(bt)
+		{
+		}
+		void restore(btstack_size_type &bt, re_search_state_types &) const
+		{
+			bt = btstack_size;
+		}
+	};
 };
+#endif	//  !defined(SRELL_NO_UNISTACK)
 //  re_search_state_types
 
 template </*typename charT, */typename BidirectionalIterator>
+#if defined(SRELL_HAS_TYPE_TRAITS)
+class re_search_state : public re_search_state_types<BidirectionalIterator, std::is_trivially_copyable<BidirectionalIterator>::value>
+{
+private:
+	typedef re_search_state_types<BidirectionalIterator, std::is_trivially_copyable<BidirectionalIterator>::value> base_type;
+#else
 class re_search_state : public re_search_state_types</*charT, */BidirectionalIterator>
 {
 private:
-
 	typedef re_search_state_types</*charT, */BidirectionalIterator> base_type;
+#endif
 
 public:
 
@@ -3556,52 +3785,16 @@ public:
 	typedef typename base_type::search_state_core search_state_core;
 
 	typedef typename base_type::backtracking_array backtracking_array;
-	typedef typename base_type::capture_array capture_array;
 	typedef typename base_type::counter_array counter_array;
 	typedef typename base_type::repeat_array repeat_array;
 
 	typedef typename backtracking_array::size_type btstack_size_type;
 
-public:
-
-	struct bottom_state
-	{
-		btstack_size_type btstack_size;
-		typename capture_array::size_type capturestack_size;
-		typename counter_array::size_type counterstack_size;
-		typename repeat_array::size_type repeatstack_size;
-
-		bottom_state(
-			const btstack_size_type bt,
-			const typename capture_array::size_type h,
-			const typename counter_array::size_type c,
-			const typename repeat_array::size_type r)
-			: btstack_size(bt)
-			, capturestack_size(h)
-			, counterstack_size(c)
-			, repeatstack_size(r)
-		{
-		}
-	};
+	typedef typename base_type::bottom_state bottom_state;
 
 public:
 
 	search_state_core ssc;
-
-#if !defined(SRELL_NO_LIMIT_COUNTER)
-	std::size_t failure_counter;
-#endif
-
-	BidirectionalIterator lblim;
-	BidirectionalIterator srchend;
-
-	BidirectionalIterator nextpos;
-
-	backtracking_array bt_stack;
-
-	capture_array capture_stack;
-	counter_array counter_stack;
-	repeat_array repeat_stack;
 
 	submatch_array bracket;
 	counter_array counter;
@@ -3609,12 +3802,18 @@ public:
 
 	btstack_size_type btstack_size;
 
-	BidirectionalIterator srchbegin;
+#if !defined(SRELL_NO_LIMIT_COUNTER)
+	std::size_t failure_counter;
+#endif
 
 	BidirectionalIterator reallblim;
+	BidirectionalIterator srchbegin;
+	BidirectionalIterator lblim;
+	BidirectionalIterator nextpos;
+	BidirectionalIterator srchend;
 
-	regex_constants::match_flag_type flags;
 	const re_state/* <charT> */ *entry_state;
+	regex_constants::match_flag_type flags;
 
 public:
 
@@ -3671,82 +3870,6 @@ public:
 #endif
 	}
 
-	bool is_at_lookbehindlimit() const
-	{
-		return ssc.iter == this->lblim;
-	}
-
-	bool is_at_srchend() const
-	{
-		return ssc.iter == this->srchend;
-	}
-
-	bool is_null() const
-	{
-		return ssc.iter == bracket[0].core.open_at;
-	}
-
-	bool match_not_bol_flag() const
-	{
-		if (this->flags & regex_constants::match_not_bol)
-			return true;
-		return false;
-	}
-
-	bool match_not_eol_flag() const
-	{
-		if (this->flags & regex_constants::match_not_eol)
-			return true;
-		return false;
-	}
-
-	bool match_not_bow_flag() const
-	{
-		if (this->flags & regex_constants::match_not_bow)
-			return true;
-		return false;
-	}
-
-	bool match_not_eow_flag() const
-	{
-		if (this->flags & regex_constants::match_not_eow)
-			return true;
-		return false;
-	}
-
-	bool match_prev_avail_flag() const
-	{
-		if (this->flags & regex_constants::match_prev_avail)
-			return true;
-		return false;
-	}
-
-	bool match_not_null_flag() const
-	{
-		if (this->flags & regex_constants::match_not_null)
-			return true;
-		return false;
-	}
-
-	bool match_continuous_flag() const
-	{
-		if (this->flags & regex_constants::match_continuous)
-			return true;
-		return false;
-	}
-
-	bool match_match_flag() const
-	{
-		if (this->flags & regex_constants::match_match_)
-			return true;
-		return false;
-	}
-
-	bool is_prev_avail() const
-	{
-		return reallblim != lblim || (flags & regex_constants::match_prev_avail) != 0;
-	}
-
 	bool set_bracket0(const BidirectionalIterator begin, const BidirectionalIterator end)
 	{
 		ssc.iter = begin;
@@ -3757,27 +3880,7 @@ public:
 	void clear_stacks()
 	{
 		btstack_size = 0;
-		bt_stack.clear();
-		capture_stack.clear();
-		repeat_stack.clear();
-		counter_stack.clear();
-	}
-
-	btstack_size_type size() const	//  For debug.
-	{
-		return bt_stack.size();
-	}
-
-	bool is_empty() const	//  For debug.
-	{
-		if (btstack_size == 0
-			&& bt_stack.size() == 0
-			&& capture_stack.size() == 0
-			&& repeat_stack.size() == 0
-			&& counter_stack.size() == 0)
-			return true;
-
-		return false;
+		base_type::clear_stacks();
 	}
 };
 //  re_search_state
@@ -5681,6 +5784,20 @@ private:
 		}
 		else
 		{
+#if !defined(SRELLDBG_NO_ASTERISK_OPT)
+			if (qstate.char_num == epsilon_type::et_ccastrsk && quantifier.is_infinity())
+			{
+				if (quantifier.atleast <= 6)
+				{
+					for (ui_l32 i = 0; i < quantifier.atleast; ++i)
+						piece_with_quantifier += piece;
+					qstate.quantifier.atleast = 0;
+					goto APPEND_ATOM;
+				}
+				qstate.quantifier.atmost = qstate.quantifier.atleast;
+			}
+#endif	//  !defined(SRELLDBG_NO_ASTERISK_OPT)
+
 			USE_COUNTER:
 
 			qstate.char_num = this->number_of_counters++;
@@ -5712,6 +5829,8 @@ private:
 			//  4.piece = { 4a.increment_counter(4c|4b), 4b.decrement_counter(0|0), 4c.OriginalPiece }.
 		}
 
+		APPEND_ATOM:
+
 		const std::ptrdiff_t piece_size = static_cast<std::ptrdiff_t>(piece.size());
 		state_type &laststate = piece[piece_size - 1];
 
@@ -5727,6 +5846,19 @@ private:
 		}
 		piece_with_quantifier.push_back(qstate);
 		piece_with_quantifier += piece;
+
+#if !defined(SRELLDBG_NO_ASTERISK_OPT)
+
+		if (qstate.quantifier.atmost != quantifier.atmost)
+		{
+			qstate.type = st_epsilon;
+			qstate.char_num = epsilon_type::et_ccastrsk;
+			qstate.quantifier.atleast = 0;
+			qstate.quantifier.atmost = quantifier.atmost;
+			piece.erase(0, piece_size - 1);
+			goto APPEND_ATOM;
+		}
+#endif	//  !defined(SRELLDBG_NO_ASTERISK_OPT)
 	}
 
 	//  '['.
@@ -9625,7 +9757,7 @@ public:
 			sstate.init(begin, end, lookbehind_limit, flags);
 
 #if !defined(SRELLDBG_NO_BMH)
-			if (this->bmdata && !sstate.match_continuous_flag())
+			if (this->bmdata && !(sstate.flags & regex_constants::match_continuous))
 			{
 #if !defined(SRELL_NO_ICASE)
 				if (!this->is_ricase() ? this->bmdata->do_casesensitivesearch(sstate, typename std::iterator_traits<BidirectionalIterator>::iterator_category()) : this->bmdata->do_icasesearch(sstate, typename std::iterator_traits<BidirectionalIterator>::iterator_category()))
@@ -9640,7 +9772,7 @@ public:
 
 			sstate.init_for_automaton(this->number_of_brackets, this->number_of_counters, this->number_of_repeats);
 
-			if (sstate.match_continuous_flag())
+			if (sstate.flags & regex_constants::match_continuous)
 			{
 				sstate.entry_state = this->NFA_states[0].next_state2;
 
@@ -9873,8 +10005,8 @@ private:
 		typedef typename re_object_core<charT, traits>::state_type state_type;
 		typedef re_search_state</*charT, */BidirectionalIterator> ss_type;
 //		typedef typename ss_type::search_state_core ssc_type;
-		typedef typename ss_type::submatch_type submatch_type;
 		typedef typename ss_type::submatchcore_type submatchcore_type;
+		typedef typename ss_type::submatch_type submatch_type;
 		typedef typename ss_type::counter_type counter_type;
 		typedef typename ss_type::position_type position_type;
 		ui_l32 is_matched;
@@ -9895,10 +10027,9 @@ private:
 			if (--sstate.failure_counter)
 			{
 #endif
-				if (sstate.bt_stack.size() > sstate.btstack_size)
+				if (sstate.bt_size() > sstate.btstack_size)
 				{
-					sstate.ssc = sstate.bt_stack.back();
-					sstate.bt_stack.pop_back();
+					sstate.pop_bt(sstate.ssc);
 
 					sstate.ssc.state = sstate.ssc.state->next_state2;
 				}
@@ -9934,7 +10065,7 @@ private:
 #pragma warning(pop)
 #endif
 				{
-					if (!sstate.is_at_srchend())
+					if (!(sstate.ssc.iter == sstate.srchend))
 					{
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
 						const BidirectionalIterator prevpos = sstate.ssc.iter;
@@ -9968,7 +10099,7 @@ private:
 				}
 				else	//  reverse == true.
 				{
-					if (!sstate.is_at_lookbehindlimit())
+					if (!(sstate.ssc.iter == sstate.lblim))
 					{
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
 						const BidirectionalIterator prevpos = sstate.ssc.iter;
@@ -10013,7 +10144,7 @@ private:
 #pragma warning(pop)
 #endif
 				{
-					if (!sstate.is_at_srchend())
+					if (!(sstate.ssc.iter == sstate.srchend))
 					{
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
 						const BidirectionalIterator prevpos = sstate.ssc.iter;
@@ -10051,7 +10182,7 @@ private:
 				}
 				else	//  reverse == true.
 				{
-					if (!sstate.is_at_lookbehindlimit())
+					if (!(sstate.ssc.iter == sstate.lblim))
 					{
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
 						const BidirectionalIterator prevpos = sstate.ssc.iter;
@@ -10095,7 +10226,7 @@ private:
 				if (sstate.ssc.state->next_state2)
 #endif
 				{
-					sstate.bt_stack.push_back(sstate.ssc);	//	sstate.push();
+					sstate.push_bt(sstate.ssc);
 				}
 
 				sstate.ssc.state = sstate.ssc.state->next_state1;
@@ -10118,7 +10249,7 @@ private:
 					{
 						if (counter < sstate.ssc.state->quantifier.atmost || sstate.ssc.state->quantifier.is_infinity())
 						{
-							sstate.bt_stack.push_back(sstate.ssc);
+							sstate.push_bt(sstate.ssc);
 							sstate.ssc.state = sstate.ssc.state->next_state1;
 						}
 						else
@@ -10140,7 +10271,7 @@ private:
 					{
 						++counter;
 						if (sstate.ssc.state->next_state2)
-							sstate.bt_stack.push_back(sstate.ssc);
+							sstate.push_bt(sstate.ssc);
 					}
 				}
 				goto MATCHED;
@@ -10153,16 +10284,15 @@ private:
 				{
 					counter_type &c = sstate.counter[sstate.ssc.state->char_num];
 
-					sstate.counter_stack.push_back(c);
-					sstate.bt_stack.push_back(sstate.ssc);
+					sstate.push_c(c);
+					sstate.push_bt(sstate.ssc);
 					c = 0;
 				}
 				sstate.ssc.state = sstate.ssc.state->next_state1;
 				goto ST_CHECK_COUNTER;
 
 			case st_restore_counter:
-				sstate.counter[sstate.ssc.state->char_num] = sstate.counter_stack.back();
-				sstate.counter_stack.pop_back();
+				sstate.pop_c(sstate.counter[sstate.ssc.state->char_num]);
 				goto NOT_MATCHED;
 
 			case st_roundbracket_open:	//  '(':
@@ -10172,8 +10302,8 @@ private:
 					{
 						submatch_type &inner_bracket = sstate.bracket[brno];
 
-						sstate.capture_stack.push_back(inner_bracket.core);
-						sstate.counter_stack.push_back(inner_bracket.counter);
+						sstate.push_sm(inner_bracket.core);
+						sstate.push_c(inner_bracket.counter);
 						inner_bracket.core.open_at = inner_bracket.core.close_at = sstate.srchend;
 						inner_bracket.counter = 0;
 						//  ECMAScript spec (3-5.1) 15.10.2.5, NOTE 3.
@@ -10182,9 +10312,9 @@ private:
 
 					submatch_type &bracket = sstate.bracket[sstate.ssc.state->char_num];
 
-					sstate.capture_stack.push_back(bracket.core);
+					sstate.push_sm(bracket.core);
 
-					sstate.bt_stack.push_back(sstate.ssc);
+					sstate.push_bt(sstate.ssc);
 
 					if (++bracket.counter == 0)
 						goto ST_ROUNDBRACKET_OPEN;
@@ -10198,17 +10328,14 @@ private:
 					submatch_type &bracket = sstate.bracket[sstate.ssc.state->char_num];
 
 					--bracket.counter;
-					bracket.core = sstate.capture_stack.back();
-					sstate.capture_stack.pop_back();
+					sstate.pop_sm(bracket.core);
 
 					for (ui_l32 brno = sstate.ssc.state->quantifier.atmost; brno >= sstate.ssc.state->quantifier.atleast; --brno)
 					{
 						submatch_type &inner_bracket = sstate.bracket[brno];
 
-						inner_bracket.counter = sstate.counter_stack.back();
-						sstate.counter_stack.pop_back();
-						inner_bracket.core = sstate.capture_stack.back();
-						sstate.capture_stack.pop_back();
+						sstate.pop_c(inner_bracket.counter);
+						sstate.pop_sm(inner_bracket.core);
 					}
 				}
 				goto NOT_MATCHED;
@@ -10252,20 +10379,20 @@ private:
 				{
 					position_type &r = sstate.repeat[sstate.ssc.state->char_num];
 
-					sstate.repeat_stack.push_back(r);
+					sstate.push_rp(r);
 					r = sstate.ssc.iter;
 
 					for (ui_l32 brno = sstate.ssc.state->quantifier.atleast; brno <= sstate.ssc.state->quantifier.atmost; ++brno)
 					{
 						submatch_type &inner_bracket = sstate.bracket[brno];
 
-						sstate.capture_stack.push_back(inner_bracket.core);
-						sstate.counter_stack.push_back(inner_bracket.counter);
+						sstate.push_sm(inner_bracket.core);
+						sstate.push_c(inner_bracket.counter);
 						inner_bracket.core.open_at = inner_bracket.core.close_at = sstate.srchend;
 						inner_bracket.counter = 0;
 						//  ECMAScript 2019 (ES10) 21.2.2.5.1, Note 3.
 					}
-					sstate.bt_stack.push_back(sstate.ssc);
+					sstate.push_bt(sstate.ssc);
 				}
 				goto MATCHED;
 
@@ -10274,14 +10401,11 @@ private:
 				{
 					submatch_type &inner_bracket = sstate.bracket[brno];
 
-					inner_bracket.counter = sstate.counter_stack.back();
-					sstate.counter_stack.pop_back();
-					inner_bracket.core = sstate.capture_stack.back();
-					sstate.capture_stack.pop_back();
+					sstate.pop_c(inner_bracket.counter);
+					sstate.pop_sm(inner_bracket.core);
 				}
 
-				sstate.repeat[sstate.ssc.state->char_num] = sstate.repeat_stack.back();
-				sstate.repeat_stack.pop_back();
+				sstate.pop_rp(sstate.repeat[sstate.ssc.state->char_num]);
 				goto NOT_MATCHED;
 
 			case st_check_0_width_repeat:
@@ -10333,7 +10457,7 @@ private:
 						{
 							for (; backrefpos != brc.close_at;)
 							{
-								if (sstate.is_at_srchend() || *sstate.ssc.iter++ != *backrefpos++)
+								if (sstate.ssc.iter == sstate.srchend || *sstate.ssc.iter++ != *backrefpos++)
 									goto NOT_MATCHED;
 							}
 						}
@@ -10341,7 +10465,7 @@ private:
 						{
 							for (; backrefpos != brc.close_at;)
 							{
-								if (!sstate.is_at_srchend())
+								if (!(sstate.ssc.iter == sstate.srchend))
 								{
 									const ui_l32 uchartxt = utf_traits::codepoint_inc(sstate.ssc.iter, sstate.srchend);
 									const ui_l32 ucharref = utf_traits::codepoint_inc(backrefpos, brc.close_at);
@@ -10361,7 +10485,7 @@ private:
 						{
 							for (; backrefpos != brc.open_at;)
 							{
-								if (sstate.is_at_lookbehindlimit() || *--sstate.ssc.iter != *--backrefpos)
+								if (sstate.ssc.iter == sstate.lblim || *--sstate.ssc.iter != *--backrefpos)
 									goto NOT_MATCHED;
 							}
 						}
@@ -10369,7 +10493,7 @@ private:
 						{
 							for (; backrefpos != brc.open_at;)
 							{
-								if (!sstate.is_at_lookbehindlimit())
+								if (!(sstate.ssc.iter == sstate.lblim))
 								{
 									const ui_l32 uchartxt = utf_traits::dec_codepoint(sstate.ssc.iter, sstate.lblim);
 									const ui_l32 ucharref = utf_traits::dec_codepoint(backrefpos, brc.open_at);
@@ -10391,25 +10515,25 @@ private:
 					for (ui_l32 brno = lostate->quantifier.atleast; brno <= lostate->quantifier.atmost; ++brno)
 					{
 						const submatch_type &sm = sstate.bracket[brno];
-						sstate.capture_stack.push_back(sm.core);
-						sstate.counter_stack.push_back(sm.counter);
+						sstate.push_sm(sm.core);
+						sstate.push_c(sm.counter);
 					}
 
-					const typename ss_type::bottom_state backup_bottom(sstate.btstack_size, sstate.capture_stack.size(), sstate.counter_stack.size(), sstate.repeat_stack.size());
+					const typename ss_type::bottom_state backup_bottom(sstate.btstack_size, sstate);
 					const BidirectionalIterator orgpos = sstate.ssc.iter;
 
 					if (lostate->quantifier.atleast <= lostate->quantifier.atmost)
-						sstate.bt_stack.push_back(sstate.ssc);
+						sstate.push_bt(sstate.ssc);
 
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
 					if (lostate->quantifier.is_greedy >= 2)
 					{
-						sstate.repeat_stack.push_back(sstate.lblim);
+						sstate.push_rp(sstate.lblim);
 						sstate.lblim = sstate.srchbegin;
 					}
 #endif
 
-					sstate.btstack_size = sstate.bt_stack.size();
+					sstate.btstack_size = sstate.bt_size();
 
 #if defined(SRELL_FIXEDWIDTHLOOKBEHIND)
 
@@ -10417,7 +10541,7 @@ private:
 					{
 						for (ui_l32 i = 0; i < lostate->quantifier.is_greedy; ++i)
 						{
-							if (!sstate.is_at_lookbehindlimit())
+							if (!(sstate.ssc.iter == sstate.lblim))
 							{
 								utf_traits::dec_codepoint(sstate.ssc.iter, sstate.lblim);
 								continue;
@@ -10452,12 +10576,12 @@ private:
 #if defined(SRELL_FIXEDWIDTHLOOKBEHIND)
 					AFTER_LOOKAROUND:
 #endif
-					sstate.bt_stack.resize(sstate.btstack_size);
+					sstate.bt_resize(sstate.btstack_size);
 
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
 					if (lostate->quantifier.is_greedy >= 2)
 					{
-						sstate.lblim = sstate.repeat_stack[backup_bottom.repeatstack_size];
+						sstate.pop_rp(sstate.lblim);
 						if (is_matched)
 							sstate.bracket[0].core.open_at = sstate.ssc.iter;
 					}
@@ -10473,10 +10597,7 @@ private:
 							sstate.ssc.iter = orgpos;
 					}
 
-					sstate.btstack_size = backup_bottom.btstack_size;
-					sstate.capture_stack.resize(backup_bottom.capturestack_size);
-					sstate.counter_stack.resize(backup_bottom.counterstack_size);
-					sstate.repeat_stack.resize(backup_bottom.repeatstack_size);
+					backup_bottom.restore(sstate.btstack_size, sstate);
 
 					is_matched ^= lostate->flags;	//  is_not.
 
@@ -10492,7 +10613,7 @@ private:
 					}
 
 					if (lostate->quantifier.atleast <= lostate->quantifier.atmost)
-						sstate.bt_stack.pop_back();
+						sstate.pop_bt(sstate.ssc);
 					sstate.ssc.state = lostate->next_state2;
 				}
 				//@fallthrough@
@@ -10502,17 +10623,15 @@ private:
 				{
 					submatch_type &sm = sstate.bracket[brno];
 
-					sm.counter = sstate.counter_stack.back();
-					sstate.counter_stack.pop_back();
-					sm.core = sstate.capture_stack.back();
-					sstate.capture_stack.pop_back();
+					sstate.pop_c(sm.counter);
+					sstate.pop_sm(sm.core);
 				}
 				goto NOT_MATCHED;
 
 			case st_bol:	//  '^':
-				if (sstate.is_at_lookbehindlimit() && !sstate.is_prev_avail())
+				if (sstate.ssc.iter == sstate.lblim && !(sstate.reallblim != sstate.lblim || (sstate.flags & regex_constants::match_prev_avail) != 0))
 				{
-					if (!sstate.match_not_bol_flag())
+					if (!(sstate.flags & regex_constants::match_not_bol))
 						goto MATCHED;
 				}
 					//  !sstate.is_at_lookbehindlimit() || sstate.match_prev_avail_flag()
@@ -10530,9 +10649,9 @@ private:
 				goto NOT_MATCHED;
 
 			case st_eol:	//  '$':
-				if (sstate.is_at_srchend())
+				if (sstate.ssc.iter == sstate.srchend)
 				{
-					if (!sstate.match_not_eol_flag())
+					if (!(sstate.flags & regex_constants::match_not_eol))
 						goto MATCHED;
 				}
 				else if (sstate.ssc.state->flags)	//  multiline.
@@ -10554,9 +10673,9 @@ private:
 
 				//  First, suppose the previous character is not \w but \W.
 
-				if (sstate.is_at_srchend())
+				if (sstate.ssc.iter == sstate.srchend)
 				{
-					if (sstate.match_not_eow_flag())
+					if (sstate.flags & regex_constants::match_not_eow)
 						is_matched = is_matched ? 0u : 1u;
 				}
 				else
@@ -10576,9 +10695,9 @@ private:
 
 				//  Second, if the actual previous character is \w, flip is_matched.
 
-				if (sstate.is_at_lookbehindlimit() && !sstate.is_prev_avail())
+				if (sstate.ssc.iter == sstate.lblim && !(sstate.reallblim != sstate.lblim || (sstate.flags & regex_constants::match_prev_avail) != 0))
 				{
-					if (sstate.match_not_bow_flag())
+					if (sstate.flags & regex_constants::match_not_bow)
 						is_matched = is_matched ? 0u : 1u;
 				}
 				else
@@ -10607,9 +10726,9 @@ private:
 
 				if
 				(
-					(!sstate.match_not_null_flag() || !sstate.is_null())
+					(!(sstate.flags & regex_constants::match_not_null) || !(sstate.ssc.iter == sstate.bracket[0].core.open_at))
 					&&
-					(!sstate.match_match_flag() || sstate.is_at_srchend())
+					(!(sstate.flags & regex_constants::match_match_) || sstate.ssc.iter == sstate.srchend)
 				)
 					return 1;
 
@@ -10619,13 +10738,13 @@ private:
 			case st_move_nextpos:
 #if !defined(SRELLDBG_NO_1STCHRCLS) && !defined(SRELLDBG_NO_BITSET)
 				sstate.nextpos = sstate.ssc.iter;
-				if (!sstate.is_at_srchend())
+				if (!(sstate.ssc.iter == sstate.srchend))
 					++sstate.nextpos;
 #else	//  defined(SRELLDBG_NO_1STCHRCLS) || defined(SRELLDBG_NO_BITSET)
 				if (sstate.ssc.iter != sstate.bracket[0].core.open_at)
 				{
 					sstate.nextpos = sstate.ssc.iter;
-					if (!sstate.is_at_srchend())
+					if (!(sstate.ssc.iter == sstate.srchend))
 						utf_traits::codepoint_inc(sstate.nextpos, sstate.srchend);
 				}
 #endif

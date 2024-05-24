@@ -1,6 +1,6 @@
 
 //  Conformance test program for SRELL.
-//  Version 3.000 (2024/01/14)
+//  Version 3.001 (2024/05/24)
 
 #include <cstdio>
 #include <cstring>
@@ -557,11 +557,11 @@ bool conf_test(
 		for (; mr.size() != 0;)
 		{
 			if (global || matchall)
-				std::fprintf(stdout, "\t#%.2u\n", matchcount / mr.size());
+				std::fprintf(stdout, "\t#%.2u\n", static_cast<unsigned int>(matchcount / mr.size()));
 
 			for (srell::cmatch::size_type i = 0; i < mr.size(); ++i)
 			{
-				std::fprintf(stdout, "\tm[%u] = ", i);
+				std::fprintf(stdout, "\tm[%u] = ", static_cast<unsigned int>(i));
 
 				if (mr[i].matched)
 				{
@@ -596,7 +596,7 @@ bool conf_test(
 					break;
 			}
 
-			matchcount += mr.size();
+			matchcount += static_cast<unsigned int>(mr.size());
 
 			if (global || matchall)
 			{

@@ -1,3 +1,15 @@
+20240524; version 4.042:
+  * Expanded the scope of the optimisation for * and + also to support
+    C{n,} where C is a character or character class and n >= 2.
+  * Introduced the unified stack, which is used when either of the
+    following conditions is met:
+    1) The passed iterator is a pointer, or
+    2) std::is_trivially_copyable is supported by the compiler and for
+       the type I of the passed iterator,
+       std::is_trivially_copyable<I>::value is true.
+    Otherwise separate stacks that have been present from early versions
+    are used.
+
 20240519; version 4.041:
   * Completed the temporary fix in 4.040.
   * Removed unused functions.
