@@ -1,4 +1,4 @@
-//  Generated on 2024/01/31.
+//  Generated on 2024/05/26.
 
 struct testdata
 {
@@ -524,6 +524,59 @@ testdata tests[] = {
 	STR("\\u3042\x80\\u3044\\u3042\\u3044"),
 	0, 1,
 	STR0("\\u3042\\u3044")
+},
+
+	//  Duplicate named capturing group.
+{
+	0, "Duplicate named capture 01.\n",
+	"N",
+	RE("(?<year>\\d{4})[/-](?<month>[A-Za-z]+)[/-](?<day>\\d{1,2})|(?<day>\\d{1,2})[/-](?<month>[A-Za-z]+)[/-](?<year>\\d{4})|(?<month>[A-Za-z]+)[/-](?<day>\\d{1,2})[/-](?<year>\\d{4})"),
+	STR("2024-May-26"),
+	0, 10,
+	STR0("2024-May-26")
+	STR0("2024 <year>")
+	STR0("May <month>")
+	STR0("26 <day>")
+	STR0("(undefined)")
+	STR0("(undefined)")
+	STR0("(undefined)")
+	STR0("(undefined)")
+	STR0("(undefined)")
+	STR0("(undefined)")
+},
+{
+	0, "Duplicate named capture 02.\n",
+	"N",
+	RE("(?<year>\\d{4})[/-](?<month>[A-Za-z]+)[/-](?<day>\\d{1,2})|(?<day>\\d{1,2})[/-](?<month>[A-Za-z]+)[/-](?<year>\\d{4})|(?<month>[A-Za-z]+)[/-](?<day>\\d{1,2})[/-](?<year>\\d{4})"),
+	STR("26-May-2024"),
+	0, 10,
+	STR0("26-May-2024")
+	STR0("(undefined)")
+	STR0("(undefined)")
+	STR0("(undefined)")
+	STR0("26 <day>")
+	STR0("May <month>")
+	STR0("2024 <year>")
+	STR0("(undefined)")
+	STR0("(undefined)")
+	STR0("(undefined)")
+},
+{
+	0, "Duplicate named capture 03.\n",
+	"N",
+	RE("(?<year>\\d{4})[/-](?<month>[A-Za-z]+)[/-](?<day>\\d{1,2})|(?<day>\\d{1,2})[/-](?<month>[A-Za-z]+)[/-](?<year>\\d{4})|(?<month>[A-Za-z]+)[/-](?<day>\\d{1,2})[/-](?<year>\\d{4})"),
+	STR("May-26-2024"),
+	0, 10,
+	STR0("May-26-2024")
+	STR0("(undefined)")
+	STR0("(undefined)")
+	STR0("(undefined)")
+	STR0("(undefined)")
+	STR0("(undefined)")
+	STR0("(undefined)")
+	STR0("May <month>")
+	STR0("26 <day>")
+	STR0("2024 <year>")
 },
 	//  Lookbehind.
 
@@ -2310,7 +2363,6 @@ testdata tests[] = {
 	STR0("f")
 	STR0("c")
 },
-	//	"named-groups 01b: lookbehind.js #2.\n"
 {
 	0, "named-groups 01c: lookbehind.js #2.\n",
 	"",

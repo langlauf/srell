@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.042
+**  SRELL (std::regex-like library) version 4.043
 **
 **  Copyright (c) 2012-2024, Nozomu Katoo. All rights reserved.
 **
@@ -15158,7 +15158,7 @@ class groupname_mapper
 public:
 
 	typedef simple_array<charT> gname_string;
-	typedef typename gname_string::size_type size_type;
+	typedef std::size_t size_type;
 	static const ui_l32 notfound = 0u;
 
 	groupname_mapper()
@@ -15205,32 +15205,35 @@ public:
 		keysize_classno_.clear();
 	}
 
-	ui_l32 operator[](const gname_string &gname) const
+	const ui_l32 *operator[](const gname_string &gname) const
 	{
 		ui_l32 pos = 0;
-		for (std::size_t i = 0; i < static_cast<std::size_t>(keysize_classno_.size()); i += 2)
+		for (std::size_t i = 1; i < static_cast<std::size_t>(keysize_classno_.size());)
 		{
 			const ui_l32 keysize = keysize_classno_[i];
+			const ui_l32 keynum = keysize_classno_[++i];
 
-			if (keysize == static_cast<ui_l32>(gname.size()) && sameseq(pos, gname))
-				return keysize_classno_[++i];
+			if (keysize == static_cast<ui_l32>(gname.size()) && sameseq_(pos, gname))
+				return &keysize_classno_[i];
 
 			pos += keysize;
+			i += keynum + 1;
 		}
-		return notfound;
+		return NULL;
 	}
 
 	gname_string operator[](const ui_l32 indexno) const
 	{
 		ui_l32 pos = 0;
-		for (std::size_t i = 0; i < static_cast<std::size_t>(keysize_classno_.size()); ++i)
+		for (std::size_t i = 1; i < static_cast<std::size_t>(keysize_classno_.size()); ++i)
 		{
 			const ui_l32 keysize = keysize_classno_[i];
-			const ui_l32 classno = keysize_classno_[++i];
 
-			if (classno == indexno)
-				return gname_string(names_, pos, keysize);
-
+			for (ui_l32 keynum = keysize_classno_[++i]; keynum; --keynum)
+			{
+				if (keysize_classno_[++i] == indexno)
+					return gname_string(names_, pos, keysize);
+			}
 			pos += keysize;
 		}
 		return gname_string();
@@ -15238,21 +15241,71 @@ public:
 
 	size_type size() const
 	{
-		return static_cast<size_type>(keysize_classno_.size() >> 1);
+		return keysize_classno_.size() ? keysize_classno_[0] : 0;
 	}
 
-	bool push_back(const gname_string &gname, const ui_l32 class_number)
+	bool push_back(const gname_string &gname, const ui_l32 gno, const simple_array<ui_l32> &dupranges)
 	{
-		const ui_l32 num = operator[](gname);
+		const ui_l32 *list = operator[](gname);
 
-		if (num == notfound)
+		if (list == NULL)
 		{
 			names_.append(gname);
+			if (keysize_classno_.size())
+				++keysize_classno_[0];
+			else
+				keysize_classno_.append(1, 1);
 			keysize_classno_.append(1, static_cast<ui_l32>(gname.size()));
-			keysize_classno_.append(1, class_number);
+			keysize_classno_.append(1, 1);
+			keysize_classno_.append(1, gno);
 			return true;
 		}
-		return false;	//  Already exists.
+
+		const size_type offset = list - keysize_classno_.data();
+		const size_type keynum = list[0];
+
+		for (size_type i = 1; i <= keynum; ++i)
+		{
+			const ui_l32 no = list[i];
+
+			for (typename simple_array<ui_l32>::size_type j = 0;; ++j)
+			{
+				if (j >= dupranges.size())
+					return false;
+
+				if (no < dupranges[j])
+				{
+					if (!(j & 1))
+						return false;
+
+					break;
+				}
+			}
+		}
+
+		const size_type newkeynum = ++keysize_classno_[offset];;
+		keysize_classno_.insert(offset + newkeynum, gno);
+
+		return true;
+	}
+
+	ui_l32 assign_number(const gname_string &gname, const ui_l32 gno)
+	{
+		const ui_l32 *list = operator[](gname);
+
+		if (list == NULL)
+		{
+			names_.append(gname);
+			if (keysize_classno_.size())
+				++keysize_classno_[0];
+			else
+				keysize_classno_.append(1, 1);
+			keysize_classno_.append(1, static_cast<ui_l32>(gname.size()));
+			keysize_classno_.append(1, 1);
+			keysize_classno_.append(1, gno);
+			return gno;
+		}
+		return list[1];
 	}
 
 	void swap(groupname_mapper &right)
@@ -15263,7 +15316,7 @@ public:
 
 private:
 
-	bool sameseq(size_type pos, const gname_string &gname) const
+	bool sameseq_(size_type pos, const gname_string &gname) const
 	{
 		for (size_type i = 0; i < gname.size(); ++i, ++pos)
 			if (pos >= names_.size() || names_[pos] != gname[i])
@@ -15576,6 +15629,7 @@ struct re_compiler_state : public re_flags
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
 	groupname_mapper<charT> unresolved_gnames;
+	simple_array<ui_l32> dupranges;
 #endif
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
@@ -15590,6 +15644,7 @@ struct re_compiler_state : public re_flags
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
 		unresolved_gnames.clear();
+		dupranges.clear();
 #endif
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
@@ -17089,6 +17144,8 @@ private:
 
 	bool make_nfa_states(state_array &piece, re_quantifier &piecesize, const ui_l32 *&curpos, const ui_l32 *const end, cvars_type &cvars)
 	{
+		const ui_l32 gno_at_groupbegin = this->number_of_brackets;
+		bool already_pushed = false;
 		state_size_type prevbranch_end = 0;
 		state_type bstate;
 		state_array branch;
@@ -17115,6 +17172,18 @@ private:
 			{
 				bstate.next2 = static_cast<std::ptrdiff_t>(branch.size()) + 2;
 				branch.insert(0, bstate);
+
+				if (gno_at_groupbegin != this->number_of_brackets)
+				{
+					if (!already_pushed)
+					{
+						cvars.dupranges.push_back(gno_at_groupbegin);
+						cvars.dupranges.push_back(this->number_of_brackets);
+						already_pushed = true;
+					}
+					else
+						cvars.dupranges.back() = this->number_of_brackets;
+				}
 			}
 
 			if (prevbranch_end)
@@ -17268,16 +17337,10 @@ private:
 
 						if (groupname.size() == 0)
 							return this->set_error(regex_constants::error_escape);
-
-						astate.char_num = this->namedcaptures[groupname];
-
-						if (astate.char_num != groupname_mapper<charT>::notfound)
-							astate.flags = 0u;
-						else
 						{
 							astate.flags = sflags::backrefno_unresolved;
-							astate.char_num = static_cast<ui_l32>(cvars.unresolved_gnames.size());
-							cvars.unresolved_gnames.push_back(groupname, astate.char_num);
+							astate.char_num = static_cast<ui_l32>(cvars.unresolved_gnames.size() + 1);
+							astate.char_num = cvars.unresolved_gnames.assign_number(groupname, astate.char_num);
 						}
 						goto BACKREF_POSTPROCESS;
 					}
@@ -17505,7 +17568,7 @@ private:
 					if (groupname.size() == 0)
 						return this->set_error(regex_constants::error_escape);
 
-					if (!this->namedcaptures.push_back(groupname, this->number_of_brackets))
+					if (!this->namedcaptures.push_back(groupname, this->number_of_brackets, cvars.dupranges))
 						return this->set_error(regex_constants::error_backref);
 
 					goto AFTER_EXTRB;
@@ -17673,6 +17736,8 @@ private:
 			piece.push_back(rbstate);
 		}
 
+		const typename simple_array<ui_l32>::size_type dzsize = cvars.dupranges.size();
+
 		if (!make_nfa_states(piece, piecesize, curpos, end, cvars))
 			return false;
 
@@ -17682,6 +17747,7 @@ private:
 
 		++curpos;
 
+		cvars.dupranges.resize(dzsize);
 		cvars.restore_from(originalflags);
 
 		state_type &firststate = piece[0];
@@ -17815,9 +17881,16 @@ private:
 		}
 #endif	//  !defined(SRELLDBG_NO_SIMPLEEQUIV)
 
-		if (firststate.is_noncapturinggroup() && (piecesize.atleast == 0 || firststate.quantifier.is_valid()))
+		if (firststate.type == st_backreference && (firststate.flags & sflags::backrefno_unresolved))
+		{
+			firststate.quantifier = quantifier;
+			qstate.quantifier.set(1, 0);
+			goto ADD_CHECKER;
+		}
+		else if (firststate.is_noncapturinggroup() && (piecesize.atleast == 0 || firststate.quantifier.is_valid()))
 		{
 			qstate.quantifier = firststate.quantifier;
+			ADD_CHECKER:
 			qstate.char_num = this->number_of_repeats++;
 
 			qstate.type = st_repeat_in_pop;
@@ -17835,7 +17908,7 @@ private:
 			qstate.next2 = 1;
 			piece.push_back(qstate);
 
-			if (piecesize.atleast == 0)
+			if (piecesize.atleast == 0 && piece[2].type != st_backreference)
 				goto USE_COUNTER;
 
 			qstate.char_num = epsilon_type::et_dfastrsk;
@@ -18906,6 +18979,7 @@ private:
 
 									bst.next1 = bst.next1 - pst.next1;
 									bst.next2 = bst.next2 ? (bst.next2 - pst.next1) : 0;
+									bst.flags |= sflags::hooked;
 									goto SKIP_APPEND;
 								}
 
@@ -19053,63 +19127,108 @@ private:
 
 	bool check_backreferences(cvars_type &cvars)
 	{
-		for (state_size_type backrefpos = 1; backrefpos < this->NFA_states.size(); ++backrefpos)
+		const state_size_type orgsize = this->NFA_states.size();
+		bool hooked = false;
+		simple_array<bool> gno_found;
+		state_array additions;
+
+		gno_found.resize(this->number_of_brackets, false);
+
+		this->NFA_states.push_back(state_type());
+		this->NFA_states.back().reset(st_success);
+
+		for (state_size_type backrefpos = 1; backrefpos < orgsize; ++backrefpos)
 		{
 			state_type &brs = this->NFA_states[backrefpos];
 
-			if (brs.type == st_backreference)
+			if (brs.type == st_roundbracket_close)
+			{
+				gno_found[brs.char_num] = true;
+			}
+			else if (brs.type == st_backreference)
 			{
 				const ui_l32 &backrefno = brs.char_num;
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
 				if (brs.flags & sflags::backrefno_unresolved)
 				{
-					if (backrefno >= cvars.unresolved_gnames.size())
+					if (backrefno > cvars.unresolved_gnames.size())
 						return false;	//  Internal error.
 
-					brs.char_num = this->namedcaptures[cvars.unresolved_gnames[backrefno]];
+					brs.flags &= ~sflags::backrefno_unresolved;
 
-					if (backrefno == groupname_mapper<charT>::notfound)
+					const ui_l32 *list = this->namedcaptures[cvars.unresolved_gnames[backrefno]];
+
+					if (list == NULL || *list < 1)
 						return false;
 
-					brs.flags &= ~sflags::backrefno_unresolved;
-				}
-#endif
+					const ui_l32 num = list[0];
+					state_type newbrs(brs);
 
-				for (state_size_type roundbracket_closepos = 0;; ++roundbracket_closepos)
-				{
-					if (roundbracket_closepos < this->NFA_states.size())
+					for (ui_l32 ino = 1; ino <= num; ++ino)
 					{
-						const state_type &rbcs = this->NFA_states[roundbracket_closepos];
-
-						if (rbcs.type == st_roundbracket_close && rbcs.char_num == backrefno)
+						if (gno_found[list[ino]])
 						{
-							if (roundbracket_closepos > backrefpos)
-							{
-								if (brs.next1 == -1)
-								{
-									state_type &prevstate = this->NFA_states[backrefpos + brs.next1];
-
-									if (prevstate.is_asterisk_or_plus_for_onelen_atom())
-									{
-										prevstate.next1 = 2;
-										prevstate.next2 = 0;
-										prevstate.char_num = epsilon_type::et_fmrbckrf;
-									}
-								}
-
-								brs.type = st_epsilon;
-								brs.next2 = 0;
-								brs.char_num = epsilon_type::et_fmrbckrf;
-							}
-							break;
+							newbrs.char_num = list[ino];
+							additions.push_back(newbrs);
 						}
 					}
-					else
-						return false;
+
+					if (additions.size() == 0)
+						goto REMOVE_BACKREF;
+
+					brs.char_num = additions[0].char_num;
+					additions.erase(0);
+
+					if (additions.size())
+					{
+						const std::ptrdiff_t next1abs = static_cast<std::ptrdiff_t>(backrefpos + brs.next1);
+						const std::ptrdiff_t next2abs = static_cast<std::ptrdiff_t>(backrefpos + brs.next2);
+
+						brs.next1 = static_cast<std::ptrdiff_t>(this->NFA_states.size() - backrefpos);
+						brs.next2 = static_cast<std::ptrdiff_t>(this->NFA_states.size() - backrefpos);
+						brs.flags |= sflags::hooking;
+
+						const std::ptrdiff_t lastabs = static_cast<std::ptrdiff_t>(this->NFA_states.size() + additions.size() - 1);
+						state_type &laststate = additions.back();
+
+						laststate.flags |= sflags::hooked;
+						laststate.next1 = static_cast<std::ptrdiff_t>(next1abs - lastabs);
+						laststate.next2 = static_cast<std::ptrdiff_t>(next2abs - lastabs);
+						hooked = true;
+					}
+					this->NFA_states += additions;
+					additions.clear();
+				}
+				else
+#endif
+				{
+
+					if (!gno_found[backrefno])
+					{
+						REMOVE_BACKREF:
+						if (brs.next1 == -1)
+						{
+							state_type &prevstate = this->NFA_states[backrefpos + brs.next1];
+
+							if (prevstate.is_asterisk_or_plus_for_onelen_atom())
+							{
+								prevstate.next1 = 2;
+								prevstate.next2 = 0;
+								prevstate.char_num = epsilon_type::et_fmrbckrf;
+							}
+						}
+
+						brs.type = st_epsilon;
+						brs.next2 = 0;
+						brs.char_num = epsilon_type::et_fmrbckrf;
+					}
 				}
 			}
 		}
+		if (hooked)
+			reorder_piece(this->NFA_states);
+		this->NFA_states.pop_back();
 		return true;
 	}
 
@@ -19635,8 +19754,16 @@ private:
 				if (st.flags & sflags::hooking)
 				{
 					st.flags ^= sflags::hooking;
-					++offset;
-					newpos[indx + st.next1] = indx + offset;
+					for (ui_l32 i = static_cast<ui_l32>(indx + st.next1); i < piece.size(); ++i)
+					{
+						++offset;
+						newpos[i] = indx + offset;
+						if (piece[i].flags & sflags::hooked)
+						{
+							piece[i].flags ^= sflags::hooked;
+							break;
+						}
+					}
 				}
 			}
 			else
@@ -19855,6 +19982,7 @@ private:
 
 										next1ref.next1 = next2pos - next1pos;
 										next1ref.flags |= sflags::hooking;
+										nstate2.flags |= sflags::hooked;
 										hooked = true;
 									}
 									else
@@ -19880,6 +20008,7 @@ private:
 
 										next1ref.next1 = next2next1pos - next1pos;
 										next1ref.flags |= sflags::hooking;
+										becomes_unused.flags |= sflags::hooked;
 										hooked = true;
 									}
 									else
@@ -21306,7 +21435,7 @@ public:
 	{
 		const re_detail::ui_l32 backrefno = lookup_backref_number(sub.data(), sub.data() + sub.size());
 
-		return backrefno != re_detail::groupname_mapper<char_type>::notfound ? sub_matches_[backrefno] : unmatched_;
+		return backrefno != gnamemap_type::notfound ? sub_matches_[backrefno] : unmatched_;
 	}
 
 	difference_type length(const char_type *sub) const
@@ -21330,7 +21459,7 @@ public:
 	{
 		const re_detail::ui_l32 backrefno = lookup_backref_number(sub, sub + std::char_traits<char_type>::length(sub));
 
-		return backrefno != re_detail::groupname_mapper<char_type>::notfound ? sub_matches_[backrefno] : unmatched_;
+		return backrefno != gnamemap_type::notfound ? sub_matches_[backrefno] : unmatched_;
 	}
 
 #endif	//  !defined(SRELL_NO_NAMEDCAPTURE)
@@ -21428,7 +21557,7 @@ public:
 								{
 									const re_detail::ui_l32 backref_number = lookup_backref_number(name_begin, fmt_first);
 
-									if (backref_number != re_detail::groupname_mapper<char_type>::notfound)
+									if (backref_number != gnamemap_type::notfound)
 									{
 										const value_type &mn = (*this)[backref_number];
 
@@ -21547,6 +21676,9 @@ public:	//  For internal.
 	typedef match_results<BidirectionalIterator> match_results_type;
 	typedef typename match_results_type::size_type match_results_size_type;
 	typedef typename re_detail::re_search_state</*charT, */BidirectionalIterator> search_state_type;
+#if !defined(SRELL_NO_NAMEDCAPTURE)
+	typedef typename re_detail::groupname_mapper<char_type> gnamemap_type;
+#endif
 
 	search_state_type sstate_;
 
@@ -21563,7 +21695,7 @@ public:	//  For internal.
 
 //	template <typename charT>
 #if !defined(SRELL_NO_NAMEDCAPTURE)
-	bool set_match_results_(const re_detail::groupname_mapper<char_type> &gnames)
+	bool set_match_results_(const gnamemap_type &gnames)
 #else
 	bool set_match_results_()
 #endif
@@ -21646,18 +21778,34 @@ public:	//  For internal.
 		return false;
 	}
 
+	typename gnamemap_type::gname_string lookup_gname_(const re_detail::ui_l32 gno) const
+	{
+		return gnames_[gno];
+	}
+
 private:
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
 
 	re_detail::ui_l32 lookup_backref_number(const char_type *begin, const char_type *const end) const
 	{
-		typename re_detail::groupname_mapper<char_type>::gname_string key(end - begin);
+		typename gnamemap_type::gname_string key(end - begin);
 
 		for (std::size_t i = 0; begin != end; ++begin, ++i)
 			key[i] = *begin;
 
-		return gnames_[key];
+		const re_detail::ui_l32 *list = gnames_[key];
+		if (list)
+		{
+			const re_detail::ui_l32 num = list[0];
+			for (re_detail::ui_l32 i = 1; i <= num; ++i)
+			{
+				const re_detail::ui_l32 gno = list[i];
+				if (gno < static_cast<re_detail::ui_l32>(sub_matches_.size()) && sub_matches_[gno].matched)
+					return gno;
+			}
+		}
+		return gnamemap_type::notfound;
 	}
 
 #endif	//  !defined(SRELL_NO_NAMEDCAPTURE)
@@ -21680,7 +21828,7 @@ private:
 	BidirectionalIterator base_;
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
-	re_detail::groupname_mapper<char_type> gnames_;
+	gnamemap_type gnames_;
 #endif
 };
 

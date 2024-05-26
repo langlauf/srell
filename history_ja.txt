@@ -1,3 +1,6 @@
+20240526; version 4.043:
+  ・Duplicate named capturing groupsを実装。
+
 20240524; version 4.042:
   ・*, +用の最適化処理が、C{n,}（Cは文字かクラス、nは2以上）にも適用され
     うるように拡張。

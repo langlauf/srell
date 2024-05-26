@@ -1,3 +1,6 @@
+20240526; version 4.043:
+  * Implemented the duplicate named capturing groups feature.
+
 20240524; version 4.042:
   * Expanded the scope of the optimisation for * and + also to support
     C{n,} where C is a character or character class and n >= 2.

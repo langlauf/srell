@@ -1,6 +1,7 @@
-
+//
 //  Conformance test program for SRELL.
-//  Version 3.001 (2024/05/24)
+//  Version 3.002 (2024/05/26)
+//
 
 #include <cstdio>
 #include <cstring>
@@ -27,10 +28,17 @@ namespace std
 #endif
 
 #ifdef __cpp_char8_t
+#if defined(_MSC_VER)
+typedef char char_type;
+#define RE(x) x
+#define STR(x) x
+#define STR0(x) x "\0"
+#else
 typedef char8_t char_type;
 #define RE(x) u8##x
 #define STR(x) u8##x
 #define STR0(x) u8##x u8"\0"
+#endif
 #pragma message("[Info] char8_t is supported by the compiler.")
 #else
 #define PRE_CPP20
@@ -371,7 +379,8 @@ namespace otherflags
 	static const type global = 1 << 2;
 	static const type matchall = 1 << 3;
 	static const type errortest = 1 << 4;
-	static const type print_states = 1 << 5;
+	static const type namedgroup = 1 << 5;
+	static const type print_states = 1 << 6;
 }
 
 std::string parse_flagstring(
@@ -435,6 +444,10 @@ std::string parse_flagstring(
 			of |= otherflags::errortest;
 			break;
 
+		case 'N':
+			of |= otherflags::namedgroup;
+			break;
+
 		default:
 			std::fprintf(stdout, "[Warning] Unknown flag '%c' found.\n", *flags);
 			break;
@@ -477,6 +490,8 @@ bool conf_test(
 	typedef CharT char_type2;
 	typedef UtfTag utf_tag;
 	typedef std::basic_string<char_type2> string_type;
+	typedef srell::match_results<const CharT *> mr_type;
+//	typedef srell::match_results<const typename string_type::const_iterator> smr_type;
 
 	string_type str(to_utf<char_type2>(str1, utf_tag()));
 	string_type exp(to_utf<char_type2>(exp1, utf_tag()));
@@ -491,6 +506,7 @@ bool conf_test(
 	const bool global = (of & otherflags::global) ? true : false;
 	const bool matchall = (of & otherflags::matchall) ? true : false;
 	const bool errortest = (of & otherflags::errortest) ? true : false;
+	const bool namedgroup = (of & otherflags::namedgroup) ? true : false;
 
 	for (unsigned int i = 0; i < num; ++i)
 	{
@@ -501,8 +517,8 @@ bool conf_test(
 	}
 
 	regex_type re;
-	srell::match_results<const CharT *> mr;
-//	srell::match_results<const typename string_type::const_iterator> smr;
+	mr_type mr;
+//	smr_type smr;
 	bool b = false;
 	unsigned int num_of_failures = 0;
 
@@ -530,6 +546,7 @@ bool conf_test(
 		const CharT *const lblimit = !iterator3 ? begin : str.c_str();
 		string_type matched;
 		string_type msg;
+		string_type gname;
 
 		if (search)
 		{
@@ -563,13 +580,27 @@ bool conf_test(
 			{
 				std::fprintf(stdout, "\tm[%u] = ", static_cast<unsigned int>(i));
 
+				if (namedgroup)
+				{
+					typename mr_type::gnamemap_type::gname_string gntmp0 = mr.lookup_gname_(static_cast<unsigned int>(i));
+
+					gname.clear();
+					if (gntmp0.size())
+					{
+						string_type gntmp1(&gntmp0[0], &gntmp0[gntmp0.size()]);
+
+						if (&mr[i] == &mr[gntmp1])
+							gname = simple_conv<string_type>(" <") + gntmp1 + simple_conv<string_type>(">");
+					}
+				}
+
 				if (mr[i].matched)
 				{
-					matched = mr[i].str();
+					matched = mr[i].str() + gname;
 					msg = simple_conv<string_type>("\"") + matched + simple_conv<string_type>("\"") + simple_conv<string_type>(" (%u-%u)");
 				}
 				else
-					msg = matched = simple_conv<string_type>("(undefined)");
+					msg = matched = simple_conv<string_type>("(undefined)") + gname;
 
 				const std::size_t expno = matchcount + i;
 
