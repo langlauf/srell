@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.043
+**  SRELL (std::regex-like library) version 4.044
 **
 **  Copyright (c) 2012-2024, Nozomu Katoo. All rights reserved.
 **
@@ -409,6 +409,7 @@ private:
 			static const ui_l32 backrefno_unresolved = 1 << 1;
 			static const ui_l32 hooking = 1 << 2;
 			static const ui_l32 hooked = 1 << 3;
+			static const ui_l32 byn2 = 1 << 4;
 		}
 		//  sflags
 
@@ -3185,10 +3186,10 @@ public:
 
 				if (no < dupranges[j])
 				{
-					if (!(j & 1))
-						return false;
+					if (j & 1)
+						break;
 
-					break;
+					return false;
 				}
 			}
 		}
@@ -5054,8 +5055,10 @@ private:
 
 	bool make_nfa_states(state_array &piece, re_quantifier &piecesize, const ui_l32 *&curpos, const ui_l32 *const end, cvars_type &cvars)
 	{
+#if !defined(SRELL_NO_NAMEDCAPTURE)
 		const ui_l32 gno_at_groupbegin = this->number_of_brackets;
 		bool already_pushed = false;
+#endif
 		state_size_type prevbranch_end = 0;
 		state_type bstate;
 		state_array branch;
@@ -5083,6 +5086,7 @@ private:
 				bstate.next2 = static_cast<std::ptrdiff_t>(branch.size()) + 2;
 				branch.insert(0, bstate);
 
+#if !defined(SRELL_NO_NAMEDCAPTURE)
 				if (gno_at_groupbegin != this->number_of_brackets)
 				{
 					if (!already_pushed)
@@ -5094,6 +5098,7 @@ private:
 					else
 						cvars.dupranges.back() = this->number_of_brackets;
 				}
+#endif
 			}
 
 			if (prevbranch_end)
@@ -5646,7 +5651,9 @@ private:
 			piece.push_back(rbstate);
 		}
 
+#if !defined(SRELL_NO_NAMEDCAPTURE)
 		const typename simple_array<ui_l32>::size_type dzsize = cvars.dupranges.size();
+#endif
 
 		if (!make_nfa_states(piece, piecesize, curpos, end, cvars))
 			return false;
@@ -5657,7 +5664,9 @@ private:
 
 		++curpos;
 
+#if !defined(SRELL_NO_NAMEDCAPTURE)
 		cvars.dupranges.resize(dzsize);
+#endif
 		cvars.restore_from(originalflags);
 
 		state_type &firststate = piece[0];
@@ -7038,7 +7047,6 @@ private:
 	bool check_backreferences(cvars_type &cvars)
 	{
 		const state_size_type orgsize = this->NFA_states.size();
-		bool hooked = false;
 		simple_array<bool> gno_found;
 		state_array additions;
 
@@ -7105,10 +7113,9 @@ private:
 						laststate.flags |= sflags::hooked;
 						laststate.next1 = static_cast<std::ptrdiff_t>(next1abs - lastabs);
 						laststate.next2 = static_cast<std::ptrdiff_t>(next2abs - lastabs);
-						hooked = true;
+						this->NFA_states += additions;
+						additions.clear();
 					}
-					this->NFA_states += additions;
-					additions.clear();
 				}
 				else
 #endif
@@ -7136,7 +7143,7 @@ private:
 				}
 			}
 		}
-		if (hooked)
+		if (orgsize != this->NFA_states.size())
 			reorder_piece(this->NFA_states);
 		this->NFA_states.pop_back();
 		return true;
@@ -7446,7 +7453,9 @@ private:
 
 	void asterisk_optimisation()
 	{
-		for (state_size_type pos = 1u; pos < this->NFA_states.size(); ++pos)
+		const state_size_type orgsize = this->NFA_states.size();
+
+		for (state_size_type pos = 1u; pos < orgsize; ++pos)
 		{
 			state_type &curstate = this->NFA_states[pos];
 
@@ -7471,7 +7480,8 @@ private:
 						if (corccstate.next1 < 0)
 							corccstate.next1 = 0;
 
-						corccstate.next2 = nextno - pos;
+						if (corccstate.next2 == 0)
+							corccstate.next2 = nextno - pos;
 					}
 				}
 				continue;
@@ -7479,6 +7489,8 @@ private:
 			default:;
 			}
 		}
+		if (orgsize != this->NFA_states.size())
+			reorder_piece(this->NFA_states);
 	}
 
 	bool is_exclusive_sequence(const re_quantifier &eq, const state_size_type curno, const state_size_type nextno)	//  const
@@ -7528,17 +7540,20 @@ private:
 							curstate2.type = st_character;
 						else
 							curstate2.char_num = this->character_class.register_newclass(kept);
+
+						curstate2.flags |= (sflags::hooking | sflags::byn2);
+						curstate2.next2 = this->NFA_states.size() - curno;
 					}
 					const re_quantifier backupeq(eq);
-
-					insert_at(nextno, 2);
-					state_type &n0 = this->NFA_states[nextno];
-					state_type &n1 = this->NFA_states[nextno + 1];
+					state_array additions;
+					additions.resize(2);
+					state_type &n0 = additions[0];
+					state_type &n1 = additions[1];
 
 					n0.reset(st_epsilon, epsilon_type::et_ccastrsk);
 					n0.quantifier = backupeq;
 //					n0.next2 = 1;
-					n0.next2 = 2;
+					n0.next2 = static_cast<std::ptrdiff_t>(nextno) - this->NFA_states.size();
 					if (!n0.quantifier.is_greedy)
 					{
 						n0.next1 = n0.next2;
@@ -7552,8 +7567,10 @@ private:
 					else
 						n1.char_num = this->character_class.register_newclass(removed);
 
-					n1.next1 = -2;
+					n1.next1 = static_cast<std::ptrdiff_t>(curno) - this->NFA_states.size() - 1;
 //					n1.next2 = 0;
+					n1.flags |= sflags::hooked;
+					this->NFA_states += additions;
 					return true;
 				}
 
@@ -7612,39 +7629,6 @@ private:
 	}
 #endif	//  !defined(SRELLDBG_NO_ASTERISK_OPT)
 
-	void insert_at(const state_size_type pos, const std::ptrdiff_t len)
-	{
-		state_type newstate;
-
-		for (state_size_type cur = 0; cur < pos; ++cur)
-		{
-			state_type &state = this->NFA_states[cur];
-
-			if (state.next1 && (cur + state.next1) >= pos)
-				state.next1 += len;
-
-			if (state.next2 && (cur + state.next2) >= pos)
-				state.next2 += len;
-		}
-
-		for (state_size_type cur = pos; cur < this->NFA_states.size(); ++cur)
-		{
-			state_type &state = this->NFA_states[cur];
-
-			if ((cur + state.next1) < pos)
-				state.next1 -= len;
-
-			if ((cur + state.next2) < pos)
-				state.next2 -= len;
-		}
-
-		newstate.reset(st_epsilon);
-		for (std::ptrdiff_t count = 0; count < len; ++count)
-			this->NFA_states.insert(pos, newstate);
-	}
-
-#if !defined(SRELLDBG_NO_STATEHOOK)
-
 	void reorder_piece(state_array &piece) const
 	{
 		simple_array<ui_l32> newpos;
@@ -7663,8 +7647,9 @@ private:
 
 				if (st.flags & sflags::hooking)
 				{
+					const std::ptrdiff_t next1or2 = (st.flags & sflags::byn2) ? (st.flags ^= sflags::byn2, st.next2) : st.next1;
 					st.flags ^= sflags::hooking;
-					for (ui_l32 i = static_cast<ui_l32>(indx + st.next1); i < piece.size(); ++i)
+					for (ui_l32 i = static_cast<ui_l32>(indx + next1or2); i < piece.size(); ++i)
 					{
 						++offset;
 						newpos[i] = indx + offset;
@@ -7696,8 +7681,6 @@ private:
 		}
 		newpiece.swap(piece);
 	}
-
-#endif	//  !defined(SRELLDBG_NO_STATEHOOK)
 
 	bool check_if_backref_used(state_size_type pos, const ui_l32 number) const
 	{
@@ -9688,10 +9671,14 @@ public:	//  For internal.
 		return false;
 	}
 
+#if !defined(SRELL_NO_NAMEDCAPTURE)
+
 	typename gnamemap_type::gname_string lookup_gname_(const re_detail::ui_l32 gno) const
 	{
 		return gnames_[gno];
 	}
+
+#endif
 
 private:
 
@@ -9705,17 +9692,20 @@ private:
 			key[i] = *begin;
 
 		const re_detail::ui_l32 *list = gnames_[key];
+		re_detail::ui_l32 gno = gnamemap_type::notfound;
+
 		if (list)
 		{
 			const re_detail::ui_l32 num = list[0];
+
 			for (re_detail::ui_l32 i = 1; i <= num; ++i)
 			{
-				const re_detail::ui_l32 gno = list[i];
+				gno = list[i];
 				if (gno < static_cast<re_detail::ui_l32>(sub_matches_.size()) && sub_matches_[gno].matched)
-					return gno;
+					break;
 			}
 		}
-		return gnamemap_type::notfound;
+		return gno;
 	}
 
 #endif	//  !defined(SRELL_NO_NAMEDCAPTURE)

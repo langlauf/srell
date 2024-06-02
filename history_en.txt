@@ -1,3 +1,8 @@
+20240602; version 4.044:
+  * Added several missing #if ~ #endif directives for
+    SRELL_NO_NAMEDCAPTURE.
+  * Retired an older state insertion function in favour of a newer one.
+
 20240526; version 4.043:
   * Implemented the duplicate named capturing groups feature.
 
@@ -6,7 +11,7 @@
     C{n,} where C is a character or character class and n >= 2.
   * Introduced the unified stack, which is used when either of the
     following conditions is met:
-    1) The passed iterator is a pointer, or
+    1) The iterator passed to an algorithm function is a pointer, or
     2) std::is_trivially_copyable is supported by the compiler and for
        the type I of the passed iterator,
        std::is_trivially_copyable<I>::value is true.

@@ -1,11 +1,16 @@
+20240602; version 4.044:
+  ・SRELL_NO_NAMEDCAPTURE用の#if～#endifが抜けていたので追加。
+  ・古いほうのstate挿入函数を引退させ、新しいほうに一本化。
+
 20240526; version 4.043:
-  ・Duplicate named capturing groupsを実装。
+  ・Duplicate named capturing groups（|で区切られた位置なら既出のグルー
+    プ名を重複して使える機能）を実装。
 
 20240524; version 4.042:
   ・*, +用の最適化処理が、C{n,}（Cは文字かクラス、nは2以上）にも適用され
     うるように拡張。
   ・次の条件を満たす場合に用いられる統合スタックを導入。
-    1) 渡されたiteratorがポインタであること、または、
+    1) アルゴリズム函数に渡されたiteratorがポインタであること、または、
     2) コンパイラがstd::is_trivially_copyableに対応していて、かつ
        渡されたiteratorの型Iに対する
        std::is_trivially_copyable<I>::valueがtrueであること。
