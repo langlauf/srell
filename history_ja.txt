@@ -1,3 +1,10 @@
+20240608; version 4.045:
+  ・Modifiersを実装。ただし提案がECMAScript仕様書に織り込まれるまでは、
+    #define SRELL_ENABLE_MODIFIERS定義時のみ利用可能。
+  ・4.043でduplicate named capturing groups対応のための変更を加えた際、
+    後方参照の番号が括弧の最大番号を超えていないかのチェックが抜けてしま
+    っていたので追加。
+
 20240602; version 4.044:
   ・SRELL_NO_NAMEDCAPTURE用の#if～#endifが抜けていたので追加。
   ・古いほうのstate挿入函数を引退させ、新しいほうに一本化。

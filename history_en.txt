@@ -1,3 +1,12 @@
+20240608; version 4.045:
+  * Implemented the regex modifiers feature. But until the proposal is
+    merged into the draft specification of ECMAScript, this feature is
+    disabled and available only when SRELL_ENABLE_MODIFIERS is defined.
+  * Added a missing check to see whether a backreference number exceeds
+    the max number of capturing groups or not, which should have been
+    added with the modification for the duplicate named capturing groups
+    support in version 4.043.
+
 20240602; version 4.044:
   * Added several missing #if ~ #endif directives for
     SRELL_NO_NAMEDCAPTURE.
