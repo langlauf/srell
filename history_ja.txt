@@ -1,6 +1,6 @@
 20240707; version 4.047:
   ・srell::regex（CHAR_BITが8の時のみ）, srell::u8cregex, srell::u8regex
-    の速度を改善。
+    による検索の速度を改良。
 
 20240613; version 4.046:
   ・コードの減量。リテラルが連続する箇所を最優先に探す仕組みを削除。

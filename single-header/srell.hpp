@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.046
+**  SRELL (std::regex-like library) version 4.047
 **
 **  Copyright (c) 2012-2024, Nozomu Katoo. All rights reserved.
 **
@@ -1599,13 +1599,36 @@ struct simple_stack : protected simple_array<char>
 	namespace re_detail
 	{
 
-//  Always uses a heap instead of the stack.
 template <const std::size_t Bits>
-class bitset
+struct bitsetbase
 {
-private:
+	typedef std::size_t array_type;
 
-	typedef unsigned long array_type;
+#if defined(__cpp_constexpr)
+	static constexpr std::size_t pow2leN(const std::size_t n, const std::size_t p2)
+	{
+		return ((p2 << 1) == 0 || (p2 << 1) > n) ? p2 : pow2leN(n, p2 << 1);
+	}
+	static const std::size_t bits_per_elem_ = pow2leN(CHAR_BIT * sizeof (array_type), 8);
+#else
+	static const std::size_t bpe_tmp_ = CHAR_BIT * sizeof (array_type);
+	static const std::size_t bits_per_elem_ = bpe_tmp_ >= 64 ? 64 : (bpe_tmp_ >= 32 ? 32 : (bpe_tmp_ >= 16 ? 16 : 8));
+#endif
+};
+
+template <>
+struct bitsetbase<256>
+{
+	typedef unsigned char array_type;
+
+	static const std::size_t bits_per_elem_ = 1;
+};
+
+template <const std::size_t Bits>
+class bitset : private bitsetbase<Bits>
+{
+	typedef bitsetbase<Bits> base_type;
+	typedef typename base_type::array_type array_type;
 
 public:
 
@@ -1677,19 +1700,19 @@ public:
 
 	bitset &reset(const std::size_t bit)
 	{
-		buffer_[bit / bits_per_elem_] &= ~(1ul << (bit & bitmask_));
+		buffer_[bit / base_type::bits_per_elem_] &= ~(static_cast<array_type>(1) << (bit & bitmask_));
 		return *this;
 	}
 
 	bitset &set(const std::size_t bit)
 	{
-		buffer_[bit / bits_per_elem_] |= (1ul << (bit & bitmask_));
+		buffer_[bit / base_type::bits_per_elem_] |= (static_cast<array_type>(1) << (bit & bitmask_));
 		return *this;
 	}
 
 	bool test(const std::size_t bit) const
 	{
-		return ((buffer_[bit / bits_per_elem_] >> (bit & bitmask_)) & 1) != 0;
+		return ((buffer_[bit / base_type::bits_per_elem_] >> (bit & bitmask_)) & 1) != 0;
 	}
 
 	void swap(bitset &right)
@@ -1704,18 +1727,8 @@ public:
 
 private:
 
-#if defined(__cpp_constexpr)
-	static constexpr std::size_t pow2leN(const std::size_t n, const std::size_t p2)
-	{
-		return ((p2 << 1) == 0 || (p2 << 1) > n) ? p2 : pow2leN(n, p2 << 1);
-	}
-	static const std::size_t bits_per_elem_ = pow2leN(CHAR_BIT * sizeof (array_type), 8);
-#else
-	static const std::size_t bpe_tmp_ = CHAR_BIT * sizeof (array_type);
-	static const std::size_t bits_per_elem_ = bpe_tmp_ >= 64 ? 64 : (bpe_tmp_ >= 32 ? 32 : (bpe_tmp_ >= 16 ? 16 : 8));
-#endif
-	static const std::size_t bitmask_ = bits_per_elem_ - 1;
-	static const std::size_t arraylength_ = (Bits + bitmask_) / bits_per_elem_;
+	static const std::size_t bitmask_ = base_type::bits_per_elem_ - 1;
+	static const std::size_t arraylength_ = (Bits + bitmask_) / base_type::bits_per_elem_;
 	static const std::size_t size_in_byte_ = arraylength_ * sizeof (array_type);
 
 	array_type *buffer_;
@@ -14148,7 +14161,7 @@ struct range_pair	//  , public std::pair<charT, charT>
 
 	bool operator<(const range_pair &right) const
 	{
-		return this->second < right.first;	//  This assumes that optimise() has been called.
+		return this->second < right.first;
 	}
 
 	void swap(range_pair &right)
@@ -17670,7 +17683,7 @@ private:
 								if (boffset == 2)
 									this->soflags = localflags;
 
-								if (boffset == 2)
+								if (boffset == 2)	//  Restricts so that unbounded forms (?ims-ims) can be used only at the beginning of an expression.
 								{
 									rbstate.type = st_roundbracket_close;
 									++curpos;
@@ -19335,27 +19348,6 @@ private:
 		{
 			const range_pair &range = fcc[i];
 
-#if 0
-			ui_l32 second = range.second <= constants::unicode_max_codepoint ? range.second : constants::unicode_max_codepoint;
-
-#if defined(_MSC_VER) && _MSC_VER >= 1400
-#pragma warning(push)
-#pragma warning(disable:4127)
-#endif
-			if (utf_traits::utftype == 16)
-#if defined(_MSC_VER) && _MSC_VER >= 1400
-#pragma warning(pop)
-#endif
-			{
-				if (second >= 0x10000 && range.first < 0x10000)
-				{
-					this->firstchar_class_bs.set_range(utf_traits::firstcodeunit(0x10000) & utf_traits::bitsetmask, utf_traits::firstcodeunit(second) & utf_traits::bitsetmask);
-					second = 0xffff;
-				}
-			}
-			this->firstchar_class_bs.set_range(utf_traits::firstcodeunit(range.first) & utf_traits::bitsetmask, utf_traits::firstcodeunit(second) & utf_traits::bitsetmask);
-
-#else
 			for (ui_l32 ucp = range.first; ucp <= utf_traits::maxcpvalue; ++ucp)
 			{
 				const ui_l32 firstcu = utf_traits::firstcodeunit(ucp) & utf_traits::bitsetmask;
@@ -19379,7 +19371,6 @@ private:
 				if (ucp == range.second)
 					break;
 			}
-#endif
 		}
 #if !defined(SRELLDBG_NO_SCFINDER)
 		this->NFA_states[0].char_num = entrychar;
