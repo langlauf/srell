@@ -1,5 +1,14 @@
+20240714; version 4.048:
+  * Removed two types of internal iterators, which read a codepoint
+    value at the current position or the previous position with keeping
+    its pointing position.
+  * Modified internal UTF-8 iterators not to accept non-shortest forms
+    (This change might have a negative impact on performance, but the
+    improvement in the previous version probably overweighs it. So, I
+    decided to change at this point).
+
 20240707; version 4.047:
-  * Performance improvement in searching with srell::regex (only when
+  * Performance improvement in searching with srell::regex (only if
     CHAR_BIT is 8), srell::u8cregex, or srell::u8regex.
 
 20240613; version 4.046:
