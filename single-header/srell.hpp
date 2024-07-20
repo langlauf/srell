@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.048
+**  SRELL (std::regex-like library) version 4.049
 **
 **  Copyright (c) 2012-2024, Nozomu Katoo. All rights reserved.
 **
@@ -146,12 +146,13 @@ namespace srell
 			multiline  = 1 << 4,
 
 			//  SRELL's extension.
-			dotall      = 1 << 5,	//  singleline.
-			unicodesets = 1 << 6,
+			sticky      = 1 << 5,
+			dotall      = 1 << 6,	//  singleline.
+			unicodesets = 1 << 7,
 
 			//  For internal use.
-			back_       = 1 << 7,
-			pflagsmask_ = (1 << 7) - 1
+			back_       = 1 << 8,
+			pflagsmask_ = (1 << 8) - 1
 		};
 
 		inline syntax_option_type operator&(const syntax_option_type left, const syntax_option_type right)
@@ -193,22 +194,22 @@ namespace srell
 		enum match_flag_type
 		{
 			match_default     = 0,
-			match_not_bol     = 1 <<  0,
-			match_not_eol     = 1 <<  1,
-			match_not_bow     = 1 <<  2,
-			match_not_eow     = 1 <<  3,
-			match_any         = 1 <<  4,
-			match_not_null    = 1 <<  5,
-			match_continuous  = 1 <<  6,
-			match_prev_avail  = 1 <<  7,
+			match_not_bol     = 1 << 0,
+			match_not_eol     = 1 << 1,
+			match_not_bow     = 1 << 2,
+			match_not_eow     = 1 << 3,
+			match_any         = 0,
+			match_not_null    = 1 << 4,
+			match_continuous  = 1 << 5,
+			match_prev_avail  = 1 << 6,
 
 			format_default    = 0,
-			format_sed        = 1 <<  8,
-			format_no_copy    = 1 <<  9,
-			format_first_only = 1 << 10,
+			format_sed        = 0,
+			format_no_copy    = 1 << 7,
+			format_first_only = 1 << 8,
 
 			//  For internal use.
-			match_match_      = 1 << 11
+			match_match_      = 1 << 9
 		};
 
 		inline match_flag_type operator&(const match_flag_type left, const match_flag_type right)
@@ -16091,10 +16092,8 @@ public:
 				for (; *re == unicode_case_folding::do_casefolding(utf_traits::dec_codepoint(tail, begin)); --re)
 				{
 					if (re == u32string_.data())
-					{
-						utf_traits::codepoint_inc(curpos, end);
-						return sstate.set_bracket0(tail, curpos);
-					}
+						return sstate.set_bracket0(tail, la);
+
 					if (tail == begin)
 						break;
 				}
@@ -16138,10 +16137,8 @@ public:
 					for (; *re == unicode_case_folding::do_casefolding(utf_traits::dec_codepoint(tail, begin)); --re)
 					{
 						if (re == u32string_.data())
-						{
-							utf_traits::codepoint_inc(curpos, end);
-							return sstate.set_bracket0(tail, curpos);
-						}
+							return sstate.set_bracket0(tail, la);
+
 						if (tail == begin)
 							break;
 					}
@@ -19378,7 +19375,7 @@ private:
 #endif
 
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
-		if (!this->bmdata)
+		if (!this->bmdata && !(this->soflags & regex_constants::sticky))
 			find_better_es(1u, cvars);
 #endif
 
@@ -19391,7 +19388,8 @@ private:
 #endif
 
 #if !defined(SRELLDBG_NO_1STCHRCLS)
-		create_firstchar_class();
+		if (!this->bmdata && !(this->soflags & regex_constants::sticky))
+			create_firstchar_class();
 #endif
 
 #if !defined(SRELLDBG_NO_SKIP_EPSILON)
@@ -21698,7 +21696,7 @@ public:
 		{
 			re_search_state<BidirectionalIterator> &sstate = results.sstate_;
 
-			sstate.init(begin, end, lookbehind_limit, flags);
+			sstate.init(begin, end, lookbehind_limit, flags | static_cast<regex_constants::match_flag_type>(this->soflags & regex_constants::sticky));
 
 #if !defined(SRELLDBG_NO_BMH)
 			if (this->bmdata && !(sstate.flags & regex_constants::match_continuous))
@@ -22878,6 +22876,7 @@ public:
 	static const regex_constants::syntax_option_type egrep = regex_constants::egrep;
 	static const regex_constants::syntax_option_type multiline = regex_constants::multiline;
 
+	static const regex_constants::syntax_option_type sticky = regex_constants::sticky;
 	static const regex_constants::syntax_option_type dotall = regex_constants::dotall;
 	static const regex_constants::syntax_option_type unicodesets = regex_constants::unicodesets;
 
@@ -23360,6 +23359,8 @@ template <class charT, class traits>
 	const regex_constants::syntax_option_type basic_regex<charT, traits>::multiline;
 
 template <class charT, class traits>
+	const regex_constants::syntax_option_type basic_regex<charT, traits>::sticky;
+template <class charT, class traits>
 	const regex_constants::syntax_option_type basic_regex<charT, traits>::dotall;
 template <class charT, class traits>
 	const regex_constants::syntax_option_type basic_regex<charT, traits>::unicodesets;
@@ -23834,8 +23835,8 @@ public:
 
 	//  For split.
 
-	//  1. Until done() returns true, gather this->prefix() when
-	//     split_ready() returns true,
+	//  1. Until done() returns true, gather this->prefix() and
+	//     increment while split_ready() returns true,
 	//  2. Once done() becomes true, get remainder().
 
 	//  Returns if this->prefix() holds a range that is worthy of being
@@ -23853,13 +23854,12 @@ public:
 		return false;	//  Iterating complete.
 	}
 
-	//  When the only_after_match parameter is false, returns
-	//  [prefix().first, end); otherwise (when true) returns
-	//  [match_[0].second, end).
+	//  If only_after_match is false, returns [prefix().first, end);
+	//  otherwise (if true) returns [match_[0].second, end).
 	//  This function is intended to be called after iterating is
 	//  finished, to receive the range of suffix() of the last match.
 	//  If iterating is aborted during processing (e.g. pushing to a
-	//  list container) a captured subsequence (match_[n] where n >= 1),
+	//  list container) captured subsequences (match_[n] where n >= 1),
 	//  then should be called with only_after_match being true,
 	//  otherwise [prefix().first, prefix().second) would be duplicated.
 	const typename value_type::value_type &remainder(const bool only_after_match = false)
@@ -23908,7 +23908,7 @@ public:
 		return !done();
 	}
 
-	//  Returns a current subsequence to which the iterator points.
+	//  Returns the current subsequence to which the iterator points.
 	const typename value_type::value_type &split_range() const
 	{
 		return submatch_ == 0u ? match_.prefix() : match_[submatch_];
@@ -23926,6 +23926,12 @@ public:
 
 		match_.update_prefix2_(end_);
 		return match_.prefix();
+	}
+
+	//  Returns an appropriate range depending on done().
+	const typename value_type::value_type &split_aptrange()
+	{
+		return !done() ? split_range() : split_remainder();
 	}
 
 private:
