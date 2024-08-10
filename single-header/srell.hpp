@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.049
+**  SRELL (std::regex-like library) version 4.050
 **
 **  Copyright (c) 2012-2024, Nozomu Katoo. All rights reserved.
 **
@@ -28,7 +28,7 @@
 **  SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY OF SUCH DAMAGE.
 **
 ******************************************************************************
-**/
+*/
 
 #ifndef SRELL_REGEX_TEMPLATE_LIBRARY
 #define SRELL_REGEX_TEMPLATE_LIBRARY
@@ -47,6 +47,7 @@
 #include <iterator>
 #include <memory>
 #include <algorithm>
+#include <limits>
 
 #if !defined(SRELL_NO_UNISTACK) && (defined(__cplusplus) && (__cplusplus >= 201103L)) || (defined(_MSC_VER) && (_MSC_VER >= 1900))
 #include <type_traits>
@@ -660,8 +661,7 @@ public:
 					codepoint = static_cast<ui_l32>((codepoint << 6) | (*begin++ & 0x3f));
 
 					//  11 110a aabb bbbb cccc ccdd dddd?
-					if ((codepoint - 0x3c10000) < 0x1f0000)	//  4 octets.
-						return static_cast<ui_l32>(codepoint & 0x1fffff);
+					return ((codepoint - 0x3c10000) < 0x100000) ? static_cast<ui_l32>(codepoint & 0x1fffff) : re_detail::constants::invalid_u32value;	//  4 octets.
 				}
 			}
 		}
@@ -699,8 +699,7 @@ public:
 					codepoint = static_cast<ui_l32>((codepoint & 0x3ffff) | ((*--cur & 0xff) << 18));
 
 					//  11 110d ddcc cccc bbbb bbaa aaaa?
-					if ((codepoint - 0x3c10000) < 0x1f0000)	//  4 octets.
-						return static_cast<ui_l32>(codepoint & 0x1fffff);
+					return ((codepoint - 0x3c10000) < 0x100000) ? static_cast<ui_l32>(codepoint & 0x1fffff) : re_detail::constants::invalid_u32value;	//  4 octets.
 				}
 			}
 		}
@@ -15319,6 +15318,10 @@ struct re_quantifier
 		return atleast == 1 && atmost == 1;
 	}
 
+	bool is_question() const
+	{
+		return atleast == 0 && atmost == 1;
+	}
 	bool is_asterisk() const
 	{
 		return atleast == 0 && atmost == constants::infinity;
@@ -17861,14 +17864,32 @@ private:
 		else
 		{
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
-			if (qstate.char_num == epsilon_type::et_ccastrsk && quantifier.is_infinity())
+			if (qstate.char_num == epsilon_type::et_ccastrsk)
 			{
-				if (quantifier.atleast <= 6)
+				if (quantifier.is_infinity())
+				{
+					if (quantifier.atleast <= 6)
+					{
+						for (ui_l32 i = 0; i < quantifier.atleast; ++i)
+							piece_with_quantifier += piece;
+
+						qstate.quantifier.atleast = 0;
+						goto APPEND_ATOM;
+					}
+				}
+				else
+				if (quantifier.atleast <= 4)
 				{
 					for (ui_l32 i = 0; i < quantifier.atleast; ++i)
 						piece_with_quantifier += piece;
+
+					qstate.quantifier.atmost -= qstate.quantifier.atleast;
+#if defined(SRELLDBG_NO_SIMPLEEQUIV)
+					if (qstate.quantifier.atmost == 0)
+						return;
+#endif
 					qstate.quantifier.atleast = 0;
-					goto APPEND_ATOM;
+					goto USE_COUNTER;
 				}
 				qstate.quantifier.atmost = qstate.quantifier.atleast;
 			}
@@ -17927,12 +17948,23 @@ private:
 
 		if (qstate.quantifier.atmost != quantifier.atmost)
 		{
-			qstate.type = st_epsilon;
-			qstate.char_num = epsilon_type::et_ccastrsk;
-			qstate.quantifier.atleast = 0;
-			qstate.quantifier.atmost = quantifier.atmost;
-			piece.erase(0, piece_size - 1);
-			goto APPEND_ATOM;
+			if (quantifier.is_infinity())
+			{
+				qstate.type = st_epsilon;
+				qstate.char_num = epsilon_type::et_ccastrsk;
+				qstate.quantifier.atleast = 0;
+				qstate.quantifier.atmost = quantifier.atmost;
+				piece.erase(0, piece_size - 1);
+				goto APPEND_ATOM;
+			}
+
+			if ((qstate.quantifier.atmost - qstate.quantifier.atleast) != (quantifier.atmost - quantifier.atleast))
+			{
+				qstate.quantifier.atmost = quantifier.atmost;
+				laststate.quantifier.atmost = quantifier.atmost;
+				piece_with_quantifier.push_back(qstate);
+				piece_with_quantifier += piece;
+			}
 		}
 #endif	//  !defined(SRELLDBG_NO_ASTERISK_OPT)
 	}
@@ -19449,29 +19481,39 @@ private:
 			{
 			case st_character:
 			case st_character_class:
-				if (this->NFA_states[pos - 1].is_question_or_asterisk_before_corcc())
+				if (!curstate.quantifier.is_same())
 				{
-					state_type &estate = this->NFA_states[pos - 1];
-					const state_size_type nextno = pos + estate.farnext() - 1;
+					const state_size_type bpos = pos + (curstate.next1 < 0 ? curstate.next1 : (curstate.quantifier.is_question() ? -1 : 0));
 
-					if (is_exclusive_sequence(estate.quantifier, pos, nextno))
+					if (bpos == pos)
+						continue;
+
+					state_type &bstate = this->NFA_states[bpos];
+					const state_size_type nextno = bpos + bstate.farnext();
+
+					if (is_exclusive_sequence(bstate.quantifier, pos, nextno))
 					{
-						state_type &estate2 = this->NFA_states[pos - 1];
+						state_type &bstate2 = this->NFA_states[bpos];
 						state_type &corccstate = this->NFA_states[pos];
 
-						estate2.next1 = 1;
-						estate2.next2 = 0;
-						estate2.char_num = epsilon_type::et_aofmrast;
+						if (bstate2.type != st_check_counter)
+						{
+							bstate2.next1 = 1;
+							bstate2.next2 = 0;
+							bstate2.char_num = epsilon_type::et_aofmrast;
 
-						if (corccstate.next1 < 0)
-							corccstate.next1 = 0;
+							if (corccstate.next1 < 0)
+								corccstate.next1 = 0;
+						}
+						else
+						{
+							bstate2.quantifier.atleast = bstate2.quantifier.atmost;
+						}
 
 						if (corccstate.next2 == 0)
-							corccstate.next2 = nextno - pos;
+							corccstate.next2 = static_cast<std::ptrdiff_t>(nextno) - pos;
 					}
 				}
-				continue;
-
 			default:;
 			}
 		}
@@ -19479,7 +19521,7 @@ private:
 			reorder_piece(this->NFA_states);
 	}
 
-	bool is_exclusive_sequence(const re_quantifier &eq, const state_size_type curno, const state_size_type nextno)	//  const
+	bool is_exclusive_sequence(const re_quantifier &bq, const state_size_type curno, const state_size_type nextno)	//  const
 	{
 		const state_type &curstate = this->NFA_states[curno];
 		range_pairs curchar_class;
@@ -19506,7 +19548,7 @@ private:
 
 		if (nextchar_class.size())
 		{
-			if (!canbe0length || eq.is_greedy)
+			if (!canbe0length || bq.is_greedy)
 			{
 #if !defined(SRELLDBG_NO_SPLITCC)
 
@@ -19518,7 +19560,7 @@ private:
 				if (removed.size() == 0)	//  !curchar_class.is_overlap(nextchar_class)
 					return true;
 
-				if (curstate.type == st_character_class && kept.size() && eq.is_infinity())
+				if (curstate.type == st_character_class && kept.size())
 				{
 					{
 						state_type &curstate2 = this->NFA_states[curno];
@@ -19533,7 +19575,7 @@ private:
 					state_type &n1 = additions[1];
 
 					n0.reset(st_epsilon, epsilon_type::et_ccastrsk);
-					n0.quantifier = eq;
+					n0.quantifier = bq;
 //					n0.next2 = 1;
 					n0.next2 = static_cast<std::ptrdiff_t>(nextno) - this->NFA_states.size();
 					if (!n0.quantifier.is_greedy)
@@ -19543,7 +19585,7 @@ private:
 					}
 
 					n1.reset(st_character_class, this->character_class.register_newclass(removed));
-					n1.next1 = static_cast<std::ptrdiff_t>(curno) - this->NFA_states.size() - 1;
+					n1.next1 = static_cast<std::ptrdiff_t>(bq.is_infinity() ? curno : (curno + curstate.next1)) - this->NFA_states.size() - 1;
 //					n1.next2 = 0;
 					n1.flags |= sflags::hookedlast;
 					this->NFA_states += additions;
@@ -19563,7 +19605,7 @@ private:
 		else if (/* nextchar_class.size() == 0 && */ (!canbe0length || only_success_left(nextno)))
 		{
 			//  (size() == 0 && !canbe0length) means [].
-			return eq.is_greedy ? true : false;
+			return bq.is_greedy ? true : false;
 		}
 
 		return false;
@@ -20957,6 +20999,16 @@ typedef ssub_match u8cssub_match;
 //  ... "regex_sub_match.hpp"]
 //  ["regex_match_results.hpp" ...
 
+	namespace re_detail
+	{
+template <bool, typename T>
+struct enable_if {};
+template <typename T>
+struct enable_if<true, T> { typedef T type; };
+template <typename IntType, typename RetType>
+struct enable_if_integer : enable_if<std::numeric_limits<IntType>::is_integer, RetType> {};
+	}
+
 //  28.10, class template match_results:
 template <class BidirectionalIterator, class Allocator = std::allocator<sub_match<BidirectionalIterator> > >
 class match_results
@@ -21065,51 +21117,37 @@ public:
 
 	//  28.10.4, element access:
 	//  [7.10.3] element access
-	difference_type length(const size_type sub = 0) const
+//	difference_type length(const size_type sub = 0) const
+	template <typename IntType>
+	typename re_detail::enable_if_integer<IntType, difference_type>::type length(const IntType sub = 0) const
 	{
 		return (*this)[sub].length();
 	}
 
-	difference_type position(const size_type sub = 0) const
+//	difference_type position(const size_type sub = 0) const
+	template <typename IntType>
+	typename re_detail::enable_if_integer<IntType, difference_type>::type position(const IntType sub = 0) const
 	{
 		const_reference ref = (*this)[sub];
 
 		return std::distance(base_, ref.first);
 	}
 
-	string_type str(const size_type sub = 0) const
+//	string_type str(const size_type sub = 0) const
+	template <typename IntType>
+	typename re_detail::enable_if_integer<IntType, string_type>::type str(const IntType sub = 0) const
 	{
 		return string_type((*this)[sub]);
 	}
 
-	const_reference operator[](const size_type n) const
+//	const_reference operator[](const size_type n) const
+	template <typename IntType>
+	typename re_detail::enable_if_integer<IntType, const_reference>::type operator[](const IntType n) const
 	{
-		return n < sub_matches_.size() ? sub_matches_[n] : unmatched_;
+		return static_cast<size_type>(n) < sub_matches_.size() ? sub_matches_[n] : unmatched_;
 	}
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
-
-	//  Helpers for overload resolution of the integer literal 0 of signed types.
-	template <typename IntegerType>
-	difference_type length(const IntegerType zero) const
-	{
-		return length(static_cast<size_type>(zero));
-	}
-	template <typename IntegerType>
-	difference_type position(const IntegerType zero) const
-	{
-		return position(static_cast<size_type>(zero));
-	}
-	template <typename IntegerType>
-	string_type str(const IntegerType zero) const
-	{
-		return str(static_cast<size_type>(zero));
-	}
-	template <typename IntegerType>
-	const_reference operator[](const IntegerType zero) const
-	{
-		return operator[](static_cast<size_type>(zero));
-	}
 
 	difference_type length(const string_type &sub) const
 	{

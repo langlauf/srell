@@ -1,17 +1,19 @@
+20240810; version 4.050:
+  * Added a new optimisation for C{n,m} where C is a character or
+    character class and n < m != infinity.
+  * Minor improvements.
+
 20240720; version 4.049:
   * Added the new flag, "sticky" to syntax_option_type.
   * Added split_aptrange() to regex_iterator2.
-  * Removed the feature of generating a data file in an older format
-    from ucfdataout2.cpp and updataout3.cpp.
+  * Removed the feature of generating a data file in an old format from
+    ucfdataout2.cpp and updataout3.cpp.
 
 20240714; version 4.048:
   * Removed two types of internal iterators, which read a codepoint
     value at the current position or the previous position with keeping
     its pointing position.
-  * Modified internal UTF-8 iterators not to accept non-shortest forms
-    (This change might have a negative impact on performance, but the
-    improvement in the previous version probably overweighs it. So, I
-    decided to change at this point).
+  * Modified internal UTF-8 iterators not to accept non-shortest forms.
 
 20240707; version 4.047:
   * Performance improvement in searching with srell::regex (only if
@@ -55,7 +57,7 @@
 20240519; version 4.041:
   * Completed the temporary fix in 4.040.
   * Removed unused functions.
-  * Fixed a potential issue on systems where memory of more than 64GB
+  * Fixed a potential issue on systems where memory of more than 64 GB
     can be allocated.
 
 20240131; version 4.040:
