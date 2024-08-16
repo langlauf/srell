@@ -1,3 +1,8 @@
+20240816; version 4.051:
+  * Reimplemented the optimisation introduced in 4.050 in a different
+    way to minimise memory usage.
+  * Minor improvements.
+
 20240810; version 4.050:
   * Added a new optimisation for C{n,m} where C is a character or
     character class and n < m != infinity.
@@ -214,8 +219,8 @@
     Alternatives without inserting new additional internal states.
 
 20230724; version 4.020:
-  * Simplified the method of converting properties of strings to the
-    internal representation.
+  * Simplified the method of converting properties of strings to
+    internal representations.
   * Other minor improvements.
 
 * [4.000-4.019, v flag mode] Because there was a mistake in the setting

@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.050
+**  SRELL (std::regex-like library) version 4.051
 **
 **  Copyright (c) 2012-2024, Nozomu Katoo. All rights reserved.
 **
@@ -416,6 +416,7 @@ private:
 			static const ui_l32 hooking = 1 << 2;
 			static const ui_l32 hookedlast = 1 << 3;
 			static const ui_l32 byn2 = 1 << 4;
+			static const ui_l32 clrn2 = 1 << 5;
 		}
 		//  sflags
 
@@ -3252,21 +3253,13 @@ struct re_quantifier
 
 	void multiply(const re_quantifier &q)
 	{
-		if (atleast != constants::infinity)
-		{
-			if (q.atleast != constants::infinity)
-				atleast *= q.atleast;
-			else
-				atleast = constants::infinity;
-		}
+		const ui_l32 newal = atleast * q.atleast;
 
-		if (atmost != constants::infinity)
-		{
-			if (q.atmost != constants::infinity)
-				atmost *= q.atmost;
-			else
-				atmost = constants::infinity;
-		}
+		atleast = (newal == 0 || (atleast != constants::infinity && q.atleast != constants::infinity && newal >= atleast)) ? newal : constants::infinity;
+
+		const ui_l32 newam = atmost * q.atmost;
+
+		atmost = (newam == 0 || (atmost != constants::infinity && q.atmost != constants::infinity && newam >= atmost)) ? newam : constants::infinity;
 	}
 
 	void add(const re_quantifier &q)
@@ -3292,13 +3285,27 @@ struct re_quantifier
 
 struct re_state
 {
+	re_state_type type;
+
 	ui_l32 char_num;
 		//  character: for character.
 		//  number: for character_class, brackets, counter, repeat, backreference.
 		//  (Special case) in [0] represents a code unit for finding an entry point if
 		//    the firstchar class consists of a single code unit; otherwise invalid_u32value.
 
-	re_state_type type;
+	re_quantifier quantifier;	//  For check_counter, roundbrackets, repeasts, (?<=...) and (?<!...),
+		//  and character_class.
+
+	ui_l32 flags;
+		//  Bit
+		//    0: is_not; for \B, (?!...) and (?<!...).
+		//       icase; for [0], backreference.
+		//       multiline; for bol, eol.
+		//       (Only bit used across compiler and algorithm).
+		//    1: backrefno_unresolved. Used only in compiler.
+		//    2: hooking. Used only in compiler.
+		//    3: hookedlast. Used only in compiler.
+		//    4: byn2. Used only in compiler.
 
 	union
 	{
@@ -3321,20 +3328,6 @@ struct re_state
 		//  (Special case 2) in NFA_states[0] holds the entry point for match_continuous/regex_match.
 		//  (Special case 3) in lookaround_open points to the contents of brackets.
 	};
-
-	re_quantifier quantifier;	//  For check_counter, roundbrackets, repeasts, (?<=...) and (?<!...),
-		//  and character_class.
-
-	ui_l32 flags;
-		//  Bit
-		//    0: is_not; for \B, (?!...) and (?<!...).
-		//       icase; for [0], backreference.
-		//       multiline; for bol, eol.
-		//       (Only bit used across compiler and algorithm).
-		//    1: backrefno_unresolved. Used only in compiler.
-		//    2: hooking. Used only in compiler.
-		//    3: hookedlast. Used only in compiler.
-		//    4: byn2. Used only in compiler.
 
 	void reset(const re_state_type t = st_character, const ui_l32 c = char_ctrl::cc_nul)
 	{
@@ -5774,32 +5767,14 @@ private:
 		else
 		{
 #if !defined(SRELLDBG_NO_ASTERISK_OPT)
-			if (qstate.char_num == epsilon_type::et_ccastrsk)
+			if (qstate.char_num == epsilon_type::et_ccastrsk && quantifier.is_infinity())
 			{
-				if (quantifier.is_infinity())
-				{
-					if (quantifier.atleast <= 6)
-					{
-						for (ui_l32 i = 0; i < quantifier.atleast; ++i)
-							piece_with_quantifier += piece;
-
-						qstate.quantifier.atleast = 0;
-						goto APPEND_ATOM;
-					}
-				}
-				else
-				if (quantifier.atleast <= 4)
+				if (quantifier.atleast <= 6)
 				{
 					for (ui_l32 i = 0; i < quantifier.atleast; ++i)
 						piece_with_quantifier += piece;
-
-					qstate.quantifier.atmost -= qstate.quantifier.atleast;
-#if defined(SRELLDBG_NO_SIMPLEEQUIV)
-					if (qstate.quantifier.atmost == 0)
-						return;
-#endif
 					qstate.quantifier.atleast = 0;
-					goto USE_COUNTER;
+					goto APPEND_ATOM;
 				}
 				qstate.quantifier.atmost = qstate.quantifier.atleast;
 			}
@@ -5820,8 +5795,6 @@ private:
 			piece_with_quantifier.push_back(qstate);
 			//  1.save_and_reset_counter(3|2), 2.restore_counter(0|0),
 
-			qstate.next1 = 0;
-			qstate.next2 = 0;
 			qstate.type = st_decrement_counter;
 			piece.insert(0, qstate);
 
@@ -5858,23 +5831,12 @@ private:
 
 		if (qstate.quantifier.atmost != quantifier.atmost)
 		{
-			if (quantifier.is_infinity())
-			{
-				qstate.type = st_epsilon;
-				qstate.char_num = epsilon_type::et_ccastrsk;
-				qstate.quantifier.atleast = 0;
-				qstate.quantifier.atmost = quantifier.atmost;
-				piece.erase(0, piece_size - 1);
-				goto APPEND_ATOM;
-			}
-
-			if ((qstate.quantifier.atmost - qstate.quantifier.atleast) != (quantifier.atmost - quantifier.atleast))
-			{
-				qstate.quantifier.atmost = quantifier.atmost;
-				laststate.quantifier.atmost = quantifier.atmost;
-				piece_with_quantifier.push_back(qstate);
-				piece_with_quantifier += piece;
-			}
+			qstate.type = st_epsilon;
+			qstate.char_num = epsilon_type::et_ccastrsk;
+			qstate.quantifier.atleast = 0;
+			qstate.quantifier.atmost = quantifier.atmost;
+			piece.erase(0, piece_size - 1);
+			goto APPEND_ATOM;
 		}
 #endif	//  !defined(SRELLDBG_NO_ASTERISK_OPT)
 	}
@@ -7382,143 +7344,178 @@ private:
 	void asterisk_optimisation()
 	{
 		const state_size_type orgsize = this->NFA_states.size();
+#if !defined(SRELLDBG_NO_SPLITCC)
+		range_pairs kept;
+		range_pairs removed;
+#endif
+		range_pairs curcc;
+		range_pairs nextcc;
+		state_array additions;
 
 		for (state_size_type pos = 1u; pos < orgsize; ++pos)
 		{
 			state_type &curstate = this->NFA_states[pos];
 
-			switch (curstate.type)
+			if ((curstate.type == st_character || curstate.type == st_character_class) && !curstate.quantifier.is_same())
 			{
-			case st_character:
-			case st_character_class:
-				if (!curstate.quantifier.is_same())
+				const state_size_type bpos = pos + (curstate.next1 < 0 ? curstate.next1 : (curstate.quantifier.is_question() ? -1 : 0));
+
+				if (bpos == pos)
+					continue;
+
+				state_type &bstate = this->NFA_states[bpos];
+				const state_size_type nextno = bpos + bstate.farnext();
+				const re_quantifier &bq = bstate.quantifier;
+				state_type orgcur(curstate);
+
+				if (curstate.type == st_character)
 				{
-					const state_size_type bpos = pos + (curstate.next1 < 0 ? curstate.next1 : (curstate.quantifier.is_question() ? -1 : 0));
+					curcc.set_solerange(range_pair_helper(curstate.char_num));
+					if (curstate.flags & sflags::icase)
+						curcc.make_caseunfoldedcharset();
+				}
+				else
+				{
+					curcc = this->character_class[curstate.char_num];
+					if (curcc.size() == 0)	//  Means [], which always makes matching fail.
+						goto IS_EXCLUSIVE;	//  For preventing the automaton from pushing bt data.
+				}
 
-					if (bpos == pos)
-						continue;
+				additions.clear();
 
-					state_type &bstate = this->NFA_states[bpos];
-					const state_size_type nextno = bpos + bstate.farnext();
+				{
+					nextcc.clear();
+					const bool canbe0length = gather_nextchars(nextcc, nextno, 0u, true);
 
-					if (is_exclusive_sequence(bstate.quantifier, pos, nextno))
+					if (nextcc.size())
 					{
-						state_type &bstate2 = this->NFA_states[bpos];
-						state_type &corccstate = this->NFA_states[pos];
-
-						if (bstate2.type != st_check_counter)
+						if (!canbe0length || bq.is_greedy)
 						{
-							bstate2.next1 = 1;
-							bstate2.next2 = 0;
-							bstate2.char_num = epsilon_type::et_aofmrast;
+#if !defined(SRELLDBG_NO_SPLITCC)
+							curcc.split_ranges(kept, removed, nextcc);
 
-							if (corccstate.next1 < 0)
-								corccstate.next1 = 0;
+							if (removed.size() == 0)	//  !curcc.is_overlap(nextcc)
+								goto IS_EXCLUSIVE;
+
+							if (curstate.type == st_character_class && kept.size())
+							{
+								curstate.char_num = this->character_class.register_newclass(kept);
+								curstate.flags |= (sflags::hooking | sflags::byn2);
+								curstate.next2 = static_cast<std::ptrdiff_t>(this->NFA_states.size()) - pos;
+
+								additions.resize(2);
+								state_type &n0 = additions[0];
+								state_type &n1 = additions[1];
+
+								n0.reset(st_epsilon, epsilon_type::et_ccastrsk);
+								n0.quantifier = bq;
+								n0.next2 = static_cast<std::ptrdiff_t>(nextno) - this->NFA_states.size();
+								if (!n0.quantifier.is_greedy)
+								{
+									n0.next1 = n0.next2;
+									n0.next2 = 1;
+								}
+
+								n1.reset(st_character_class, this->character_class.register_newclass(removed));
+								n1.next1 = static_cast<std::ptrdiff_t>(bq.is_infinity() ? pos : (pos + curstate.next1)) - this->NFA_states.size() - 1;
+//								n1.next2 = 0;
+								n1.flags |= sflags::hookedlast;
+								goto IS_EXCLUSIVE;
+							}
+
+#else	//  defined(SRELLDBG_NO_SPLITCC)
+
+							if (!curcc.is_overlap(nextcc))
+								goto IS_EXCLUSIVE;
+
+#endif	//  !defined(SRELLDBG_NO_SPLITCC)
+						}
+					}
+					else	//  nextcc.size() == 0
+					if (!canbe0length || only_success_left(nextno))
+					{
+						//  (size() == 0 && !canbe0length) means [].
+						if (bq.is_greedy)
+							goto IS_EXCLUSIVE;
+					}
+
+					continue;
+				}
+				IS_EXCLUSIVE:
+
+				if (bstate.type != st_check_counter)
+				{
+					bstate.next1 = 1;
+					bstate.next2 = 0;
+					bstate.char_num = epsilon_type::et_aofmrast;
+
+					if (curstate.next1 < 0)
+						curstate.next1 = 0;
+				}
+				else
+				{
+					if (bstate.quantifier.atleast != 0)
+					{
+						const std::ptrdiff_t addpos = static_cast<std::ptrdiff_t>(this->NFA_states.size()) + additions.size();
+						const state_size_type srpos = bpos - 2;
+						const state_size_type rcpos = bpos - 1;
+						state_type &srstate = this->NFA_states[srpos];
+						state_type &rcstate = this->NFA_states[rcpos];
+
+						if (bstate.quantifier.atleast <= 4)
+						{
+							orgcur.next1 = 1;
+							orgcur.next2 = 0;
+							orgcur.quantifier.reset();
+							additions.append(bstate.quantifier.atleast, orgcur);
+
+							orgcur.flags |= sflags::hooking;
+							orgcur.next1 = addpos - srpos;
+
+							const std::ptrdiff_t movedsrpos = addpos + bstate.quantifier.atleast - 1;
+
+							srstate.next1 = static_cast<std::ptrdiff_t>(bpos) - movedsrpos;
+							srstate.next2 = static_cast<std::ptrdiff_t>(rcpos) - movedsrpos;
+							srstate.flags |= sflags::hookedlast;
+							additions.back() = srstate;
+
+							srstate = orgcur;
+
+							bstate.quantifier.atmost -= bstate.quantifier.atleast;
 						}
 						else
 						{
-							bstate2.quantifier.atleast = bstate2.quantifier.atmost;
-						}
+							additions.append(this->NFA_states, bpos, 4);
 
-						if (corccstate.next2 == 0)
-							corccstate.next2 = static_cast<std::ptrdiff_t>(nextno) - pos;
+							srstate.next1 = addpos - srpos;
+
+							rcstate.flags |= (sflags::hooking | sflags::byn2 | sflags::clrn2);
+							rcstate.next2 = addpos - rcpos;
+
+							state_type &flcc = additions[additions.size() - 4];
+
+							(flcc.quantifier.is_greedy ? flcc.next2 : flcc.next1) = static_cast<std::ptrdiff_t>(bpos) - addpos;
+							flcc.quantifier.atmost = flcc.quantifier.atleast;
+
+							orgcur.flags |= sflags::hookedlast;
+							orgcur.quantifier.atmost = orgcur.quantifier.atleast;
+							additions.back() = orgcur;
+						}
 					}
+					bstate.quantifier.atleast = bstate.quantifier.atmost;
+
+					curstate.quantifier.atmost -= curstate.quantifier.atleast;
+					curstate.quantifier.atleast = 0;
 				}
-			default:;
+
+				if (curstate.next2 == 0)
+					curstate.next2 = static_cast<std::ptrdiff_t>(nextno) - pos;
+
+				this->NFA_states += additions;
 			}
 		}
 		if (orgsize != this->NFA_states.size())
 			reorder_piece(this->NFA_states);
-	}
-
-	bool is_exclusive_sequence(const re_quantifier &bq, const state_size_type curno, const state_size_type nextno)	//  const
-	{
-		const state_type &curstate = this->NFA_states[curno];
-		range_pairs curchar_class;
-		range_pairs nextchar_class;
-
-		if (curstate.type == st_character)
-		{
-			curchar_class.join(range_pair_helper(curstate.char_num));
-			if (curstate.flags & sflags::icase)
-				curchar_class.make_caseunfoldedcharset();
-		}
-		else if (curstate.type == st_character_class)
-		{
-			curchar_class = this->character_class[curstate.char_num];
-			if (curchar_class.size() == 0)	//  Means [], which always makes matching fail.
-				return true;	//  For preventing the automaton from pushing bt data.
-		}
-		else
-		{
-			return false;
-		}
-
-		const bool canbe0length = gather_nextchars(nextchar_class, nextno, 0u, true);
-
-		if (nextchar_class.size())
-		{
-			if (!canbe0length || bq.is_greedy)
-			{
-#if !defined(SRELLDBG_NO_SPLITCC)
-
-				range_pairs kept;
-				range_pairs removed;
-
-				curchar_class.split_ranges(kept, removed, nextchar_class);
-
-				if (removed.size() == 0)	//  !curchar_class.is_overlap(nextchar_class)
-					return true;
-
-				if (curstate.type == st_character_class && kept.size())
-				{
-					{
-						state_type &curstate2 = this->NFA_states[curno];
-
-						curstate2.char_num = this->character_class.register_newclass(kept);
-						curstate2.flags |= (sflags::hooking | sflags::byn2);
-						curstate2.next2 = this->NFA_states.size() - curno;
-					}
-					state_array additions;
-					additions.resize(2);
-					state_type &n0 = additions[0];
-					state_type &n1 = additions[1];
-
-					n0.reset(st_epsilon, epsilon_type::et_ccastrsk);
-					n0.quantifier = bq;
-//					n0.next2 = 1;
-					n0.next2 = static_cast<std::ptrdiff_t>(nextno) - this->NFA_states.size();
-					if (!n0.quantifier.is_greedy)
-					{
-						n0.next1 = n0.next2;
-						n0.next2 = 1;
-					}
-
-					n1.reset(st_character_class, this->character_class.register_newclass(removed));
-					n1.next1 = static_cast<std::ptrdiff_t>(bq.is_infinity() ? curno : (curno + curstate.next1)) - this->NFA_states.size() - 1;
-//					n1.next2 = 0;
-					n1.flags |= sflags::hookedlast;
-					this->NFA_states += additions;
-					return true;
-				}
-
-#else	//  defined(SRELLDBG_NO_SPLITCC)
-
-				if (!curchar_class.is_overlap(nextchar_class))
-				{
-					return true;
-				}
-
-#endif	//  !defined(SRELLDBG_NO_SPLITCC)
-			}
-		}
-		else if (/* nextchar_class.size() == 0 && */ (!canbe0length || only_success_left(nextno)))
-		{
-			//  (size() == 0 && !canbe0length) means [].
-			return bq.is_greedy ? true : false;
-		}
-
-		return false;
 	}
 
 	bool only_success_left(state_size_type pos) const
@@ -7577,6 +7574,9 @@ private:
 				{
 					const std::ptrdiff_t next1or2 = (st.flags & sflags::byn2) ? (st.flags ^= sflags::byn2, st.next2) : st.next1;
 					st.flags ^= sflags::hooking;
+
+					if (st.flags & sflags::clrn2)
+						st.flags ^= sflags::clrn2, st.next2 = 0;
 
 					for (ui_l32 i = static_cast<ui_l32>(indx + next1or2); i < piece.size(); ++i)
 					{
