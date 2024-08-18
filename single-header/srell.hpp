@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.051
+**  SRELL (std::regex-like library) version 4.052
 **
 **  Copyright (c) 2012-2024, Nozomu Katoo. All rights reserved.
 **
@@ -593,6 +593,11 @@ public:
 		return 1;
 	}
 
+	static ui_l32 seqlen(const ui_l32)
+	{
+		return 1;
+	}
+
 	static ui_l32 firstcodeunit(const ui_l32 cp)
 	{
 		return cp;
@@ -746,6 +751,11 @@ public:
 		return 4;
 	}
 
+	static ui_l32 seqlen(const ui_l32 cp)
+	{
+		return (cp < 0x80) ? 1 : ((cp < 0x800) ? 2 : ((cp < 0x10000) ? 3 : 4));
+	}
+
 	static ui_l32 firstcodeunit(const ui_l32 cp)
 	{
 		if (cp < 0x80)
@@ -791,10 +801,10 @@ public:
 	{
 		const ui_l32 codeunit = *begin++;
 
-		if ((codeunit & 0xdc00) != 0xd800)
+		if ((codeunit & 0xfc00) != 0xd800)
 			return static_cast<ui_l32>(codeunit & 0xffff);
 
-		if (begin != end && (*begin & 0xdc00) == 0xdc00)
+		if (begin != end && (*begin & 0xfc00) == 0xdc00)
 			return static_cast<ui_l32>((((codeunit & 0x3ff) << 10) | (*begin++ & 0x3ff)) + 0x10000);
 
 		return static_cast<ui_l32>(codeunit & 0xffff);
@@ -805,12 +815,11 @@ public:
 	{
 		const ui_l32 codeunit = *--cur;
 
-		if ((codeunit & 0xdc00) != 0xdc00 || cur == begin)
+		if ((codeunit & 0xfc00) != 0xdc00 || cur == begin)
 			return static_cast<ui_l32>(codeunit & 0xffff);
 
-		if ((*--cur & 0xdc00) == 0xd800)
+		if ((*--cur & 0xfc00) == 0xd800)
 			return static_cast<ui_l32>((((*cur & 0x3ff) << 10) | (codeunit & 0x3ff)) + 0x10000);
-		//else	//  (codeunit & 0xdc00) == 0xdc00 && (*cur & 0xdc00) != 0xd800
 
 		++cur;
 
@@ -822,7 +831,7 @@ public:
 	template <typename charT2>
 	static bool is_trailing(const charT2 cu)
 	{
-		return (cu & 0xdc00) == 0xdc00;
+		return (cu & 0xfc00) == 0xdc00;
 	}
 
 #endif	//  !defined(SRELLDBG_NO_BMH)
@@ -840,6 +849,11 @@ public:
 		out[0] = static_cast<charT>(((cp >> 10) & 0x3ff) | 0xd800);
 		out[1] = static_cast<charT>((cp & 0x3ff) | 0xdc00);
 		return 2;
+	}
+
+	static ui_l32 seqlen(const ui_l32 cp)
+	{
+		return (cp < 0x10000) ? 1 : 2;
 	}
 
 	static ui_l32 firstcodeunit(const ui_l32 cp)
@@ -1214,6 +1228,13 @@ public:
 	simple_array &append(const size_type size, const ElemT &type)
 	{
 		resize(size_ + size, type);
+		return *this;
+	}
+
+	simple_array &append(const value_type *const p, const size_type size)
+	{
+		resize(size_ + size);
+		std::memcpy(buffer_ + size_ - size, p, size * sizeof (value_type));
 		return *this;
 	}
 
@@ -16163,8 +16184,7 @@ private:
 		{
 			const ui_l32 seqlen = utf_traits::to_codeunits(mbstr, u32string_[i]);
 
-			for (ui_l32 j = 0; j < seqlen; ++j)
-				repseq_.push_back(mbstr[j]);
+			repseq_.append(mbstr, seqlen);
 		}
 
 		for (ui_l32 i = 0; i < 256; ++i)
@@ -16178,7 +16198,6 @@ private:
 
 	void setup_for_icase()
 	{
-		charT mbstr[utf_traits::maxseqlen];
 		ui_l32 u32table[ucf_constants::rev_maxset];
 		const std::size_t u32str_lastcharpos = static_cast<std::size_t>(u32string_.size() - 1);
 		simple_array<std::size_t> minlen(u32string_.size());
@@ -16194,7 +16213,7 @@ private:
 					u32c = u32table[j];
 
 			if (i < u32str_lastcharpos)
-				cu_repseq_lastcharpos += minlen[i] = utf_traits::to_codeunits(mbstr, u32c);
+				cu_repseq_lastcharpos += minlen[i] = utf_traits::seqlen(u32c);
 		}
 
 		++cu_repseq_lastcharpos;
@@ -18596,21 +18615,15 @@ private:
 		{
 			ucp = translate_numbers(curpos, end, 16, 4, 4, 0xffff);
 
-			if (ucp >= 0xd800 && ucp <= 0xdbff)
+			if (ucp >= 0xd800 && ucp <= 0xdbff && (curpos + 6) <= end && *curpos == meta_char::mc_escape && curpos[1] == char_alnum::ch_u)
 			{
-				const ui_l32 *prefetch = curpos;
+				const ui_l32 *la = curpos + 2;
+				const ui_l32 nextucp = translate_numbers(la, end, 16, 4, 4, 0xffff);
 
-				if (prefetch != end && *prefetch == meta_char::mc_escape && ++prefetch != end && *prefetch == char_alnum::ch_u)
+				if (nextucp >= 0xdc00 && nextucp <= 0xdfff)
 				{
-					++prefetch;
-
-					const ui_l32 nextucp = translate_numbers(prefetch, end, 16, 4, 4, 0xffff);
-
-					if (nextucp >= 0xdc00 && nextucp <= 0xdfff)
-					{
-						curpos = prefetch;
-						ucp = (((ucp << 10) & 0xffc00) | (nextucp & 0x3ff)) + 0x10000;
-					}
+					curpos = la;
+					ucp = (((ucp << 10) & 0xffc00) | (nextucp & 0x3ff)) + 0x10000;
 				}
 			}
 		}
@@ -18737,8 +18750,7 @@ private:
 
 			const ui_l32 seqlen = utf_traits::to_codeunits(mbstr, curchar);
 
-			for (ui_l32 i = 0; i < seqlen; ++i)
-				groupname.append(1, mbstr[i]);
+			groupname.append(mbstr, seqlen);
 		}
 
 		return groupname;
@@ -19364,12 +19376,18 @@ private:
 
 	void optimise(const cvars_type &cvars)
 	{
+		const bool needs_prefilter =
+#if !defined(SRELLDBG_NO_BMH)
+			 !this->bmdata &&
+#endif
+			 !(this->soflags & regex_constants::sticky);
+
 #if !defined(SRELLDBG_NO_BRANCH_OPT2) && !defined(SRELLDBG_NO_STATEHOOK)
 		branch_optimisation2();
 #endif
 
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
-		if (!this->bmdata && !(this->soflags & regex_constants::sticky))
+		if (needs_prefilter)
 			find_better_es(1u, cvars);
 #endif
 
@@ -19382,7 +19400,7 @@ private:
 #endif
 
 #if !defined(SRELLDBG_NO_1STCHRCLS)
-		if (!this->bmdata && !(this->soflags & regex_constants::sticky))
+		if (needs_prefilter)
 			create_firstchar_class();
 #endif
 
@@ -19393,6 +19411,9 @@ private:
 #if !defined(SRELLDBG_NO_CCPOS)
 		set_charclass_posinfo();
 #endif
+
+		static_cast<void>(needs_prefilter);
+		static_cast<void>(cvars);
 	}
 
 #if !defined(SRELLDBG_NO_SKIP_EPSILON)
@@ -22637,7 +22658,7 @@ private:
 				}
 				else if (sstate.ssc.state->flags)	//  multiline.
 				{
-					BidirectionalIterator la(sstate.ssc.iter);	//  LookAhead.
+					BidirectionalIterator la(sstate.ssc.iter);
 					const ui_l32 nextchar = utf_traits::codepoint_inc(la, sstate.srchend);
 
 #if !defined(SRELLDBG_NO_CCPOS)

@@ -1,3 +1,7 @@
+20240818; version 4.052:
+  * Fixed the wrong mask value in utf16_traits.
+  * Minor improvements.
+
 20240816; version 4.051:
   * Reimplemented the optimisation introduced in 4.050 in a different
     way to minimise memory usage.
