@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.052
+**  SRELL (std::regex-like library) version 4.053
 **
 **  Copyright (c) 2012-2024, Nozomu Katoo. All rights reserved.
 **
@@ -577,15 +577,11 @@ public:
 		//  Caller is responsible for cur != begin.
 	}
 
-#if !defined(SRELLDBG_NO_BMH)
-
 	template <typename charT2>
 	static bool is_trailing(const charT2 /* cu */)
 	{
 		return false;
 	}
-
-#endif	//  !defined(SRELLDBG_NO_BMH)
 
 	static ui_l32 to_codeunits(charT out[maxseqlen], ui_l32 cp)
 	{
@@ -641,33 +637,36 @@ public:
 	{
 		ui_l32 codepoint = static_cast<ui_l32>(*begin++ & 0xff);
 
-		if ((codepoint & 0x80) == 0)	//  1 octet.
+		if ((codepoint & 0x80) == 0)
 			return codepoint;
 
-		if (begin != end && codepoint >= 0xc2 && (*begin & 0xc0) == 0x80)
+		if (begin != end)
 		{
-			codepoint = static_cast<ui_l32>((codepoint << 6) | (*begin++ & 0x3f));
+//			codepoint = static_cast<ui_l32>((codepoint << 6) | _pdep_u32(*begin, 0xc03f));
+			codepoint = static_cast<ui_l32>((*begin & 0x3f) | ((*begin & 0xc0) << 8) | (codepoint << 6));
+			++begin;
 
-			//  11 0aaa aabb bbbb?
-			if ((codepoint & 0x800) == 0)	//  2 octets.
+			//  1011 0aaa aabb bbbb?
+			if ((codepoint - 0xb080) < 0x780)
 				return static_cast<ui_l32>(codepoint & 0x7ff);
 
-			//  11 1aaa aabb bbbb
-			if (begin != end && (*begin & 0xc0) == 0x80)
+			if (begin != end)
 			{
-				codepoint = static_cast<ui_l32>((codepoint << 6) | (*begin++ & 0x3f));
+				codepoint = static_cast<ui_l32>((*begin & 0x3f) | ((*begin & 0xc0) << 16) | (codepoint << 6));
+				++begin;
 
-				//  1110 aaaa bbbb bbcc cccc?
-				if ((codepoint & 0x10000) == 0)	//  3 octets.
-					return (codepoint &= 0xffff) >= 0x800 ? codepoint : re_detail::constants::invalid_u32value;
+				//  1010 1110 aaaa bbbb bbcc cccc?
+				if ((codepoint - 0xae0800) < 0xf800)
+					return static_cast<ui_l32>(codepoint & 0xffff);
 
-				//  1111 aaaa bbbb bbcc cccc
-				if (begin != end && (*begin & 0xc0) == 0x80)
+				if (begin != end)
 				{
-					codepoint = static_cast<ui_l32>((codepoint << 6) | (*begin++ & 0x3f));
+					codepoint = static_cast<ui_l32>((*begin & 0x3f) | ((*begin & 0xc0) << 24) | (codepoint << 6));
+					++begin;
 
-					//  11 110a aabb bbbb cccc ccdd dddd?
-					return ((codepoint - 0x3c10000) < 0x100000) ? static_cast<ui_l32>(codepoint & 0x1fffff) : re_detail::constants::invalid_u32value;	//  4 octets.
+					//  1010 1011 110a aabb bbbb cccc ccdd dddd?
+					if ((codepoint - 0xabc10000) < 0x100000)
+						return static_cast<ui_l32>(codepoint & 0x1fffff);
 				}
 			}
 		}
@@ -682,45 +681,40 @@ public:
 		if ((codepoint & 0x80) == 0)
 			return static_cast<ui_l32>(codepoint & 0xff);
 
-		if ((codepoint & 0x40) == 0 && cur != begin)
+		if (cur != begin)
 		{
-			codepoint = static_cast<ui_l32>((codepoint & 0x3f) | (*--cur << 6));
+			codepoint = static_cast<ui_l32>((codepoint & 0x3f) | ((codepoint & 0xc0) << 8) | ((*--cur & 0xff) << 6));
 
-			//  11 0bbb bbaa aaaa?
-			if ((codepoint & 0x3800) == 0x3000)	//  2 octets.
-				return (codepoint &= 0x7ff) >= 0x80 ? codepoint : re_detail::constants::invalid_u32value;
+			//  1011 0bbb bbaa aaaa?
+			if ((codepoint - 0xb080) < 0x780)
+				return static_cast<ui_l32>(codepoint & 0x7ff);
 
-			//  10 bbbb bbaa aaaa?
-			if ((codepoint & 0x3000) == 0x2000 && cur != begin)	//  [\x80-\xbf]{2}.
+			if (cur != begin)
 			{
-				codepoint = static_cast<ui_l32>((codepoint & 0xfff) | (*--cur << 12));
+				codepoint = static_cast<ui_l32>((codepoint & 0xfff) | ((codepoint & 0xf000) << 8) | ((*--cur & 0xff) << 12));
 
-				//  1110 cccc bbbb bbaa aaaa?
-				if ((codepoint & 0xf0000) == 0xe0000)	//  3 octets.
-					return (codepoint &= 0xffff) >= 0x800 ? codepoint : re_detail::constants::invalid_u32value;
+				//  1010 1110 cccc bbbb bbaa aaaa?
+				if ((codepoint - 0xae0800) < 0xf800)
+					return static_cast<ui_l32>(codepoint & 0xffff);
 
-				//  10cc cccc bbbb bbaa aaaa?
-				if ((codepoint & 0xc0000) == 0x80000 && cur != begin)	//  [\x80-\xbf]{3}.
+				if (cur != begin)
 				{
-					codepoint = static_cast<ui_l32>((codepoint & 0x3ffff) | ((*--cur & 0xff) << 18));
+					codepoint = static_cast<ui_l32>((codepoint & 0x3ffff) | ((codepoint & 0xfc0000) << 8) | ((*--cur & 0xff) << 18));
 
-					//  11 110d ddcc cccc bbbb bbaa aaaa?
-					return ((codepoint - 0x3c10000) < 0x100000) ? static_cast<ui_l32>(codepoint & 0x1fffff) : re_detail::constants::invalid_u32value;	//  4 octets.
+					//  1010 1011 110d ddcc cccc bbbb bbaa aaaa?
+					if ((codepoint - 0xabc10000) < 0x100000)
+						return static_cast<ui_l32>(codepoint & 0x1fffff);
 				}
 			}
 		}
 		return re_detail::constants::invalid_u32value;
 	}
 
-#if !defined(SRELLDBG_NO_BMH)
-
 	template <typename charT2>
 	static bool is_trailing(const charT2 cu)
 	{
 		return (cu & 0xc0) == 0x80;
 	}
-
-#endif	//  !defined(SRELLDBG_NO_BMH)
 
 	static ui_l32 to_codeunits(charT out[maxseqlen], ui_l32 cp)
 	{
@@ -742,7 +736,6 @@ public:
 			out[2] = static_cast<charT>((cp & 0x3f) | 0x80);
 			return 3;
 		}
-//		else	//  if (cp < 0x110000)
 
 		out[0] = static_cast<charT>(((cp >> 18) & 0x07) | 0xf0);
 		out[1] = static_cast<charT>(((cp >> 12) & 0x3f) | 0x80);
@@ -826,15 +819,11 @@ public:
 		return static_cast<ui_l32>(codeunit & 0xffff);
 	}
 
-#if !defined(SRELLDBG_NO_BMH)
-
 	template <typename charT2>
 	static bool is_trailing(const charT2 cu)
 	{
 		return (cu & 0xfc00) == 0xdc00;
 	}
-
-#endif	//  !defined(SRELLDBG_NO_BMH)
 
 	static ui_l32 to_codeunits(charT out[maxseqlen], ui_l32 cp)
 	{
@@ -843,7 +832,6 @@ public:
 			out[0] = static_cast<charT>(cp);
 			return 1;
 		}
-//		else	//  if (cp < 0x110000)
 
 		cp -= 0x10000;
 		out[0] = static_cast<charT>(((cp >> 10) & 0x3ff) | 0xd800);
@@ -894,9 +882,6 @@ public:
 	{
 		return static_cast<ui_l32>(static_cast<unsigned char>(*--cur));
 	}
-
-#if !defined(SRELLDBG_NO_BMH)
-#endif	//  !defined(SRELLDBG_NO_BMH)
 };	//  utf_traits<char>
 
 //  specialisation for signed char.
@@ -1924,8 +1909,8 @@ private:
 
 struct range_pair	//  , public std::pair<charT, charT>
 {
-	ui_l32 second;
 	ui_l32 first;
+	ui_l32 second;
 
 	void set(const ui_l32 min, const ui_l32 max)
 	{
@@ -2065,6 +2050,11 @@ public:
 	void append_newpair(const range_pair &right)
 	{
 		rparray_.push_back(right);
+	}
+
+	void append_newpairs(const range_pair *const p, const ui_l32 n)
+	{
+		rparray_.append(p, n);
 	}
 
 	void join(const range_pair &right)
@@ -2463,17 +2453,12 @@ public:
 		{
 			const range_pair &rp = base[pos];
 
-			if (c <= rp.second)
-			{
-				if (c >= rp.first)
-					return true;
-
+			if (c < rp.first)
 				pos = (pos << 1) + 1;
-			}
-			else
-			{
+			else if (c > rp.second)
 				pos = (pos << 1) + 2;
-			}
+			else
+				return true;
 		}
 		return false;
 	}
@@ -2693,45 +2678,14 @@ public:
 #if !defined(SRELLDBG_NO_CCPOS)
 	bool is_included(const ui_l32 pos, const ui_l32 len, const ui_l32 c) const
 	{
-			return char_class_el_.is_included_el(pos, len, c);
+		return char_class_el_.is_included_el(pos, len, c);
 	}
 #endif
 
-	void setup_icase_word()
-	{
-		range_pair &icase_pos = char_class_pos_[icase_word];
-
-		if (icase_pos.second == char_class_pos_[word].second)
-		{
-			range_pairs icasewordclass(char_class_, icase_pos.first, icase_pos.second);
-
-			icasewordclass.make_caseunfoldedcharset();
-				//  Includes 017f and 212a so that they and their case-folded
-				//  characters 's' and 'k' will be excluded from the character
-				//  set that /[\W]/i matches.
-
-			char_class_.replace(icase_pos.first, icase_pos.second, icasewordclass);
-
-			if (icase_pos.second < static_cast<ui_l32>(icasewordclass.size()))
-			{
-				const ui_l32 delta = static_cast<ui_l32>(icasewordclass.size() - icase_pos.second);
-
-				for (int i = number_of_predefcls; i < static_cast<int>(char_class_pos_.size()); ++i)
-					char_class_pos_[i].first += delta;
-			}
-			icase_pos.second = static_cast<ui_l32>(icasewordclass.size());
-		}
-	}
-
 	void clear()
 	{
+		char_class_.resize(20);
 		char_class_pos_.resize(number_of_predefcls);
-
-		ui_l32 basesize = 0;
-		for (int i = 0; i < number_of_predefcls; ++i)
-			basesize += char_class_pos_[i].second;
-
-		char_class_.resize(basesize);
 
 #if !defined(SRELLDBG_NO_CCPOS)
 		char_class_el_.clear();
@@ -2893,68 +2847,43 @@ private:
 //               0009 000B 000C 0020   00A0     FEFF    Zs
 //  LineTerminator::<LF> <CR> <LS> <PS>
 //                  000A 000D 2028 2029
+//
+//  gc=Space_Separator:Zs
+//  0x0020, 0x0020, 0x00A0, 0x00A0, 0x1680, 0x1680, 0x2000, 0x200A,
+//  0x202F, 0x202F, 0x205F, 0x205F, 0x3000, 0x3000,
 
 	void setup_predefinedclass()
 	{
-#if !defined(SRELL_NO_UNICODE_PROPERTY)
-		const ui_l32 *const Zs_address = unicode_property::ranges_address(upid_gc_Zs);
-//		const ui_l32 Zs_offset = unicode_property::ranges_offset(upid_gc_Zs);
-		const ui_l32 Zs_number = unicode_property::number_of_ranges(upid_gc_Zs);
-#else
-		static const ui_l32 Zs[] = {
-			0x1680, 0x1680, 0x2000, 0x200a,	// 0x2028, 0x2029,
-			0x202f, 0x202f, 0x205f, 0x205f, 0x3000, 0x3000
-		};
-#endif	//  defined(SRELL_NO_UNICODE_PROPERTY)
-		static const ui_l32 allranges[] = {
-			//  dotall.
-			0x0000, 0x10ffff,
+		static const range_pair allranges[] = {
 			//  newline.
-			0x0a, 0x0a, 0x0d, 0x0d,	//  \n \r
-			//  newline, space.
-			0x2028, 0x2029,
+			{ 0x0a, 0x0a }, { 0x0d, 0x0d }, { 0x2028, 0x2029 },	//  \n \r
+			//  dotall.
+			{ 0x0000, 0x10ffff },
 			//  space.
-			0x09, 0x0d,	//  \t \n \v \f \r
-			0x20, 0x20,	//  ' '
-			0xa0, 0xa0,	//  <NBSP>
-			0xfeff, 0xfeff,	//  <BOM>
-			//  digit, word.
-			0x30, 0x39,	//  '0'-'9'
-			0x41, 0x5a, 0x5f, 0x5f, 0x61, 0x7a	//  'A'-'Z' '_' 'a'-'z'
+			{ 0x09, 0x0d },	//  \t \n \v \f \r
+			{ 0x20, 0x20 },	//  ' '
+			{ 0xa0, 0xa0 },	//  <NBSP>
+			{ 0x1680, 0x1680 }, { 0x2000, 0x200a }, { 0x2028, 0x2029 },
+			{ 0x202f, 0x202f }, { 0x205f, 0x205f }, { 0x3000, 0x3000 },
+			{ 0xfeff, 0xfeff },	//  <BOM>
+			//  digit, word. word-icase.
+			{ 0x30, 0x39 },	//  '0'-'9'
+			{ 0x41, 0x5a }, { 0x5f, 0x5f }, { 0x61, 0x7a },	//  'A'-'Z' '_' 'a'-'z'
+			{ 0x017f, 0x017f }, { 0x212a, 0x212a }
 		};
-		range_pairs ranges;
+		static const range_pair offsets[] = {
+			{ 0, 3 },	//  newline.
+			{ 3, 1 },	//  dotall.
+			{ 4, 10 },	//  space.
+			{ 14, 1 },	//  digit.
+			{ 14, 4 },	//  word.
+			{ 14, 6 }	//  icase_word.
+		};
 
-		//  newline.
-		ranges.load_from_memory(&allranges[2], 3);
-		append_charclass(ranges);
-
-		//  dotall.
-		ranges.clear();
-		ranges.load_from_memory(&allranges[0], 1);
-		append_charclass(ranges);
-
-		//  space.
-		ranges.clear();
-		ranges.load_from_memory(&allranges[6], 5);
-#if !defined(SRELL_NO_UNICODE_PROPERTY)
-		ranges.load_from_memory(Zs_address, Zs_number);
-#else
-		ranges.load_from_memory(Zs, 5);
-#endif
-		append_charclass(ranges);
-
-		//  digit.
-		ranges.clear();
-		ranges.load_from_memory(&allranges[16], 1);
-		append_charclass(ranges);
-
-		//  word.
-		ranges.clear();
-		ranges.load_from_memory(&allranges[16], 4);
-		append_charclass(ranges);
-
-		//  Reservation for icase_word.
-		append_charclass(ranges);
+//		char_class_.clear();
+//		char_class_pos_.clear();
+		char_class_.append_newpairs(allranges, sizeof allranges / sizeof (range_pair));
+		char_class_pos_.append(offsets, sizeof offsets / sizeof (range_pair));
 	}
 
 private:
@@ -2965,14 +2894,12 @@ private:
 #if !defined(SRELLDBG_NO_CCPOS)
 	range_pairs char_class_el_;
 	range_pairs::array_type char_class_pos_el_;
-
 #endif
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
 	static const ui_l32 upid_gc_Zs = static_cast<ui_l32>(up_constants::gc_Space_Separator);
 	static const ui_l32 upid_gc_Cn = static_cast<ui_l32>(up_constants::gc_Unassigned);
 	static const ui_l32 upid_bp_Assigned = static_cast<ui_l32>(up_constants::bp_Assigned);
-
 #endif
 
 public:	//  For debug.
@@ -5121,13 +5048,7 @@ private:
 				case char_alnum::ch_b:	//  'b':
 					astate.type = st_boundary;	//  \b, \B.
 					astate.quantifier.reset(0);
-					if (cvars.is_icase())
-					{
-						this->character_class.setup_icase_word();
-						astate.char_num = static_cast<ui_l32>(re_character_class::icase_word);
-					}
-					else
-						astate.char_num = static_cast<ui_l32>(re_character_class::word);	//  \w, \W.
+					astate.char_num = static_cast<ui_l32>(!cvars.is_icase() ? re_character_class::word : re_character_class::icase_word);	//  \w, \W.
 					break;
 
 //				case char_alnum::ch_A:	//  'A':
@@ -6353,13 +6274,7 @@ private:
 				//@fallthrough@
 
 			case char_alnum::ch_w:	//  'w':
-				if (cvars.is_icase())
-				{
-					this->character_class.setup_icase_word();
-					eastate.char_num = static_cast<ui_l32>(re_character_class::icase_word);
-				}
-				else
-					eastate.char_num = static_cast<ui_l32>(re_character_class::word);	//  \w, \W.
+				eastate.char_num = static_cast<ui_l32>(!cvars.is_icase() ? re_character_class::word : re_character_class::icase_word);	//  \w, \W.
 				break;
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
@@ -7751,6 +7666,7 @@ private:
 	void set_charclass_posinfo()
 	{
 		this->character_class.finalise();
+
 		for (state_size_type i = 1; i < this->NFA_states.size(); ++i)
 		{
 			state_type &state = this->NFA_states[i];

@@ -1,3 +1,8 @@
+20240824; version 4.053:
+  * Simplified the creation of the predefined character classes.
+  * Improved internal UTF-8 iterators. Reduced the number of conditional
+    jumps.
+
 20240818; version 4.052:
   * Fixed the wrong mask value in utf16_traits.
   * Minor improvements.
