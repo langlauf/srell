@@ -1,3 +1,7 @@
+20240831; version 4.054:
+  * Code size reduction. Unified parsers that had been separate for
+    u-mode and v-mode.
+
 20240824; version 4.053:
   * Simplified the creation of the predefined character classes.
   * Improved internal UTF-8 iterators. Reduced the number of conditional

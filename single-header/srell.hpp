@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.053
+**  SRELL (std::regex-like library) version 4.054
 **
 **  Copyright (c) 2012-2024, Nozomu Katoo. All rights reserved.
 **
@@ -395,7 +395,6 @@ private:
 			static const ui_l32 max_u32value = static_cast<ui_l32>(-2);
 			static const ui_l32 ccstr_empty = static_cast<ui_l32>(-1);
 			static const ui_l32 infinity = static_cast<ui_l32>(~0);
-			static const ui_l32 pos_charbits = 21;
 		}
 		//  constants
 
@@ -498,7 +497,6 @@ private:
 
 		namespace char_other
 		{
-			static const ui_l32 co_sp    = 0x20;	//  ' '
 			static const ui_l32 co_perc  = 0x25;	//  '%'
 			static const ui_l32 co_amp   = 0x26;	//  '&'
 			static const ui_l32 co_apos  = 0x27;	//  '\''
@@ -15495,6 +15493,15 @@ struct re_compiler_state
 	{
 		return (soflags & regex_constants::dotall) ? true : false;
 	}
+
+	bool is_vmode() const
+	{
+#if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
+		return (soflags & regex_constants::unicodesets) ? true : false;
+#else
+		return false;
+#endif
+	}
 };
 //  re_compiler_state
 
@@ -16885,16 +16892,6 @@ protected:
 #endif
 	}
 
-	bool is_vmode() const
-	{
-#if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
-		return (this->soflags & regex_constants::unicodesets) ? true : false;
-#else
-		return false;
-#endif
-
-	}
-
 private:
 
 	typedef re_object_core<charT, traits> base_type;
@@ -17035,15 +17032,13 @@ private:
 		re_quantifier piecesize;
 		range_pairs tmpcc;
 		state_type astate;
-#if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
 		posdata_holder pos;
-#endif
 
 		branchsize.reset(0);
 
 		for (;;)
 		{
-			if (curpos == end || *curpos == meta_char::mc_bar || *curpos == meta_char::mc_rbracl /* || *curpos == char_ctrl::cc_nul */)	//  '|', ')', '\0'.
+			if (curpos == end || *curpos == meta_char::mc_bar || *curpos == meta_char::mc_rbracl)	//  '|', ')'.
 				return true;
 
 			piece.clear();
@@ -17059,26 +17054,19 @@ private:
 				goto AFTER_PIECE_SET;
 
 			case meta_char::mc_sbraop:	//  '[':
-#if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
-				if (this->is_vmode())
-				{
-					pos.clear();
+				pos.clear();
 
-					if (!parse_unicharset(pos, curpos, end, cvars))
-						return false;
-
-					if (pos.may_contain_strings())
-					{
-						transform_seqdata(piece, pos, cvars);
-						piecesize.set(pos.length.first, pos.length.second);
-						goto AFTER_PIECE_SET;
-					}
-					tmpcc.swap(pos.ranges);
-				}
-				else	//  U-mode.
-#endif
-				if (!register_character_class(tmpcc, astate, curpos, end, cvars))
+				if (!parse_unicharset(pos, curpos, end, cvars))
 					return false;
+
+				if (pos.may_contain_strings())
+				{
+					ADD_POS:
+					transform_seqdata(piece, pos, cvars);
+					piecesize.set(pos.length.first, pos.length.second);
+					goto AFTER_PIECE_SET;
+				}
+				tmpcc.swap(pos.ranges);
 
 				astate.char_num = tmpcc.consists_of_one_character((regex_constants::icase & this->soflags & cvars.soflags) ? true : false);
 
@@ -17109,25 +17097,33 @@ private:
 
 				astate.char_num = *curpos;
 
-#if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
-				if (this->is_vmode() && ((astate.char_num | masks::asc_icase) == char_alnum::ch_p))
+				if (astate.char_num >= char_alnum::ch_1 && astate.char_num <= char_alnum::ch_9)	//  \1, \9.
 				{
-					pos.clear();
+					astate.char_num = translate_numbers(curpos, end, 10, 0, 0, 0xfffffffe);
+						//  22.2.1.1 Static Semantics: Early Errors:
+						//  It is a Syntax Error if NcapturingParens >= 23^2 - 1.
 
-					if (!parse_escape_p_vmode(pos, astate, ++curpos, end, cvars))
-						return false;
+					if (astate.char_num == constants::invalid_u32value)
+						return this->set_error(regex_constants::error_escape);
 
-					if (astate.type != st_character_class)
-					{
-						transform_seqdata(piece, pos, cvars);
-						piecesize.set(astate.quantifier.atleast, astate.quantifier.atmost);
-						goto AFTER_PIECE_SET;
-					}
+					astate.flags = 0u;
 
-					astate.char_num = this->character_class.register_newclass(pos.ranges);
+#if !defined(SRELL_NO_NAMEDCAPTURE)
+					BACKREF_POSTPROCESS:
+#endif
+					astate.next2 = 1;
+					astate.type = st_backreference;
+					astate.quantifier.atleast = 0;
+
+					cvars.backref_used = true;
+
+					if (cvars.is_icase())
+						astate.flags |= sflags::icase;
+
 					break;
 				}
-#endif
+
+				++curpos;
 
 				switch (astate.char_num)
 				{
@@ -17142,20 +17138,16 @@ private:
 					break;
 
 //				case char_alnum::ch_A:	//  'A':
-//					astate.type   = st_bol;	//  '\A'
+//					astate.type = st_bol;	//  '\A'
 //				case char_alnum::ch_Z:	//  'Z':
-//					astate.type   = st_eol;	//  '\Z'
+//					astate.type = st_eol;	//  '\Z'
 //				case char_alnum::ch_z:	//  'z':
-//					astate.type   = st_eol;	//  '\z'
-//				case char_alnum::ch_R:	//  'R':
-				//  (?>\r\n?|[\x0A-\x0C\x85\u{2028}\u{2029}])
-
-				//  Backreferences.
+//					astate.type = st_eol;	//  '\z'
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
 				//  Prepared for named captures.
 				case char_alnum::ch_k:	//  'k':
-					if (++curpos == end || *curpos != meta_char::mc_lt)
+					if (curpos == end || *curpos != meta_char::mc_lt)
 						return this->set_error(regex_constants::error_escape);
 					else
 					{
@@ -17172,41 +17164,16 @@ private:
 					}
 #endif
 				default:
-
-					if (astate.char_num >= char_alnum::ch_1 && astate.char_num <= char_alnum::ch_9)	//  \1, \9.
-					{
-						astate.char_num = translate_numbers(curpos, end, 10, 0, 0, 0xfffffffe);
-							//  22.2.1.1 Static Semantics: Early Errors:
-							//  It is a Syntax Error if NcapturingParens >= 23^2 - 1.
-
-						if (astate.char_num == constants::invalid_u32value)
-							return this->set_error(regex_constants::error_escape);
-
-						astate.flags = 0u;
-
-#if !defined(SRELL_NO_NAMEDCAPTURE)
-						BACKREF_POSTPROCESS:
-#endif
-						astate.next2 = 1;
-						astate.type = st_backreference;
-						astate.quantifier.atleast = 0;
-
-						cvars.backref_used = true;
-
-						if (cvars.is_icase())
-							astate.flags |= sflags::icase;
-
-						goto AFTER_INCREMENT;
-					}
-
-					++curpos;
-					if (!translate_escape(NULL, astate, curpos, end, false, false, cvars))
+					pos.clear();
+					if (!translate_escape(pos, astate, curpos, end, false, cvars))
 						return false;
-					goto AFTER_INCREMENT;
-				}
 
-				++curpos;
-				AFTER_INCREMENT:
+					if (pos.may_contain_strings())
+						goto ADD_POS;
+
+					if (astate.type == st_character_class)
+						astate.char_num = this->character_class.register_newclass(pos.ranges);
+				}
 
 				break;
 
@@ -17249,6 +17216,12 @@ private:
 			case meta_char::mc_cbraop:	//  '{'
 				return this->set_error(regex_constants::error_badrepeat);
 
+			case meta_char::mc_cbracl:	//  '}'
+				return this->set_error(regex_constants::error_brace);
+
+			case meta_char::mc_sbracl:	//  ']'
+				return this->set_error(regex_constants::error_brack);
+
 			default:;
 			}
 
@@ -17283,7 +17256,7 @@ private:
 			{
 				const state_type &firststate = piece[0];
 
-				quantifier.reset();	//  quantifier.atleast = quantifier.atmost = 1;
+				quantifier.reset();
 
 				if (firststate.has_quantifier() && curpos != end)
 				{
@@ -17873,122 +17846,6 @@ private:
 
 	//  '['.
 
-	bool register_character_class(range_pairs &ranges, state_type &castate, const ui_l32 *&curpos, const ui_l32 *const end, const cvars_type &cvars)
-	{
-		range_pair code_range;
-		state_type rstate;
-		range_pairs curranges;
-
-		if (curpos == end)
-			return this->set_error(regex_constants::error_brack);
-
-		ranges.clear();
-
-		if (*curpos == meta_char::mc_caret)	//  '^'
-		{
-			castate.flags = sflags::is_not;
-			++curpos;
-		}
-
-		for (;;)
-		{
-			if (curpos == end)
-				return this->set_error(regex_constants::error_brack);
-
-			if (*curpos == meta_char::mc_sbracl)	//   ']'
-				break;
-
-			rstate.reset();
-
-			if (!get_character_in_class(curranges, rstate, curpos, end, cvars))
-				return false;
-
-			if (rstate.type == st_character_class)
-			{
-				ranges.merge(curranges);
-
-				if (curpos != end && *curpos == meta_char::mc_minus)	//  '-'
-				{
-					if (++curpos == end)
-						return this->set_error(regex_constants::error_brack);
-
-					if (*curpos == meta_char::mc_sbracl)
-						break;	// OK.
-
-					return this->set_error(regex_constants::error_brack);
-				}
-				continue;
-			}
-
-			code_range.first = code_range.second = rstate.char_num;
-
-			if (curpos == end)
-				return this->set_error(regex_constants::error_brack);
-
-			if (*curpos == meta_char::mc_minus)	//  '-'
-			{
-				++curpos;
-
-				if (curpos == end)
-					return this->set_error(regex_constants::error_brack);
-
-				if (*curpos == meta_char::mc_sbracl)
-				{
-					PUSH_SEPARATELY:
-					ranges.join(code_range);
-					code_range.first = code_range.second = meta_char::mc_minus;
-				}
-				else
-				{
-					if (!get_character_in_class(curranges, rstate, curpos, end, cvars))
-						return false;
-
-					if (rstate.type == st_character_class)
-					{
-						ranges.merge(curranges);
-						goto PUSH_SEPARATELY;
-					}
-
-					code_range.second = rstate.char_num;
-
-					if (!code_range.is_range_valid())
-						return this->set_error(regex_constants::error_range);
-				}
-			}
-			ranges.join(code_range);
-		}
-
-		//  *curpos == ']'
-		++curpos;
-		if (cvars.is_icase())
-			ranges.make_caseunfoldedcharset();
-
-		if (castate.flags)	//  is_not.
-		{
-			ranges.negation();
-			castate.flags = 0u;
-		}
-
-		return true;
-	}
-
-	bool get_character_in_class(range_pairs &rp, state_type &rstate, const ui_l32 *&curpos, const ui_l32 *const end, const cvars_type &cvars)
-	{
-		rstate.char_num = *curpos++;
-
-		if (rstate.char_num != meta_char::mc_escape)	//  '\\'
-			return true;
-
-		rp.clear();
-
-		if (curpos == end)
-			return this->set_error(regex_constants::error_escape);
-
-		rstate.char_num = *curpos++;
-
-		return translate_escape(&rp, rstate, curpos, end, true, false, cvars);
-	}
-
 	void add_predefclass_to_charclass(range_pairs &cls, const state_type &castate)
 	{
 		range_pairs predefclass = this->character_class[castate.char_num];
@@ -17999,13 +17856,12 @@ private:
 		cls.merge(predefclass);
 	}
 
-#if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
-
 	bool parse_unicharset(posdata_holder &basepos, const ui_l32 *&curpos, const ui_l32 *const end, const cvars_type &cvars)
 	{
 		if (curpos == end)
 			return this->set_error(regex_constants::error_brack);
 
+		const bool is_umode = !cvars.is_vmode();
 		const bool invert = (*curpos == meta_char::mc_caret) ? (++curpos, true) : false;	//  '^'
 		enum operation_type
 		{
@@ -18029,72 +17885,75 @@ private:
 			if (*curpos == meta_char::mc_sbracl)	//   ']'
 				break;
 
-			ui_l32 next2chars = constants::invalid_u32value;
-
-			if (curpos + 1 != end && *curpos == curpos[1])
+			if (!is_umode)
 			{
-				switch (*curpos)
+				ui_l32 next2chars = constants::invalid_u32value;
+
+				if (curpos + 1 != end && *curpos == curpos[1])
 				{
-				//  ClassSetReservedDoublePunctuator :: one of
-				//  && !! ## $$ %% ** ++ ,, .. :: ;; << == >> ?? @@ ^^ `` ~~
-				case char_other::co_amp:	//  '&'
-				case meta_char::mc_exclam:	//  '!'
-				case meta_char::mc_sharp:	//  '#'
-				case meta_char::mc_dollar:	//  '$'
-				case char_other::co_perc:	//  '%'
-				case meta_char::mc_astrsk:	//  '*'
-				case meta_char::mc_plus:	//  '+'
-				case meta_char::mc_comma:	//  ','
-				case meta_char::mc_period:	//  '.'
-				case meta_char::mc_colon:	//  ':'
-				case char_other::co_smcln:	//  ';'
-				case meta_char::mc_lt:		//  '<'
-				case meta_char::mc_eq:		//  '='
-				case meta_char::mc_gt:		//  '>'
-				case meta_char::mc_query:	//  '?'
-				case char_other::co_atmrk:	//  '@'
-				case meta_char::mc_caret:	//  '^'
-				case char_other::co_grav:	//  '`'
-				case char_other::co_tilde:	//  '~'
-				case meta_char::mc_minus:	//  '-'
-					next2chars = *curpos;
-					//@fallthrough@
-				default:;
+					switch (*curpos)
+					{
+					//  ClassSetReservedDoublePunctuator :: one of
+					//  && !! ## $$ %% ** ++ ,, .. :: ;; << == >> ?? @@ ^^ `` ~~
+					case char_other::co_amp:	//  '&'
+					case meta_char::mc_exclam:	//  '!'
+					case meta_char::mc_sharp:	//  '#'
+					case meta_char::mc_dollar:	//  '$'
+					case char_other::co_perc:	//  '%'
+					case meta_char::mc_astrsk:	//  '*'
+					case meta_char::mc_plus:	//  '+'
+					case meta_char::mc_comma:	//  ','
+					case meta_char::mc_period:	//  '.'
+					case meta_char::mc_colon:	//  ':'
+					case char_other::co_smcln:	//  ';'
+					case meta_char::mc_lt:		//  '<'
+					case meta_char::mc_eq:		//  '='
+					case meta_char::mc_gt:		//  '>'
+					case meta_char::mc_query:	//  '?'
+					case char_other::co_atmrk:	//  '@'
+					case meta_char::mc_caret:	//  '^'
+					case char_other::co_grav:	//  '`'
+					case char_other::co_tilde:	//  '~'
+					case meta_char::mc_minus:	//  '-'
+						next2chars = *curpos;
+						//@fallthrough@
+					default:;
+					}
 				}
-			}
 
-			switch (otype)
-			{
-			case op_intersection:
-				if (next2chars != char_other::co_amp)
-					goto ERROR_DOUBLE_PUNCT;
-				curpos += 2;
-				break;
-
-			case op_subtraction:
-				if (next2chars != meta_char::mc_minus)
-					goto ERROR_DOUBLE_PUNCT;
-				curpos += 2;
-				break;
-
-			case op_firstcc:
-				if (next2chars == char_other::co_amp)
-					otype = op_intersection;
-				else if (next2chars == meta_char::mc_minus)
-					otype = op_subtraction;
-				else if (next2chars == constants::invalid_u32value)
+				switch (otype)
+				{
+				case op_intersection:
+					if (next2chars != char_other::co_amp)
+						goto ERROR_DOUBLE_PUNCT;
+					curpos += 2;
 					break;
-				else
-					goto ERROR_DOUBLE_PUNCT;
 
-				curpos += 2;
-				break;
+				case op_subtraction:
+					if (next2chars != meta_char::mc_minus)
+						goto ERROR_DOUBLE_PUNCT;
+					curpos += 2;
+					break;
 
-//			case op_union:
-//			case op_init:
-			default:
-				if (next2chars != constants::invalid_u32value)
-					goto ERROR_DOUBLE_PUNCT;
+				case op_firstcc:
+					if (next2chars == char_other::co_amp)
+						otype = op_intersection;
+					else if (next2chars == meta_char::mc_minus)
+						otype = op_subtraction;
+					else if (next2chars == constants::invalid_u32value)
+						break;
+					else
+						goto ERROR_DOUBLE_PUNCT;
+
+					curpos += 2;
+					break;
+
+//				case op_union:
+//				case op_init:
+				default:
+					if (next2chars != constants::invalid_u32value)
+						goto ERROR_DOUBLE_PUNCT;
+				}
 			}
 
 			AFTER_OPERATOR:
@@ -18104,13 +17963,13 @@ private:
 
 			castate.reset();
 
-			if (*curpos == meta_char::mc_sbraop)	//  '['
+			if (!is_umode && *curpos == meta_char::mc_sbraop)	//  '['
 			{
 				++curpos;
 				if (!parse_unicharset(newpos, curpos, end, cvars))
 					return false;
 			}
-			else if (!get_character_in_class_vmode(newpos, castate, curpos, end, cvars, false))
+			else if (!get_classatom(newpos, castate, curpos, end, cvars, false))
 				return false;
 
 			if (curpos == end)
@@ -18121,7 +17980,14 @@ private:
 			else if (otype == op_firstcc)
 				otype = op_union;
 
-			if (castate.type == st_character)
+			if (castate.type == st_character_class)
+			{
+				//  In the u-mode, '-' following a character class is an error except "-]", immediately before ']'.
+				if (is_umode && curpos != end && *curpos == meta_char::mc_minus)	//  '-'
+					if ((curpos + 1) != end && curpos[1] != meta_char::mc_sbracl)
+						goto ERROR_BROKEN_RANGE;
+			}
+			else if (castate.type == st_character)
 			{
 				if (!newpos.has_data())
 				{
@@ -18129,14 +17995,11 @@ private:
 
 					if (otype <= op_union)
 					{
-						if (*curpos == meta_char::mc_minus)	//  '-'
+						if (*curpos == meta_char::mc_minus && (curpos + 1) != end && curpos[1] != meta_char::mc_sbracl)	//  '-'
 						{
 							++curpos;
 
-							if (curpos == end)
-								goto ERROR_BROKEN_RANGE;
-
-							if (otype < op_union && *curpos == meta_char::mc_minus)		//  '-'
+							if (!is_umode && otype < op_union && *curpos == meta_char::mc_minus)	//  '-'
 							{
 								otype = op_subtraction;
 								++curpos;
@@ -18144,7 +18007,7 @@ private:
 								goto AFTER_OPERATOR;
 							}
 
-							if (!get_character_in_class_vmode(newpos, castate, curpos, end, cvars, true))
+							if (!get_classatom(newpos, castate, curpos, end, cvars, true))
 								return false;
 
 							otype = op_union;
@@ -18160,23 +18023,28 @@ private:
 				}
 			}
 
-			switch (otype)
+			if (is_umode)
+				basepos.ranges.merge(newpos.ranges);
+			else
 			{
-			case op_union:
-				basepos.do_union(newpos);
-				break;
+				switch (otype)
+				{
+				case op_union:
+					basepos.do_union(newpos);
+					break;
 
-			case op_intersection:
-				basepos.do_and(newpos);
-				break;
+				case op_intersection:
+					basepos.do_and(newpos);
+					break;
 
-			case op_subtraction:
-				basepos.do_subtract(newpos);
-				break;
+				case op_subtraction:
+					basepos.do_subtract(newpos);
+					break;
 
-//			case op_firstcc:
-			default:
-				basepos.swap(newpos);
+//				case op_firstcc:
+				default:
+					basepos.swap(newpos);
+				}
 			}
 		}
 
@@ -18203,7 +18071,7 @@ private:
 		return this->set_error(regex_constants::error_operator);
 	}
 
-	bool get_character_in_class_vmode(
+	bool get_classatom(
 		posdata_holder &pos,
 		state_type &castate,
 		const ui_l32 *&curpos,
@@ -18229,8 +18097,7 @@ private:
 		case char_other::co_slash:	//  '/'
 		case meta_char::mc_minus:	//  '-'
 		case meta_char::mc_bar:		//  '|'
-			return this->set_error(regex_constants::error_noescape);
-			//@fallthrough@
+			return !cvars.is_vmode() ? true : this->set_error(regex_constants::error_noescape);
 
 		case meta_char::mc_escape:	//  '\\'
 			break;
@@ -18244,13 +18111,37 @@ private:
 
 		castate.char_num = *curpos++;
 
-		if (!no_ccesc)
+		switch (castate.char_num)
 		{
-			if (((castate.char_num | masks::asc_icase) == char_alnum::ch_p))
-			{
-				return parse_escape_p_vmode(pos, castate, curpos, end, cvars);
-			}
-			else if (castate.char_num == char_alnum::ch_q)
+		case char_alnum::ch_b:
+			castate.char_num = char_ctrl::cc_bs;	//  '\b' 0x08:BS
+			//@fallthrough@
+
+		case meta_char::mc_minus:	//  '-'
+			return true;
+
+		//  ClassSetReservedPunctuator :: one of
+		//  & - ! # % , : ; < = > @ ` ~
+		case char_other::co_amp:	//  '&'
+		case meta_char::mc_exclam:	//  '!'
+		case meta_char::mc_sharp:	//  '#'
+		case char_other::co_perc:	//  '%'
+		case meta_char::mc_comma:	//  ','
+		case meta_char::mc_colon:	//  ':'
+		case char_other::co_smcln:	//  ';'
+		case meta_char::mc_lt:		//  '<'
+		case meta_char::mc_eq:		//  '='
+		case meta_char::mc_gt:		//  '>'
+		case char_other::co_atmrk:	//  '@'
+		case char_other::co_grav:	//  '`'
+		case char_other::co_tilde:	//  '~'
+			if (cvars.is_vmode())
+				return true;
+			break;
+
+#if !defined(SRELL_NO_UNICODE_POS)
+		case char_alnum::ch_q:	//  '\\q'
+			if (cvars.is_vmode() && !no_ccesc)
 			{
 				if (curpos == end || *curpos != meta_char::mc_cbraop)	//  '{'
 					return this->set_error(regex_constants::error_escape);
@@ -18291,7 +18182,7 @@ private:
 					else
 					{
 						castate2.reset();
-						if (!get_character_in_class_vmode(dummypos, castate2, curpos, end, cvars, true))
+						if (!get_classatom(dummypos, castate2, curpos, end, cvars, true))
 							return false;
 
 						curseq.push_backncr(castate2.char_num);
@@ -18307,36 +18198,16 @@ private:
 
 				return true;
 			}
-		}
-
-		switch (castate.char_num)
-		{
-		//  ClassSetReservedPunctuator :: one of
-		//  & - ! # % , : ; < = > @ ` ~
-		case char_other::co_amp:	//  '&'
-		case meta_char::mc_exclam:	//  '!'
-		case meta_char::mc_sharp:	//  '#'
-		case char_other::co_perc:	//  '%'
-		case meta_char::mc_comma:	//  ','
-		case meta_char::mc_colon:	//  ':'
-		case char_other::co_smcln:	//  ';'
-		case meta_char::mc_lt:		//  '<'
-		case meta_char::mc_eq:		//  '='
-		case meta_char::mc_gt:		//  '>'
-		case char_other::co_atmrk:	//  '@'
-		case char_other::co_grav:	//  '`'
-		case char_other::co_tilde:	//  '~'
-			return true;
+			//@fallthrough@
+#endif	//  !defined(SRELL_NO_UNICODE_POS)
 
 		default:;
 		}
 
-		return translate_escape(&pos.ranges, castate, curpos, end, true, no_ccesc, cvars);
+		return translate_escape(pos, castate, curpos, end, no_ccesc, cvars);
 	}
 
-#endif	//  !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
-
-	bool translate_escape(range_pairs *const rp, state_type &eastate, const ui_l32 *&curpos, const ui_l32 *const end, const bool insidecharclass, const bool no_ccesc, const cvars_type &cvars)
+	bool translate_escape(posdata_holder &pos, state_type &eastate, const ui_l32 *&curpos, const ui_l32 *const end, const bool no_ccesc, const cvars_type &cvars)
 	{
 		if (!no_ccesc)
 		{
@@ -18368,68 +18239,110 @@ private:
 				break;
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
-			//  Prepared for Unicode properties and script names.
 			case char_alnum::ch_P:	//  \P{...}
 				eastate.flags = sflags::is_not;
 				//@fallthrough@
 
 			case char_alnum::ch_p:	//  \p{...}
-				{
-					range_pairs lranges;
-					range_pairs *const pranges = (rp != NULL) ? rp : &lranges;
-					const ui_l32 pnumber = lookup_propertynumber(curpos, end);
+			{
+				state_type &ccepastate = eastate;
 
-					if (pnumber == up_constants::error_property || this->character_class.is_pos(pnumber))
+				pstring pname;
+				pstring pvalue;
+
+				if (curpos == end || *curpos != meta_char::mc_cbraop)	//  '{'
+					return this->set_error(regex_constants::error_property);
+
+				const bool digit_seen = get_property_name_or_value(pvalue, ++curpos, end);
+
+				if (!pvalue.size())
+					return this->set_error(regex_constants::error_property);
+
+				if (!digit_seen)
+				{
+					if (curpos == end)
 						return this->set_error(regex_constants::error_property);
 
-					this->character_class.load_upranges(*pranges, pnumber);
-
-					if (eastate.flags)	//  is_not.
+					if (*curpos == meta_char::mc_eq)	//  '='
 					{
-						pranges->negation();
-						eastate.flags = 0u;
+						pname = pvalue;
+						get_property_name_or_value(pvalue, ++curpos, end);
+						if (!pvalue.size())
+							return this->set_error(regex_constants::error_property);
+					}
+				}
+
+				if (curpos == end || *curpos != meta_char::mc_cbracl)	//  '}'
+					return this->set_error(regex_constants::error_property);
+
+				++curpos;
+
+				pname.push_backncr(0);
+				pvalue.push_backncr(0);
+
+				ccepastate.char_num = this->character_class.get_propertynumber(pname, pvalue);
+
+				if (!this->character_class.is_pos(ccepastate.char_num))
+				{
+					pos.clear();
+
+					this->character_class.load_upranges(pos.ranges, ccepastate.char_num);
+
+					if (cvars.is_vmode() && cvars.is_icase() && ccepastate.char_num >= static_cast<ui_l32>(re_character_class::number_of_predefcls))
+						pos.ranges.make_caseunfoldedcharset();
+
+					if (ccepastate.flags)	//  is_not.
+					{
+						pos.ranges.negation();
+						ccepastate.flags = 0u;
 					}
 
-					if (!insidecharclass && cvars.is_icase())
-						pranges->make_caseunfoldedcharset();
+					if (!cvars.is_vmode() && cvars.is_icase())
+						pos.ranges.make_caseunfoldedcharset();
 
-					if (rp == NULL)
-						eastate.char_num = this->character_class.register_newclass(*pranges);
+					ccepastate.type = st_character_class;
+					ccepastate.quantifier.reset(1);
 				}
-				eastate.type = st_character_class;
+				else
+				{
+#if !defined(SRELL_NO_UNICODE_POS)
+					if (!cvars.is_vmode())
+#endif
+						return this->set_error(regex_constants::error_property);
+
+					simple_array<ui_l32> sequences;
+
+					this->character_class.get_prawdata(sequences, ccepastate.char_num);
+#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
+					pos.split_seqs_and_ranges(sequences, cvars.is_icase(), cvars.is_back());
+#else
+					pos.split_seqs_and_ranges(sequences, cvars.is_icase(), false);
+#endif
+
+					ccepastate.quantifier.set(pos.length.first, pos.length.second);
+
+					if (ccepastate.flags)	//  is_not.
+						return this->set_error(regex_constants::error_complement);
+				}
 				return true;
+			}
 #endif	//  !defined(SRELL_NO_UNICODE_PROPERTY)
 
 			default:
-				goto CLASS_OR_CHARACTER_ESCAPE;
+				goto CHARACTER_ESCAPE;
 			}
 
-			if (rp != NULL)
-				add_predefclass_to_charclass(*rp, eastate);
-			else
-			{
-				if (eastate.flags)	//  is_not.
-				{
-					range_pairs lranges;
-
-					add_predefclass_to_charclass(lranges, eastate);
-					eastate.char_num = this->character_class.register_newclass(lranges);
-				}
-			}
+			add_predefclass_to_charclass(pos.ranges, eastate);
 
 			eastate.flags = 0u;
 			eastate.type = st_character_class;
 			return true;
 		}
 
-		CLASS_OR_CHARACTER_ESCAPE:
+		CHARACTER_ESCAPE:
 
 		switch (eastate.char_num)
 		{
-		case char_alnum::ch_b:
-			eastate.char_num = char_ctrl::cc_bs;	//  '\b' 0x08:BS
-			break;
-
 		case char_alnum::ch_t:
 			eastate.char_num = char_ctrl::cc_htab;	//  '\t' 0x09:HT
 			break;
@@ -18477,7 +18390,7 @@ private:
 			eastate.char_num = parse_escape_u(curpos, end);
 			break;
 
-		//  SyntaxCharacter, '/', and '-'.
+		//  SyntaxCharacter, and '/'.
 		case meta_char::mc_caret:	//  '^'
 		case meta_char::mc_dollar:	//  '$'
 		case meta_char::mc_escape:	//  '\\'
@@ -18494,11 +18407,6 @@ private:
 		case meta_char::mc_bar:		//  '|'
 		case char_other::co_slash:	//  '/'
 			break;
-
-		case meta_char::mc_minus:	//  '-' allowed only in charclass.
-			if (insidecharclass)
-				break;
-			//@fallthrough@
 
 		default:
 			eastate.char_num = constants::invalid_u32value;
@@ -18538,7 +18446,7 @@ private:
 				if (nextucp >= 0xdc00 && nextucp <= 0xdfff)
 				{
 					curpos = la;
-					ucp = (((ucp << 10) & 0xffc00) | (nextucp & 0x3ff)) + 0x10000;
+					ucp = ((ucp << 10) + nextucp) - 0x35fdc00;	//  - ((0xd800 << 10) + 0xdc00) + 0x10000.
 				}
 			}
 		}
@@ -18546,44 +18454,6 @@ private:
 	}
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
-
-	ui_l32 lookup_propertynumber(const ui_l32 *&curpos, const ui_l32 *const end)
-	{
-		pstring pname;
-		pstring pvalue;
-
-		if (curpos == end || *curpos != meta_char::mc_cbraop)	//  '{'
-			return up_constants::error_property;
-
-		const bool digit_seen = get_property_name_or_value(pvalue, ++curpos, end);
-
-		if (!pvalue.size())
-			return up_constants::error_property;
-
-		if (!digit_seen)
-		{
-			if (curpos == end)
-				return up_constants::error_property;
-
-			if (*curpos == meta_char::mc_eq)	//  '='
-			{
-				pname = pvalue;
-				get_property_name_or_value(pvalue, ++curpos, end);
-				if (!pvalue.size())
-					return up_constants::error_property;
-			}
-		}
-
-		if (curpos == end || *curpos != meta_char::mc_cbracl)	//  '}'
-			return up_constants::error_property;
-
-		++curpos;
-
-		pname.push_backncr(0);
-		pvalue.push_backncr(0);
-
-		return this->character_class.get_propertynumber(pname, pvalue);
-	}
 
 	bool get_property_name_or_value(pstring &name_or_value, const ui_l32 *&curpos, const ui_l32 *const end) const
 	{
@@ -18620,17 +18490,15 @@ private:
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
 
-#if !defined(SRELL_NO_UNICODE_PROPERTY)
 	gname_string get_groupname(const ui_l32 *&curpos, const ui_l32 *const end, cvars_type &cvars)
-#else
-	gname_string get_groupname(const ui_l32 *&curpos, const ui_l32 *const end, cvars_type &)
-#endif
 	{
 		charT mbstr[utf_traits::maxseqlen];
 		gname_string groupname;
 
 #if !defined(SRELL_NO_UNICODE_PROPERTY)
 		cvars.idchecker.setup();
+#else
+		static_cast<void>(cvars);
 #endif
 		for (;;)
 		{
@@ -18672,58 +18540,6 @@ private:
 	}
 #endif	//  !defined(SRELL_NO_NAMEDCAPTURE)
 
-#if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
-
-	bool parse_escape_p_vmode(posdata_holder &pos, state_type &ccepastate, const ui_l32 *&curpos, const ui_l32 *const end, const cvars_type &cvars)
-	{
-		if (curpos == end)
-			return this->set_error(regex_constants::error_escape);
-
-		if (ccepastate.char_num == char_alnum::ch_P)	//  \P{...}
-			ccepastate.flags = sflags::is_not;
-
-		ccepastate.char_num = lookup_propertynumber(curpos, end);
-
-		if (ccepastate.char_num == up_constants::error_property)
-			return this->set_error(regex_constants::error_property);
-
-		if (!this->character_class.is_pos(ccepastate.char_num))
-		{
-			pos.clear();
-
-			this->character_class.load_upranges(pos.ranges, ccepastate.char_num);
-
-			if (cvars.is_icase() && ccepastate.char_num >= static_cast<ui_l32>(re_character_class::number_of_predefcls))
-				pos.ranges.make_caseunfoldedcharset();
-
-			if (ccepastate.flags)	//  is_not.
-			{
-				pos.ranges.negation();
-				ccepastate.flags = 0u;
-			}
-
-			ccepastate.type = st_character_class;
-			ccepastate.quantifier.reset(1);
-		}
-		else
-		{
-			simple_array<ui_l32> sequences;
-
-			this->character_class.get_prawdata(sequences, ccepastate.char_num);
-#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
-			pos.split_seqs_and_ranges(sequences, cvars.is_icase(), cvars.is_back());
-#else
-			pos.split_seqs_and_ranges(sequences, cvars.is_icase(), false);
-#endif
-
-			ccepastate.quantifier.set(pos.length.first, pos.length.second);
-
-			if (ccepastate.flags)	//  is_not.
-				return this->set_error(regex_constants::error_complement);
-		}
-		return true;
-	}
-
 	ui_l32 transform_seqdata(state_array &piece, const posdata_holder &pos, const cvars_type &cvars)
 	{
 		ui_l32 seqlen = static_cast<ui_l32>(pos.indices.size());
@@ -18753,9 +18569,7 @@ private:
 
 			jumpstate.reset(st_epsilon, epsilon_type::et_brnchend);	//  '/'
 
-			--seqlen;
-
-			for (; seqlen >= 2; --seqlen)
+			for (--seqlen; seqlen >= 2; --seqlen)
 			{
 				ui_l32 offset = pos.indices[seqlen];
 				const ui_l32 seqend = pos.indices[seqlen - 1];
@@ -18940,8 +18754,6 @@ private:
 		}
 		return castate.char_num;
 	}
-
-#endif	//  !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
 
 	ui_l32 translate_numbers(const ui_l32 *&curpos, const ui_l32 *const end, const int radix, const std::size_t minsize, const std::size_t maxsize, const ui_l32 maxvalue) const
 	{
