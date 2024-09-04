@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.054
+**  SRELL (std::regex-like library) version 4.055
 **
 **  Copyright (c) 2012-2024, Nozomu Katoo. All rights reserved.
 **
@@ -37,7 +37,6 @@
 #include <climits>
 #include <cwchar>
 #include <string>
-#include <locale>
 #include <cstdio>
 #include <cstdlib>
 #include <cstring>
@@ -54,40 +53,50 @@
 #define SRELL_HAS_TYPE_TRAITS
 #endif
 
-#ifdef __cpp_unicode_characters
-  #ifndef SRELL_CPP11_CHAR1632_ENABLED
-  #define SRELL_CPP11_CHAR1632_ENABLED
-  #endif
-#endif
-#ifdef __cpp_initializer_lists
-  #ifndef SRELL_CPP11_INITIALIZER_LIST_ENABLED
-  #define SRELL_CPP11_INITIALIZER_LIST_ENABLED
-  #endif
-#endif
-#ifdef __cpp_rvalue_references
-  #ifndef SRELL_CPP11_MOVE_ENABLED
-  #define SRELL_CPP11_MOVE_ENABLED
-  #endif
-#endif
-#ifdef SRELL_CPP11_MOVE_ENABLED
-  #if defined(_MSC_VER) && _MSC_VER < 1900
-  #define SRELL_NOEXCEPT
-  #else
-  #define SRELL_NOEXCEPT noexcept
-  #endif
-#endif
-#ifdef __cpp_char8_t
-  #ifndef SRELL_CPP20_CHAR8_ENABLED
-	#ifdef __cpp_lib_char8_t
-	#define SRELL_CPP20_CHAR8_ENABLED 2
-	#else
-	#define SRELL_CPP20_CHAR8_ENABLED 1
-	#endif
-  #endif
+#if defined(_MSC_VER)
+#define SRELL_NO_VCWARNING(n) \
+	__pragma(warning(push)) \
+	__pragma(warning(disable:n))
+#define SRELL_NO_VCWARNING_END __pragma(warning(pop))
+#else
+#define SRELL_NO_VCWARNING(x)
+#define SRELL_NO_VCWARNING_END
 #endif
 
-//  The following SRELL_NO_* macros would be useful when wanting to
-//  reduce the size of a binary by turning off some feature(s).
+#ifdef __cpp_unicode_characters
+	#ifndef SRELL_CPP11_CHAR1632_ENABLED
+	#define SRELL_CPP11_CHAR1632_ENABLED
+	#endif
+#endif
+#ifdef __cpp_initializer_lists
+	#ifndef SRELL_CPP11_INITIALIZER_LIST_ENABLED
+	#define SRELL_CPP11_INITIALIZER_LIST_ENABLED
+	#endif
+#endif
+#ifdef __cpp_rvalue_references
+	#ifndef SRELL_CPP11_MOVE_ENABLED
+	#define SRELL_CPP11_MOVE_ENABLED
+	#endif
+#endif
+#ifdef SRELL_CPP11_MOVE_ENABLED
+	#if defined(_MSC_VER) && _MSC_VER < 1900
+	#define SRELL_NOEXCEPT
+	#else
+	#define SRELL_NOEXCEPT noexcept
+	#endif
+#endif
+#ifdef __cpp_char8_t
+	#ifndef SRELL_CPP20_CHAR8_ENABLED
+		#ifdef __cpp_lib_char8_t
+		#define SRELL_CPP20_CHAR8_ENABLED 2
+		#else
+		#define SRELL_CPP20_CHAR8_ENABLED 1
+		#endif
+	#endif
+#endif
+
+//  The following SRELL_NO_* macros would be useful for reducing the
+//  size of an executable file by turning off some feature(s).
 
 #ifdef SRELL_NO_UNICODE_DATA
 
@@ -115,9 +124,6 @@
 #ifdef SRELL_V1_COMPATIBLE
 #ifndef SRELL_NO_UNICODE_PROPERTY
 #define SRELL_NO_UNICODE_PROPERTY
-#endif
-#ifndef SRELL_NO_VMODE
-#define SRELL_NO_VMODE
 #endif
 #define SRELL_NO_NAMEDCAPTURE
 #define SRELL_NO_SINGLELINE
@@ -551,13 +557,14 @@ public:
 
 	typedef charT char_type;
 
-	static const std::size_t maxseqlen = 1;
-
-	static const ui_l32 one = 1;
-	static const ui_l32 charbit = (sizeof (charT) * CHAR_BIT) > 21 ? 21 : (sizeof (charT) * CHAR_BIT);
-	static const ui_l32 bitsetsize = one << (charbit > 18 ? 18 : charbit);
+	enum
+	{
+		maxseqlen = 1,
+		charbit = (sizeof (charT) * CHAR_BIT) > 21 ? 21 : (sizeof (charT) * CHAR_BIT)
+	};
+	static const ui_l32 bitsetsize = static_cast<ui_l32>(1) << charbit;
 	static const ui_l32 bitsetmask = bitsetsize - 1;
-	static const ui_l32 maxcpvalue = charbit == 21 ? 0x10ffff : ((one << charbit) - 1);
+	static const ui_l32 maxcpvalue = charbit == 21 ? 0x10ffff : bitsetmask;
 
 	//  *iter++
 	template <typename ForwardIterator>
@@ -573,6 +580,11 @@ public:
 	{
 		return static_cast<ui_l32>(*--cur);
 		//  Caller is responsible for cur != begin.
+	}
+
+	static bool is_mculeading(const ui_l32)
+	{
+		return false;
 	}
 
 	template <typename charT2>
@@ -602,8 +614,6 @@ public:
 		return maxcpvalue + 1;
 	}
 };
-template <typename charT> const std::size_t utf_traits_core<charT>::maxseqlen;
-template <typename charT> const ui_l32 utf_traits_core<charT>::charbit;
 template <typename charT> const ui_l32 utf_traits_core<charT>::bitsetsize;
 template <typename charT> const ui_l32 utf_traits_core<charT>::bitsetmask;
 template <typename charT> const ui_l32 utf_traits_core<charT>::maxcpvalue;
@@ -622,10 +632,11 @@ struct utf8_traits : public utf_traits_core<charT>
 {
 public:
 
-	//  utf-8 specific.
-	static const std::size_t maxseqlen = 4;
-
-	static const ui_l32 charbit = 8;
+	enum
+	{
+		maxseqlen = 4,
+		charbit = 8
+	};
 	static const ui_l32 bitsetsize = 0x100;
 	static const ui_l32 bitsetmask = 0xff;
 	static const ui_l32 maxcpvalue = 0x10ffff;
@@ -708,6 +719,11 @@ public:
 		return re_detail::constants::invalid_u32value;
 	}
 
+	static bool is_mculeading(const ui_l32 c)
+	{
+		return c >= 0xc2;
+	}
+
 	template <typename charT2>
 	static bool is_trailing(const charT2 cu)
 	{
@@ -766,8 +782,6 @@ public:
 		return (cp < 0x80) ? 0x80 : ((cp < 0x800) ? 0x800 : ((cp < 0x10000) ? 0x10000 : 0x110000));
 	}
 };
-template <typename charT> const std::size_t utf8_traits<charT>::maxseqlen;
-template <typename charT> const ui_l32 utf8_traits<charT>::charbit;
 template <typename charT> const ui_l32 utf8_traits<charT>::bitsetsize;
 template <typename charT> const ui_l32 utf8_traits<charT>::bitsetmask;
 template <typename charT> const ui_l32 utf8_traits<charT>::maxcpvalue;
@@ -779,10 +793,11 @@ struct utf16_traits : public utf_traits_core<charT>
 {
 public:
 
-	//  utf-16 specific.
-	static const std::size_t maxseqlen = 2;
-
-	static const ui_l32 charbit = 16;
+	enum
+	{
+		maxseqlen = 2,
+		charbit = 16
+	};
 	static const ui_l32 bitsetsize = 0x10000;
 	static const ui_l32 bitsetmask = 0xffff;
 	static const ui_l32 maxcpvalue = 0x10ffff;
@@ -815,6 +830,11 @@ public:
 		++cur;
 
 		return static_cast<ui_l32>(codeunit & 0xffff);
+	}
+
+	static bool is_mculeading(const ui_l32 c)
+	{
+		return (c - 0xd800) < 0x800;
 	}
 
 	template <typename charT2>
@@ -856,8 +876,6 @@ public:
 		return (cp < 0x10000) ? 0x10000 : 0x110000;
 	}
 };
-template <typename charT> const std::size_t utf16_traits<charT>::maxseqlen;
-template <typename charT> const ui_l32 utf16_traits<charT>::charbit;
 template <typename charT> const ui_l32 utf16_traits<charT>::bitsetsize;
 template <typename charT> const ui_l32 utf16_traits<charT>::bitsetmask;
 template <typename charT> const ui_l32 utf16_traits<charT>::maxcpvalue;
@@ -879,6 +897,11 @@ public:
 	static ui_l32 dec_codepoint(BidirectionalIterator &cur, const BidirectionalIterator /* begin */)
 	{
 		return static_cast<ui_l32>(static_cast<unsigned char>(*--cur));
+	}
+
+	static bool is_mculeading(const ui_l32)
+	{
+		return false;
 	}
 };	//  utf_traits<char>
 
@@ -917,74 +940,10 @@ public:
 
 	typedef charT char_type;
 	typedef std::basic_string<char_type> string_type;
-	typedef std::locale locale_type;
-//	typedef bitmask_type char_class_type;
+	typedef int locale_type;
 	typedef int char_class_type;
 
 	typedef re_detail::utf_traits<charT> utf_traits;
-
-public:
-
-//	regex_traits();
-
-	static std::size_t length(const char_type *p)
-	{
-		return std::char_traits<charT>::length(p);
-	}
-
-	charT translate(const charT c) const
-	{
-		return c;
-	}
-
-	charT translate_nocase(const charT c) const
-	{
-		return c;
-	}
-
-	template <class ForwardIterator>
-	string_type transform(ForwardIterator first, ForwardIterator last) const
-	{
-		return string_type(first, last);
-	}
-
-	template <class ForwardIterator>
-	string_type transform_primary(ForwardIterator first, ForwardIterator last) const
-	{
-		return string_type(first, last);
-	}
-
-	template <class ForwardIterator>
-	string_type lookup_collatename(ForwardIterator first, ForwardIterator last) const
-	{
-		return string_type(first, last);
-	}
-
-	template <class ForwardIterator>
-	char_class_type lookup_classname(ForwardIterator /* first */, ForwardIterator /* last */, bool /* icase */ = false) const
-	{
-		return static_cast<char_class_type>(0);
-	}
-
-	bool isctype(const charT /* c */, const char_class_type /* f */) const
-	{
-		return false;
-	}
-
-	int value(const charT /* ch */, const int /* radix */) const
-	{
-		return -1;
-	}
-
-	locale_type imbue(const locale_type /* l */)
-	{
-		return locale_type();
-	}
-
-	locale_type getloc() const
-	{
-		return locale_type();
-	}
 };	//  regex_traits
 
 template <class charT>
@@ -1405,7 +1364,6 @@ protected:
 	size_type size_;
 	size_type capacity_;
 
-//	static const size_type maxsize_ = (npos - sizeof (simple_array)) / sizeof (ElemT);
 	static const size_type maxsize_ = (npos - sizeof (pointer) - sizeof (size_type) * 2) / sizeof (ElemT) / 2;
 };
 template <typename ElemT>
@@ -1769,7 +1727,6 @@ public:	//  For debug.
 
 		}	//  namespace up_internal
 
-//template <typename PairType>
 class unicode_property
 {
 public:
@@ -1905,7 +1862,7 @@ private:
 	namespace re_detail
 	{
 
-struct range_pair	//  , public std::pair<charT, charT>
+struct range_pair
 {
 	ui_l32 first;
 	ui_l32 second;
@@ -1962,7 +1919,7 @@ struct range_pair_helper : public range_pair
 };
 //  range_pair_helper
 
-struct range_pairs	//  : public simple_array<range_pair>
+struct range_pairs
 {
 public:
 
@@ -2392,18 +2349,6 @@ public:
 #endif	//  defined(SRELLDBG_NO_BITSET)
 
 	//  For multiple_range_pairs functions.
-
-	bool is_included_ls(const ui_l32 pos, ui_l32 count, const ui_l32 c) const
-	{
-		const range_pair *cur = &rparray_[pos];
-
-		for (; count; ++cur, --count)
-		{
-			if (c <= cur->second)
-				return c >= cur->first;
-		}
-		return false;
-	}
 
 	bool is_included(const ui_l32 pos, ui_l32 count, const ui_l32 c) const
 	{
@@ -4498,7 +4443,7 @@ protected:
 #if !defined(SRELL_NO_LIMIT_COUNTER)
 private:
 
-	static const std::size_t lcounter_defnum_ = 16777216;
+	static const std::size_t lcounter_defnum_ = 2097152;	//  1 << 21.
 
 #endif
 
@@ -4839,8 +4784,6 @@ private:
 			return false;
 		}
 
-		this->NFA_states[0].quantifier = piecesize;
-
 		if (begin != end)
 			return this->set_error(regex_constants::error_paren);	//  ')'s are too many.
 
@@ -4851,6 +4794,7 @@ private:
 		flstate.type = st_success;
 		flstate.next1 = 0;
 		flstate.next2 = 0;
+		flstate.quantifier = piecesize;
 		this->NFA_states.push_back(flstate);
 
 		if (cvars.backref_used && !check_backreferences(cvars))
@@ -5405,7 +5349,6 @@ private:
 
 #if 0
 //  Although ECMAScript does not support v-flag modification, SRELL can.
-#if !defined(SRELL_NO_VMODE) && !defined(SRELL_NO_UNICODE_PROPERTY)
 
 						case char_alnum::ch_v:	//  'v':
 							if (modified & regex_constants::unicodesets)
@@ -5416,7 +5359,6 @@ private:
 							else
 								localflags &= ~regex_constants::unicodesets;
 							break;
-#endif
 #endif
 						default:
 							return this->set_error(regex_constants::error_paren);
@@ -5755,16 +5697,6 @@ private:
 	}
 
 	//  '['.
-
-	void add_predefclass_to_charclass(range_pairs &cls, const state_type &castate)
-	{
-		range_pairs predefclass = this->character_class[castate.char_num];
-
-		if (castate.flags)	//  is_not.
-			predefclass.negation();
-
-		cls.merge(predefclass);
-	}
 
 	bool parse_unicharset(posdata_holder &basepos, const ui_l32 *&curpos, const ui_l32 *const end, const cvars_type &cvars)
 	{
@@ -6155,8 +6087,6 @@ private:
 
 			case char_alnum::ch_p:	//  \p{...}
 			{
-				state_type &ccepastate = eastate;
-
 				pstring pname;
 				pstring pvalue;
 
@@ -6190,28 +6120,28 @@ private:
 				pname.push_backncr(0);
 				pvalue.push_backncr(0);
 
-				ccepastate.char_num = this->character_class.get_propertynumber(pname, pvalue);
+				eastate.char_num = this->character_class.get_propertynumber(pname, pvalue);
 
-				if (!this->character_class.is_pos(ccepastate.char_num))
+				if (!this->character_class.is_pos(eastate.char_num))
 				{
 					pos.clear();
 
-					this->character_class.load_upranges(pos.ranges, ccepastate.char_num);
+					this->character_class.load_upranges(pos.ranges, eastate.char_num);
 
-					if (cvars.is_vmode() && cvars.is_icase() && ccepastate.char_num >= static_cast<ui_l32>(re_character_class::number_of_predefcls))
+					if (cvars.is_vmode() && cvars.is_icase() && eastate.char_num >= static_cast<ui_l32>(re_character_class::number_of_predefcls))
 						pos.ranges.make_caseunfoldedcharset();
 
-					if (ccepastate.flags)	//  is_not.
+					if (eastate.flags)	//  is_not.
 					{
 						pos.ranges.negation();
-						ccepastate.flags = 0u;
+						eastate.flags = 0u;
 					}
 
 					if (!cvars.is_vmode() && cvars.is_icase())
 						pos.ranges.make_caseunfoldedcharset();
 
-					ccepastate.type = st_character_class;
-					ccepastate.quantifier.reset(1);
+					eastate.type = st_character_class;
+					eastate.quantifier.reset(1);
 				}
 				else
 				{
@@ -6222,16 +6152,16 @@ private:
 
 					simple_array<ui_l32> sequences;
 
-					this->character_class.get_prawdata(sequences, ccepastate.char_num);
+					this->character_class.get_prawdata(sequences, eastate.char_num);
 #if !defined(SRELL_FIXEDWIDTHLOOKBEHIND)
 					pos.split_seqs_and_ranges(sequences, cvars.is_icase(), cvars.is_back());
 #else
 					pos.split_seqs_and_ranges(sequences, cvars.is_icase(), false);
 #endif
 
-					ccepastate.quantifier.set(pos.length.first, pos.length.second);
+					eastate.quantifier.set(pos.length.first, pos.length.second);
 
-					if (ccepastate.flags)	//  is_not.
+					if (eastate.flags)	//  is_not.
 						return this->set_error(regex_constants::error_complement);
 				}
 				return true;
@@ -6242,7 +6172,12 @@ private:
 				goto CHARACTER_ESCAPE;
 			}
 
-			add_predefclass_to_charclass(pos.ranges, eastate);
+			range_pairs predefclass = this->character_class[eastate.char_num];
+
+			if (eastate.flags)	//  is_not.
+				predefclass.negation();
+
+			pos.ranges.merge(predefclass);
 
 			eastate.flags = 0u;
 			eastate.type = st_character_class;
@@ -7046,7 +6981,7 @@ private:
 #endif
 
 #if !defined(SRELLDBG_NO_CCPOS)
-		set_charclass_posinfo();
+		set_charclass_posinfo(needs_prefilter);
 #endif
 
 		static_cast<void>(needs_prefilter);
@@ -7180,12 +7115,8 @@ private:
 						}
 					}
 					else	//  nextcc.size() == 0
-					if (!canbe0length || only_success_left(nextno))
-					{
-						//  (size() == 0 && !canbe0length) means [].
-						if (bq.is_greedy)
-							goto IS_EXCLUSIVE;
-					}
+					if (!canbe0length || bq.is_greedy)
+						goto IS_EXCLUSIVE;
 
 					continue;
 				}
@@ -7266,40 +7197,6 @@ private:
 			reorder_piece(this->NFA_states);
 	}
 
-	bool only_success_left(state_size_type pos) const
-	{
-		for (;;)
-		{
-			const state_type &state = this->NFA_states[pos];
-
-			switch (state.type)
-			{
-			case st_success:
-				return true;
-
-			case st_roundbracket_close:
-			case st_backreference:
-				if (state.next2 != 0 && state.next1 != state.next2)
-					return false;
-				break;
-
-			case st_epsilon:
-				if (state.next2 != 0 && !only_success_left(pos + state.next2))
-					return false;
-				break;
-
-			case st_roundbracket_open:
-				break;	//  /a*()/
-
-			default:
-				return false;
-			}
-			if (state.next1)
-				pos += state.next1;
-			else
-				return false;
-		}
-	}
 #endif	//  !defined(SRELLDBG_NO_ASTERISK_OPT)
 
 	void reorder_piece(state_array &piece) const
@@ -7475,7 +7372,7 @@ private:
 #endif	//  !defined(SRELLDBG_NO_BMH)
 
 #if !defined(SRELLDBG_NO_CCPOS)
-	void set_charclass_posinfo()
+	void set_charclass_posinfo(const bool has_fcc)
 	{
 		this->character_class.finalise();
 
@@ -7488,6 +7385,12 @@ private:
 				const range_pair &posinfo = this->character_class.charclasspos(state.char_num);
 				state.quantifier.set(posinfo.first, posinfo.second);
 			}
+		}
+
+		if (has_fcc)
+		{
+			const range_pair &posinfo = this->character_class.charclasspos(this->NFA_states[0].quantifier.is_greedy);
+			this->NFA_states[0].quantifier.set(posinfo.first, posinfo.second);
 		}
 	}
 #endif	//  !defined(SRELLDBG_NO_CCPOS)
@@ -9478,13 +9381,41 @@ private:
 				utf_traits::codepoint_inc(sstate.nextpos, sstate.srchend);
 #else
 	#if !defined(SRELLDBG_NO_BITSET)
-				if (!this->firstchar_class_bs.test((*sstate.nextpos++) & utf_traits::bitsetmask))
+				const ui_l32 cu = *sstate.nextpos & utf_traits::bitsetmask;
+
+				if (!this->firstchar_class_bs.test(cu))
+				{
+					++sstate.nextpos;
+					continue;
+				}
+
+SRELL_NO_VCWARNING(4127)
+				if (utf_traits::maxseqlen > 1)
+SRELL_NO_VCWARNING_END
+				{
+					if (utf_traits::is_mculeading(cu))
+					{
+						const ui_l32 cp = utf_traits::codepoint_inc(sstate.nextpos, sstate.srchend);
+						const re_quantifier &r0q = this->NFA_states[0].quantifier;
+
+#if !defined(SRELLDBG_NO_CCPOS)
+						if (!this->character_class.is_included(r0q.atleast, r0q.atmost, cp))
+#else
+						if (!this->character_class.is_included(r0q.is_greedy, cp))
+#endif
+							continue;
+
+						goto SKIP_INC;
+					}
+				}
+				++sstate.nextpos;
+				SKIP_INC:;
 	#else
 				const ui_l32 firstchar = utf_traits::codepoint_inc(sstate.nextpos, sstate.srchend);
 
 				if (!this->firstchar_class.is_included(firstchar))
-	#endif
 					continue;
+	#endif
 #endif	//  defined(SRELLDBG_NO_1STCHRCLS)
 			}
 			//  Even when final == true, we have to try for such expressions
@@ -9528,8 +9459,29 @@ private:
 				{
 //					sstate.ssc.iter = bgnpos;
 					sstate.ssc.iter += bgnpos - &*sstate.nextpos;
-//					sstate.nextpos = bgnpos + 1;
-					sstate.nextpos = sstate.ssc.iter + 1;
+					sstate.nextpos = sstate.ssc.iter;
+
+SRELL_NO_VCWARNING(4127)
+					if (utf_traits::maxseqlen > 1)
+SRELL_NO_VCWARNING_END
+					{
+						if (utf_traits::is_mculeading(*sstate.nextpos & utf_traits::bitsetmask))
+						{
+							const ui_l32 cp = utf_traits::codepoint_inc(sstate.nextpos, sstate.srchend);
+							const re_quantifier &r0q = this->NFA_states[0].quantifier;
+
+#if !defined(SRELLDBG_NO_CCPOS)
+							if (!this->character_class.is_included(r0q.atleast, r0q.atmost, cp))
+#else
+							if (!this->character_class.is_included(r0q.is_greedy, cp))
+#endif
+								continue;
+
+							goto SKIP_INC;
+						}
+					}
+					++sstate.nextpos;
+					SKIP_INC:;
 
 #if defined(SRELL_NO_LIMIT_COUNTER)
 					sstate.reset();
@@ -9561,7 +9513,28 @@ private:
 			if (sstate.ssc.iter != sstate.srchend)
 			{
 				sstate.nextpos = sstate.ssc.iter;
+
+SRELL_NO_VCWARNING(4127)
+				if (utf_traits::maxseqlen > 1)
+SRELL_NO_VCWARNING_END
+				{
+					if (utf_traits::is_mculeading(*sstate.nextpos & utf_traits::bitsetmask))
+					{
+						const ui_l32 cp = utf_traits::codepoint_inc(sstate.nextpos, sstate.srchend);
+						const re_quantifier &r0q = this->NFA_states[0].quantifier;
+
+#if !defined(SRELLDBG_NO_CCPOS)
+						if (!this->character_class.is_included(r0q.atleast, r0q.atmost, cp))
+#else
+						if (!this->character_class.is_included(r0q.is_greedy, cp))
+#endif
+							continue;
+
+						goto SKIP_INC;
+					}
+				}
 				++sstate.nextpos;
+				SKIP_INC:;
 
 #if defined(SRELL_NO_LIMIT_COUNTER)
 				sstate.reset();
@@ -9666,6 +9639,7 @@ private:
 			if (--sstate.failure_counter)
 			{
 #endif
+				NOT_MATCHED0:
 				if (sstate.bt_size() > sstate.btstack_size)
 				{
 					sstate.pop_bt(sstate.ssc);
@@ -9695,14 +9669,9 @@ private:
 			{
 			case st_character:
 
-#if defined(_MSC_VER) && _MSC_VER >= 1400
-#pragma warning(push)
-#pragma warning(disable:4127)
-#endif
+SRELL_NO_VCWARNING(4127)
 				if (!reverse)
-#if defined(_MSC_VER) && _MSC_VER >= 1400
-#pragma warning(pop)
-#endif
+SRELL_NO_VCWARNING_END
 				{
 					if (!(sstate.ssc.iter == sstate.srchend))
 					{
@@ -9774,14 +9743,9 @@ private:
 
 			case st_character_class:
 
-#if defined(_MSC_VER) && _MSC_VER >= 1400
-#pragma warning(push)
-#pragma warning(disable:4127)
-#endif
+SRELL_NO_VCWARNING(4127)
 				if (!reverse)
-#if defined(_MSC_VER) && _MSC_VER >= 1400
-#pragma warning(pop)
-#endif
+SRELL_NO_VCWARNING_END
 				{
 					if (!(sstate.ssc.iter == sstate.srchend))
 					{
@@ -9917,7 +9881,7 @@ private:
 
 			case st_decrement_counter:
 				--sstate.counter[sstate.ssc.state->char_num];
-				goto NOT_MATCHED;
+				goto NOT_MATCHED0;
 
 			case st_save_and_reset_counter:
 				{
@@ -9932,7 +9896,7 @@ private:
 
 			case st_restore_counter:
 				sstate.pop_c(sstate.counter[sstate.ssc.state->char_num]);
-				goto NOT_MATCHED;
+				goto NOT_MATCHED0;
 
 			case st_roundbracket_open:	//  '(':
 				{
@@ -9977,7 +9941,7 @@ private:
 						sstate.pop_sm(inner_bracket.core);
 					}
 				}
-				goto NOT_MATCHED;
+				goto NOT_MATCHED0;
 
 			case st_roundbracket_close:	//  ')':
 				{
@@ -9993,7 +9957,7 @@ private:
 						if (sstate.ssc.state->next_state1->type != st_check_counter)
 						{
 							if (bracket.counter > 1)
-								goto NOT_MATCHED;	//  ECMAScript spec 15.10.2.5, note 4.
+								goto NOT_MATCHED0;	//  ECMAScript spec 15.10.2.5, note 4.
 
 							sstate.ssc.state = sstate.ssc.state->next_state2;
 								//  Accepts 0 width match and exits.
@@ -10004,7 +9968,7 @@ private:
 							const counter_type counter = sstate.counter[sstate.ssc.state->next_state1->char_num];
 
 							if (counter > sstate.ssc.state->next_state1->quantifier.atleast)
-								goto NOT_MATCHED;	//  Takes a captured string in the previous loop.
+								goto NOT_MATCHED0;	//  Takes a captured string in the previous loop.
 
 							sstate.ssc.state = sstate.ssc.state->next_state1;
 								//  Accepts 0 width match and continues.
@@ -10045,7 +10009,7 @@ private:
 				}
 
 				sstate.pop_rp(sstate.repeat[sstate.ssc.state->char_num]);
-				goto NOT_MATCHED;
+				goto NOT_MATCHED0;
 
 			case st_check_0_width_repeat:
 				if (sstate.ssc.iter != sstate.repeat[sstate.ssc.state->char_num])
@@ -10056,7 +10020,7 @@ private:
 					const counter_type counter = sstate.counter[sstate.ssc.state->next_state1->char_num];
 
 					if (counter > sstate.ssc.state->next_state1->quantifier.atleast)
-						goto NOT_MATCHED;
+						goto NOT_MATCHED0;
 
 					sstate.ssc.state = sstate.ssc.state->next_state1;
 				}
@@ -10081,14 +10045,9 @@ private:
 					if (brc.open_at == brc.close_at)
 						goto ESCAPE_FROM_ZERO_WIDTH_MATCH;
 
-#if defined(_MSC_VER) && _MSC_VER >= 1400
-#pragma warning(push)
-#pragma warning(disable:4127)
-#endif
+SRELL_NO_VCWARNING(4127)
 					if (!reverse)
-#if defined(_MSC_VER) && _MSC_VER >= 1400
-#pragma warning(pop)
-#endif
+SRELL_NO_VCWARNING_END
 					{
 						BidirectionalIterator backrefpos = brc.open_at;
 
@@ -10265,7 +10224,7 @@ private:
 					sstate.pop_c(sm.counter);
 					sstate.pop_sm(sm.core);
 				}
-				goto NOT_MATCHED;
+				goto NOT_MATCHED0;
 
 			case st_bol:	//  '^':
 				if (sstate.ssc.iter == sstate.lblim && !(sstate.reallblim != sstate.lblim || (sstate.flags & regex_constants::match_prev_avail) != 0))
@@ -10375,7 +10334,7 @@ private:
 				)
 					return 1;
 
-				goto NOT_MATCHED;
+				goto NOT_MATCHED0;
 
 #if defined(SRELLTEST_NEXTPOS_OPT)
 			case st_move_nextpos:
