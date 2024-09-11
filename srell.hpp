@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.055
+**  SRELL (std::regex-like library) version 4.056
 **
 **  Copyright (c) 2012-2024, Nozomu Katoo. All rights reserved.
 **
@@ -582,7 +582,8 @@ public:
 		//  Caller is responsible for cur != begin.
 	}
 
-	static bool is_mculeading(const ui_l32)
+	template <typename I>	//  ui_l32 or char_type2.
+	static bool is_mculeading(const I)
 	{
 		return false;
 	}
@@ -719,9 +720,10 @@ public:
 		return re_detail::constants::invalid_u32value;
 	}
 
-	static bool is_mculeading(const ui_l32 c)
+	template <typename I>
+	static bool is_mculeading(const I c)
 	{
-		return c >= 0xc2;
+		return (c & 0x80) ? true : false;
 	}
 
 	template <typename charT2>
@@ -832,9 +834,10 @@ public:
 		return static_cast<ui_l32>(codeunit & 0xffff);
 	}
 
-	static bool is_mculeading(const ui_l32 c)
+	template <typename I>
+	static bool is_mculeading(const I c)
 	{
-		return (c - 0xd800) < 0x800;
+		return (c & 0xfc00) == 0xd800;
 	}
 
 	template <typename charT2>
@@ -897,11 +900,6 @@ public:
 	static ui_l32 dec_codepoint(BidirectionalIterator &cur, const BidirectionalIterator /* begin */)
 	{
 		return static_cast<ui_l32>(static_cast<unsigned char>(*--cur));
-	}
-
-	static bool is_mculeading(const ui_l32)
-	{
-		return false;
 	}
 };	//  utf_traits<char>
 
@@ -9465,7 +9463,7 @@ SRELL_NO_VCWARNING(4127)
 					if (utf_traits::maxseqlen > 1)
 SRELL_NO_VCWARNING_END
 					{
-						if (utf_traits::is_mculeading(*sstate.nextpos & utf_traits::bitsetmask))
+						if (utf_traits::is_mculeading(ec))
 						{
 							const ui_l32 cp = utf_traits::codepoint_inc(sstate.nextpos, sstate.srchend);
 							const re_quantifier &r0q = this->NFA_states[0].quantifier;
@@ -9518,7 +9516,7 @@ SRELL_NO_VCWARNING(4127)
 				if (utf_traits::maxseqlen > 1)
 SRELL_NO_VCWARNING_END
 				{
-					if (utf_traits::is_mculeading(*sstate.nextpos & utf_traits::bitsetmask))
+					if (utf_traits::is_mculeading(ec))
 					{
 						const ui_l32 cp = utf_traits::codepoint_inc(sstate.nextpos, sstate.srchend);
 						const re_quantifier &r0q = this->NFA_states[0].quantifier;
