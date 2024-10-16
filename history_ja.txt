@@ -1,3 +1,8 @@
+20241016; version 4.059:
+  ・4.050以降、引数なしのmatch_results::length(), position(), str()がコ
+    ンパイルできなくなっていた問題を修正（報告してくださったWinfried
+    Schenke氏に感謝します）。
+
 20241004; version 4.058:
   ・Modifiers (?ims-ims:) を既定の機能に。
 

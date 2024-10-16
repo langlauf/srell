@@ -1,3 +1,8 @@
+20241016; version 4.059:
+  * Fixed a problem that caused match_results::length(), position(), and
+    str() not to compile when an argument was omitted since version
+    4.050 (Thanks to Winfried Schenke for the bug report).
+
 20241004; version 4.058:
   * Now modifiers (?ims-ims:) are enabled by default.
 

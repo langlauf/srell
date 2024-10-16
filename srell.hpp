@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.058
+**  SRELL (std::regex-like library) version 4.059
 **
 **  Copyright (c) 2012-2024, Nozomu Katoo. All rights reserved.
 **
@@ -8656,23 +8656,21 @@ public:
 	//  [7.10.3] element access
 //	difference_type length(const size_type sub = 0) const
 	template <typename IntType>
-	typename re_detail::enable_if_integer<IntType, difference_type>::type length(const IntType sub = 0) const
+	typename re_detail::enable_if_integer<IntType, difference_type>::type length(const IntType sub) const
 	{
 		return (*this)[sub].length();
 	}
 
 //	difference_type position(const size_type sub = 0) const
 	template <typename IntType>
-	typename re_detail::enable_if_integer<IntType, difference_type>::type position(const IntType sub = 0) const
+	typename re_detail::enable_if_integer<IntType, difference_type>::type position(const IntType sub) const
 	{
-		const_reference ref = (*this)[sub];
-
-		return std::distance(base_, ref.first);
+		return std::distance(base_, (*this)[sub].first);
 	}
 
 //	string_type str(const size_type sub = 0) const
 	template <typename IntType>
-	typename re_detail::enable_if_integer<IntType, string_type>::type str(const IntType sub = 0) const
+	typename re_detail::enable_if_integer<IntType, string_type>::type str(const IntType sub) const
 	{
 		return string_type((*this)[sub]);
 	}
@@ -8682,6 +8680,21 @@ public:
 	typename re_detail::enable_if_integer<IntType, const_reference>::type operator[](const IntType n) const
 	{
 		return static_cast<size_type>(n) < sub_matches_.size() ? sub_matches_[n] : unmatched_;
+	}
+
+	difference_type length() const
+	{
+		return (*this)[0].length();
+	}
+
+	difference_type position() const
+	{
+		return std::distance(base_, (*this)[0].first);
+	}
+
+	string_type str() const
+	{
+		return string_type((*this)[0]);
 	}
 
 #if !defined(SRELL_NO_NAMEDCAPTURE)
