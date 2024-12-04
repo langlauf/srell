@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.060
+**  SRELL (std::regex-like library) version 4.061
 **
 **  Copyright (c) 2012-2024, Nozomu Katoo. All rights reserved.
 **
@@ -53,20 +53,31 @@
 #define SRELL_HAS_TYPE_TRAITS
 #endif
 
-#if defined(_MSC_VER)
-#define SRELL_NO_VCWARNING(n) \
-	__pragma(warning(push)) \
-	__pragma(warning(disable:n))
-#define SRELL_NO_VCWARNING_END __pragma(warning(pop))
-#else
-#define SRELL_NO_VCWARNING(x)
-#define SRELL_NO_VCWARNING_END
+#if !defined(SRELL_NO_SIMD)
+#if (defined(_M_X64) && !defined(_M_ARM64EC)) || defined(__x86_64__) || defined(_M_IX86) || defined(__i386__)
+#if defined(__SSE4_2__)
+	#define SRELL_HAS_SSE42
+#elif defined(_MSC_VER) && (_MSC_VER >= 1500)
+	#define SRELL_HAS_SSE42
+#elif defined(__clang__) && defined(__clang_major__) && ((__clang_major__ >= 4) || ((__clang_major__ == 3) && defined(__clang_minor__) && (__clang_minor__ >= 8)))
+	#define SRELL_HAS_SSE42
+#elif defined(__GNUC__) && ((__GNUC__ >= 5) || ((__GNUC__ == 4) && defined(__GNUC_MINOR__) && (__GNUC_MINOR__ >= 9)))
+	#define SRELL_HAS_SSE42
+#endif	//  sse 4.2.
+#endif	//  x86/x64.
 #endif
 
-#if defined(__cpp_rvalue_references) && (!defined(_MSC_VER) || (_MSC_VER >= 1900))
-#define SRELL_NOEXCEPT noexcept
+#define SRELL_AT_SSE42
+#if defined(SRELL_HAS_SSE42)
+#if defined(_MSC_VER)
+	#include <intrin.h>
 #else
-#define SRELL_NOEXCEPT
+	#include <x86intrin.h>
+	#if !defined(__SSE4_2__)
+	#undef SRELL_AT_SSE42
+	#define SRELL_AT_SSE42 __attribute__((target("sse4.2")))
+	#endif
+#endif
 #endif
 
 //  The following SRELL_NO_* macros would be useful for reducing the
@@ -104,6 +115,22 @@
 //#define SRELL_FIXEDWIDTHLOOKBEHIND
 //  Since version 4.019, SRELL highly depends on the variable-length
 //  lookbehind feature. Uncommenting this line is not recommended.
+#endif
+
+#if defined(_MSC_VER)
+#define SRELL_NO_VCWARNING(n) \
+	__pragma(warning(push)) \
+	__pragma(warning(disable:n))
+#define SRELL_NO_VCWARNING_END __pragma(warning(pop))
+#else
+#define SRELL_NO_VCWARNING(x)
+#define SRELL_NO_VCWARNING_END
+#endif
+
+#if defined(__cpp_rvalue_references) && (!defined(_MSC_VER) || (_MSC_VER >= 1900))
+#define SRELL_NOEXCEPT noexcept
+#else
+#define SRELL_NOEXCEPT
 #endif
 
 namespace srell
@@ -383,6 +410,8 @@ private:
 			static const ui_l32 asc_icase = 0x20;
 			static const ui_l32 pos_cf = 0x200000;	//  1 << 21.
 			static const ui_l32 pos_char = 0x1fffff;
+			static const ui_l32 fcc_simd = 0xffffff00;
+			static const ui_l32 fcc_simd_num = 0xff;
 		}
 		//  masks
 
@@ -16833,6 +16862,10 @@ struct re_object_core
 {
 protected:
 
+#if defined(SRELL_HAS_SSE42)
+	char simdranges[16];
+#endif
+
 	typedef re_state/*<charT>*/ state_type;
 	typedef simple_array<state_type> state_array;
 
@@ -16954,6 +16987,9 @@ protected:
 	{
 		if (this != &that)
 		{
+#if defined(SRELL_HAS_SSE42)
+			std::memcpy(simdranges, that.simdranges, sizeof simdranges);
+#endif
 			this->NFA_states = that.NFA_states;
 			this->character_class = that.character_class;
 
@@ -17004,6 +17040,9 @@ protected:
 	{
 		if (this != &that)
 		{
+#if defined(SRELL_HAS_SSE42)
+			std::memcpy(simdranges, that.simdranges, sizeof simdranges);
+#endif
 			this->NFA_states = std::move(that.NFA_states);
 			this->character_class = std::move(that.character_class);
 
@@ -17043,6 +17082,14 @@ protected:
 	{
 		if (this != &right)
 		{
+#if defined(SRELL_HAS_SSE42)
+			{
+				char tmp[sizeof simdranges];
+				std::memcpy(tmp, this->simdranges, sizeof simdranges);
+				std::memcpy(this->simdranges, right.simdranges, sizeof simdranges);
+				std::memcpy(right.simdranges, tmp, sizeof simdranges);
+			}
+#endif
 			this->NFA_states.swap(right.NFA_states);
 			this->character_class.swap(right.character_class);
 
@@ -17129,6 +17176,46 @@ private:
 	}
 };
 //  re_object_core
+
+#if defined(SRELL_HAS_SSE42)
+
+template <typename T>
+struct cpu_checker
+{
+	static T x86simd()
+	{
+		static const T v = check_();
+
+		return v;
+	}
+
+private:
+
+	static T check_()
+	{
+#if defined(__GNUC__)
+		return __builtin_cpu_supports("sse4.2") ? 1 : 0;
+#elif defined(_MSC_VER)
+		int cpuInfo[4];
+		T v = 0;
+
+		__cpuid(cpuInfo, 0);
+		const int max = cpuInfo[0];
+
+		if (max >= 1)
+		{
+			__cpuid(cpuInfo, 1);
+			v |= (cpuInfo[2] & (1 << 20)) ? 1 : 0;	//  ecx. SSE4.2.
+		}
+		return v;
+#else
+		return 0;
+#endif
+	}
+};
+//  cpu_checker
+
+#endif	//  defined(SRELL_HAS_SSE42)
 
 template <typename charT, typename traits>
 class re_compiler : public re_object_core<charT, traits>
@@ -19201,15 +19288,7 @@ private:
 		this->NFA_states[0].quantifier.is_greedy = this->character_class.register_newclass(fcc);
 #endif
 
-#if !defined(SRELLDBG_NO_BITSET) || !defined(SRELLDBG_NO_SCFINDER)
-		set_bitset_table(fcc);
-#endif
-	}
-
-#if !defined(SRELLDBG_NO_BITSET) || !defined(SRELLDBG_NO_SCFINDER)
-	void set_bitset_table(const range_pairs &fcc)
-	{
-#if !defined(SRELLDBG_NO_SCFINDER)
+#if !defined(SRELLDBG_NO_SCFINDER) || defined(SRELL_HAS_SSE42)
 		ui_l32 entrychar = constants::max_u32value;
 #endif
 
@@ -19241,11 +19320,59 @@ private:
 					break;
 			}
 		}
-#if !defined(SRELLDBG_NO_SCFINDER)
+
+#if defined(SRELL_HAS_SSE42)
+
+#if defined(SRELL_OMIT_CPUCHECK)
+		if (sizeof (charT) <= 2)
+#else
+		if (cpu_checker<int>::x86simd() && sizeof (charT) <= 2)
+#endif
+		{
+			const std::size_t maxnum = sizeof (charT) == 1 ? 16 : 8;
+			unsigned int curnum = 0;
+			charT *const buffer = reinterpret_cast<charT *>(this->simdranges);
+			ui_l32 prev2 = 0;
+
+			for (typename range_pairs::size_type i = 0; i < fcc.size(); ++i)
+			{
+				const range_pair &range = fcc[i];
+
+				if (range.first > utf_traits::maxcpvalue)
+					break;
+
+				const ui_l32 second = range.second <= utf_traits::maxcpvalue ? range.second : utf_traits::maxcpvalue;
+				const ui_l32 firstcu = utf_traits::firstcodeunit(range.first) & utf_traits::bitsetmask;
+				const ui_l32 secondcu = utf_traits::firstcodeunit(second) & utf_traits::bitsetmask;
+
+				if (curnum && (prev2 == firstcu || prev2 + 1 == firstcu))
+				{
+					buffer[curnum - 1] = static_cast<charT>(secondcu);
+					continue;
+				}
+
+				if (curnum >= maxnum)
+				{
+					curnum = 0;
+					break;
+				}
+
+				buffer[curnum++] = static_cast<charT>(firstcu);
+				buffer[curnum++] = static_cast<charT>(secondcu);
+				if (second == utf_traits::maxcpvalue)
+					break;
+			}
+
+			if (curnum)
+				entrychar = masks::fcc_simd | curnum;
+		}
+
+#endif	//  defined(SRELL_HAS_SSE42)
+
+#if !defined(SRELLDBG_NO_SCFINDER) || defined(SRELL_HAS_SSE42)
 		this->NFA_states[0].char_num = entrychar;
 #endif
 	}
-#endif	//  !defined(SRELLDBG_NO_BITSET) || !defined(SRELLDBG_NO_SCFINDER)
 #endif	//  !defined(SRELLDBG_NO_1STCHRCLS)
 
 	bool gather_nextchars(range_pairs &nextcharclass, state_size_type pos, simple_array<bool> &checked, const ui_l32 bracket_number, const bool subsequent) const
@@ -21661,6 +21788,9 @@ typedef smatch u8csmatch;
 	namespace re_detail
 	{
 
+struct is_cont_iter {};
+struct non_cont_iter {};
+
 template <typename charT, typename traits>
 class re_object : public re_compiler<charT, traits>
 {
@@ -21682,6 +21812,12 @@ public:
 
 		if (this->NFA_states.size())
 		{
+			typedef typename contiguous_checker<BidirectionalIterator, 0>::itype ci_checker;
+#if defined(SRELL_HAS_SSE42)
+			typedef ci_checker maybe_cic;
+#else
+			typedef non_cont_iter maybe_cic;
+#endif
 			re_search_state<BidirectionalIterator> &sstate = results.sstate_;
 
 			sstate.init(begin, end, lookbehind_limit, flags | static_cast<regex_constants::match_flag_type>(this->soflags & regex_constants::sticky));
@@ -21721,18 +21857,18 @@ public:
 			sstate.entry_state = this->NFA_states[0].next_state1;
 
 #if !defined(SRELLDBG_NO_SCFINDER)
-			if (this->NFA_states[0].char_num != constants::invalid_u32value)
+			if (this->NFA_states[0].char_num <= utf_traits::maxcpvalue)
 			{
-				reason = !this->is_ricase() ? do_search_sc<false>(sstate, typename std::iterator_traits<BidirectionalIterator>::iterator_category()) : do_search_sc<true>(sstate, typename std::iterator_traits<BidirectionalIterator>::iterator_category());
+				reason = !this->is_ricase() ? do_search_sc<false>(sstate, ci_checker()) : do_search_sc<true>(sstate, ci_checker());
 
 				goto CHECK_REASON;
 			}
 #endif	//  !defined(SRELLDBG_NO_SCFINDER)
 
 #if !defined(SRELL_NO_ICASE)
-			reason = !this->is_ricase() ? do_search<false>(sstate) : do_search<true>(sstate);
+			reason = !this->is_ricase() ? do_search<false>(sstate, maybe_cic()) : do_search<true>(sstate, maybe_cic());
 #else
-			reason = do_search<false>(results);
+			reason = do_search<false>(results, maybe_cic());
 #endif
 			CHECK_REASON:
 			if (reason == 1)
@@ -21754,8 +21890,79 @@ private:
 
 	typedef typename traits::utf_traits utf_traits;
 
+#if defined(SRELL_HAS_SSE42)
+
+	template <const bool icase, typename ContiguousIterator>
+	SRELL_AT_SSE42 int do_search(re_search_state<ContiguousIterator> &sstate, const is_cont_iter) const
+	{
+		typedef typename std::iterator_traits<ContiguousIterator>::value_type char_type2;
+
+SRELL_NO_VCWARNING(4127)
+		if (sizeof (charT) == sizeof (char_type2))
+SRELL_NO_VCWARNING_END
+		{
+			const int numofranges = static_cast<int>(this->NFA_states[0].char_num & masks::fcc_simd_num);
+
+			if (numofranges <= 16)
+			{
+				const int maxsize = sizeof (char_type2) == 1 ? 16 : 8;
+				const __m128i sranges = _mm_loadu_si128(reinterpret_cast<const __m128i *>(this->simdranges));
+
+				for (; (sstate.srchend - sstate.nextpos) >= maxsize;)
+				{
+					const __m128i data = _mm_loadu_si128(reinterpret_cast<const __m128i *>(&*sstate.nextpos));
+					const int pos = _mm_cmpestri(sranges, numofranges, data, maxsize, sizeof (char_type2) == 1 ? 4 : 5);
+
+					if (pos == maxsize)
+					{
+						sstate.nextpos += maxsize;
+						continue;
+					}
+					sstate.nextpos += pos;
+					sstate.ssc.iter = sstate.nextpos;
+
+SRELL_NO_VCWARNING(4127)
+					if (utf_traits::maxseqlen > 1)
+SRELL_NO_VCWARNING_END
+					{
+						const ui_l32 cu = *sstate.nextpos & utf_traits::bitsetmask;
+
+						if (utf_traits::is_mculeading(cu))
+						{
+							const ui_l32 cp = utf_traits::codepoint_inc(sstate.nextpos, sstate.srchend);
+							const re_quantifier &r0q = this->NFA_states[0].quantifier;
+
+#if !defined(SRELLDBG_NO_CCPOS)
+							if (!this->character_class.is_included(r0q.atleast, r0q.atmost, cp))
+#else
+							if (!this->character_class.is_included(r0q.is_greedy, cp))
+#endif
+								continue;
+
+							goto SKIP_INC;
+						}
+					}
+					++sstate.nextpos;
+					SKIP_INC:;
+
+#if defined(SRELL_NO_LIMIT_COUNTER)
+					sstate.reset();
+#else
+					sstate.reset(this->limit_counter);
+#endif
+					const int reason = run_automaton<icase, false>(sstate);
+					if (reason)
+						return reason;
+				}
+			}
+		}
+		return do_search<icase>(sstate, non_cont_iter());
+	}
+
+#endif //  defined(SRELL_HAS_SSE42)
+
 	template <const bool icase, typename BidirectionalIterator>
-	int do_search(re_search_state<BidirectionalIterator> &sstate) const
+	int do_search(re_search_state<BidirectionalIterator> &sstate, const non_cont_iter) const
 	{
 		for (;;)
 		{
@@ -21827,9 +22034,8 @@ SRELL_NO_VCWARNING_END
 #if !defined(SRELLDBG_NO_SCFINDER)
 
 	template <const bool icase, typename ContiguousIterator>
-	int do_search_sc(re_search_state<ContiguousIterator> &sstate, const std::random_access_iterator_tag) const
+	int do_search_sc(re_search_state<ContiguousIterator> &sstate, const is_cont_iter) const
 	{
-		if (is_contiguous(sstate.srchbegin))
 		{
 			typedef typename std::iterator_traits<ContiguousIterator>::value_type char_type2;
 			const char_type2 ec = static_cast<char_type2>(this->NFA_states[0].char_num);
@@ -21885,11 +22091,10 @@ SRELL_NO_VCWARNING_END
 			}
 			return 0;
 		}
-		return do_search_sc<icase>(sstate, std::bidirectional_iterator_tag());
 	}
 
 	template <const bool icase, typename BidirectionalIterator>
-	int do_search_sc(re_search_state<BidirectionalIterator> &sstate, const std::bidirectional_iterator_tag) const
+	int do_search_sc(re_search_state<BidirectionalIterator> &sstate, const non_cont_iter) const
 	{
 		typedef typename std::iterator_traits<BidirectionalIterator>::value_type char_type2;
 		const char_type2 ec = static_cast<char_type2>(this->NFA_states[0].char_num);
@@ -21949,33 +22154,40 @@ SRELL_NO_VCWARNING_END
 		return begin;
 	}
 
-	template <typename BidirectionalIterator>
-	bool is_contiguous(BidirectionalIterator) const
-	{
-		return false;
-	}
+#endif	//  !defined(SRELLDBG_NO_SCFINDER)
 
-#if !defined(SRELL_NO_CONCEPTS) && defined(__cpp_concepts)
+#if !defined(SRELLDBG_NO_SCFINDER) || defined(SRELL_HAS_SSE42)
 
-	template <std::contiguous_iterator I>
-	bool is_contiguous(I) const
+	template <typename BidiIter, int N>
+	struct contiguous_checker
 	{
-		return true;
-	}
+		typedef non_cont_iter itype;
+	};
+
+#if defined(__cpp_concepts)
+
+	template <std::contiguous_iterator CI, int N>
+	struct contiguous_checker<CI, N>
+	{
+		typedef is_cont_iter itype;
+	};
 
 #else
 
-	bool is_contiguous(const charT *) const
+	template <int N>
+	struct contiguous_checker<const charT *, N>
 	{
-		return true;
-	}
+		typedef is_cont_iter itype;
+	};
+	template <int N>
+	struct contiguous_checker<typename std::basic_string<charT>::const_iterator, N>
+	{
+		typedef is_cont_iter itype;
+	};
 
-	bool is_contiguous(typename std::basic_string<charT>::const_iterator) const
-	{
-		return true;
-	}
-#endif	//  !defined(SRELL_NO_CONCEPTS) && defined(__cpp_concepts)
-#endif	//  !defined(SRELLDBG_NO_SCFINDER)
+#endif
+
+#endif	//  !defined(SRELLDBG_NO_SCFINDER) || defined(SRELL_HAS_SSE42)
 
 	template <typename T, const bool>
 	struct casehelper
@@ -23199,8 +23411,8 @@ typedef regex_iterator<const wchar_t *> wcregex_iterator;
 typedef regex_iterator<std::string::const_iterator> sregex_iterator;
 typedef regex_iterator<std::wstring::const_iterator> wsregex_iterator;
 
-typedef regex_iterator<const char *, typename std::iterator_traits<const char *>::value_type, u8regex_traits<typename std::iterator_traits<const char *>::value_type> > u8ccregex_iterator;
-typedef regex_iterator<std::string::const_iterator, typename std::iterator_traits<std::string::const_iterator>::value_type, u8regex_traits<typename std::iterator_traits<std::string::const_iterator>::value_type> > u8csregex_iterator;
+typedef regex_iterator<const char *, std::iterator_traits<const char *>::value_type, u8regex_traits<std::iterator_traits<const char *>::value_type> > u8ccregex_iterator;
+typedef regex_iterator<std::string::const_iterator, std::iterator_traits<std::string::const_iterator>::value_type, u8regex_traits<std::iterator_traits<std::string::const_iterator>::value_type> > u8csregex_iterator;
 
 #if defined(WCHAR_MAX)
 	#if WCHAR_MAX >= 0x10ffff
@@ -23209,8 +23421,8 @@ typedef regex_iterator<std::string::const_iterator, typename std::iterator_trait
 		typedef u32wcregex_iterator u1632wcregex_iterator;
 		typedef u32wsregex_iterator u1632wsregex_iterator;
 	#elif WCHAR_MAX >= 0xffff
-		typedef regex_iterator<const wchar_t *, typename std::iterator_traits<const wchar_t *>::value_type, u16regex_traits<typename std::iterator_traits<const wchar_t *>::value_type> > u16wcregex_iterator;
-		typedef regex_iterator<std::wstring::const_iterator, typename std::iterator_traits<std::wstring::const_iterator>::value_type, u16regex_traits<typename std::iterator_traits<std::wstring::const_iterator>::value_type> > u16wsregex_iterator;
+		typedef regex_iterator<const wchar_t *, std::iterator_traits<const wchar_t *>::value_type, u16regex_traits<std::iterator_traits<const wchar_t *>::value_type> > u16wcregex_iterator;
+		typedef regex_iterator<std::wstring::const_iterator, std::iterator_traits<std::wstring::const_iterator>::value_type, u16regex_traits<std::iterator_traits<std::wstring::const_iterator>::value_type> > u16wsregex_iterator;
 		typedef u16wcregex_iterator u1632wcregex_iterator;
 		typedef u16wsregex_iterator u1632wsregex_iterator;
 	#endif
@@ -24129,8 +24341,8 @@ typedef regex_token_iterator<const wchar_t *> wcregex_token_iterator;
 typedef regex_token_iterator<std::string::const_iterator> sregex_token_iterator;
 typedef regex_token_iterator<std::wstring::const_iterator> wsregex_token_iterator;
 
-typedef regex_token_iterator<const char *, typename std::iterator_traits<const char *>::value_type, u8regex_traits<typename std::iterator_traits<const char *>::value_type> > u8ccregex_token_iterator;
-typedef regex_token_iterator<std::string::const_iterator, typename std::iterator_traits<std::string::const_iterator>::value_type, u8regex_traits<typename std::iterator_traits<std::string::const_iterator>::value_type> > u8csregex_token_iterator;
+typedef regex_token_iterator<const char *, std::iterator_traits<const char *>::value_type, u8regex_traits<std::iterator_traits<const char *>::value_type> > u8ccregex_token_iterator;
+typedef regex_token_iterator<std::string::const_iterator, std::iterator_traits<std::string::const_iterator>::value_type, u8regex_traits<std::iterator_traits<std::string::const_iterator>::value_type> > u8csregex_token_iterator;
 
 #if defined(WCHAR_MAX)
 	#if WCHAR_MAX >= 0x10ffff
@@ -24139,8 +24351,8 @@ typedef regex_token_iterator<std::string::const_iterator, typename std::iterator
 		typedef u32wcregex_token_iterator u1632wcregex_token_iterator;
 		typedef u32wsregex_token_iterator u1632wsregex_token_iterator;
 	#elif WCHAR_MAX >= 0xffff
-		typedef regex_token_iterator<const wchar_t *, typename std::iterator_traits<const wchar_t *>::value_type, u16regex_traits<typename std::iterator_traits<const wchar_t *>::value_type> > u16wcregex_token_iterator;
-		typedef regex_token_iterator<std::wstring::const_iterator, typename std::iterator_traits<std::wstring::const_iterator>::value_type, u16regex_traits<typename std::iterator_traits<std::wstring::const_iterator>::value_type> > u16wsregex_token_iterator;
+		typedef regex_token_iterator<const wchar_t *, std::iterator_traits<const wchar_t *>::value_type, u16regex_traits<std::iterator_traits<const wchar_t *>::value_type> > u16wcregex_token_iterator;
+		typedef regex_token_iterator<std::wstring::const_iterator, std::iterator_traits<std::wstring::const_iterator>::value_type, u16regex_traits<std::iterator_traits<std::wstring::const_iterator>::value_type> > u16wsregex_token_iterator;
 		typedef u16wcregex_token_iterator u1632wcregex_token_iterator;
 		typedef u16wsregex_token_iterator u1632wsregex_token_iterator;
 	#endif
