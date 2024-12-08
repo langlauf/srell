@@ -1,3 +1,7 @@
+20241208; version 4.062:
+  * Simplified debugging macro checks.
+  * Minor improvements and cleanup.
+
 20241204; version 4.061:
   * Introduced a simple SIMD acceleration (x86/x64 only).
 

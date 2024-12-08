@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.061
+**  SRELL (std::regex-like library) version 4.062
 **
 **  Copyright (c) 2012-2024, Nozomu Katoo. All rights reserved.
 **
@@ -16857,14 +16857,30 @@ private:
 	namespace re_detail
 	{
 
+#if defined(SRELLDBG_NO_1STCHRCLS)
+#define SRELLDBG_NO_BITSET
+#define SRELLDBG_NO_SCFINDER
+#undef SRELL_HAS_SSE42
+#endif
+
+#if defined(SRELLDBG_NO_ASTERISK_OPT)
+#define SRELLDBG_NO_BRANCH_OPT
+#define SRELLDBG_NO_POS_OPT
+#endif
+
+#if defined(SRELLDBG_NO_STATEHOOK)
+#define SRELLDBG_NO_BRANCH_OPT2
+#define SRELLDBG_NO_POS_OPT
+#endif
+
+#if defined(SRELL_FIXEDWIDTHLOOKBEHIND)
+#define SRELLDBG_NO_MPREWINDER
+#endif
+
 template <typename charT, typename traits>
 struct re_object_core
 {
 protected:
-
-#if defined(SRELL_HAS_SSE42)
-	char simdranges[16];
-#endif
 
 	typedef re_state/*<charT>*/ state_type;
 	typedef simple_array<state_type> state_array;
@@ -16902,6 +16918,10 @@ protected:
 
 #if !defined(SRELLDBG_NO_BMH)
 	re_bmh<charT, utf_traits> *bmdata;
+#endif
+
+#if defined(SRELL_HAS_SSE42)
+	char simdranges[16];
 #endif
 
 #if !defined(SRELL_NO_LIMIT_COUNTER)
@@ -16987,9 +17007,6 @@ protected:
 	{
 		if (this != &that)
 		{
-#if defined(SRELL_HAS_SSE42)
-			std::memcpy(simdranges, that.simdranges, sizeof simdranges);
-#endif
 			this->NFA_states = that.NFA_states;
 			this->character_class = that.character_class;
 
@@ -17028,6 +17045,9 @@ protected:
 				this->bmdata = NULL;
 			}
 #endif
+#if defined(SRELL_HAS_SSE42)
+			std::memcpy(simdranges, that.simdranges, sizeof simdranges);
+#endif
 
 			if (that.NFA_states.size())
 				repair_nextstates(&that.NFA_states[0]);
@@ -17040,9 +17060,6 @@ protected:
 	{
 		if (this != &that)
 		{
-#if defined(SRELL_HAS_SSE42)
-			std::memcpy(simdranges, that.simdranges, sizeof simdranges);
-#endif
 			this->NFA_states = std::move(that.NFA_states);
 			this->character_class = std::move(that.character_class);
 
@@ -17073,6 +17090,9 @@ protected:
 			this->bmdata = that.bmdata;
 			that.bmdata = NULL;
 #endif
+#if defined(SRELL_HAS_SSE42)
+			std::memcpy(simdranges, that.simdranges, sizeof simdranges);
+#endif
 		}
 		return *this;
 	}
@@ -17082,14 +17102,6 @@ protected:
 	{
 		if (this != &right)
 		{
-#if defined(SRELL_HAS_SSE42)
-			{
-				char tmp[sizeof simdranges];
-				std::memcpy(tmp, this->simdranges, sizeof simdranges);
-				std::memcpy(this->simdranges, right.simdranges, sizeof simdranges);
-				std::memcpy(right.simdranges, tmp, sizeof simdranges);
-			}
-#endif
 			this->NFA_states.swap(right.NFA_states);
 			this->character_class.swap(right.character_class);
 
@@ -17139,6 +17151,14 @@ protected:
 				re_bmh<charT, utf_traits> *const tmp_bmdata = this->bmdata;
 				this->bmdata = right.bmdata;
 				right.bmdata = tmp_bmdata;
+			}
+#endif
+#if defined(SRELL_HAS_SSE42)
+			{
+				char tmp[sizeof simdranges];
+				std::memcpy(tmp, this->simdranges, sizeof simdranges);
+				std::memcpy(this->simdranges, right.simdranges, sizeof simdranges);
+				std::memcpy(right.simdranges, tmp, sizeof simdranges);
 			}
 #endif
 		}
@@ -18917,7 +18937,7 @@ private:
 		if (seqlen > 0)
 		{
 			const bool has_empty = pos.has_empty();
-#if !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT) && !defined(SRELLDBG_NO_STATEHOOK)
+#if !defined(SRELLDBG_NO_POS_OPT)
 			bool hooked = false;
 			state_size_type prevbranch_end = 0;
 #else
@@ -18955,7 +18975,7 @@ private:
 
 						if (count == seqlen)
 						{
-#if !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT) && !defined(SRELLDBG_NO_STATEHOOK)
+#if !defined(SRELLDBG_NO_POS_OPT)
 							state_size_type bpos = 0;
 
 							for (state_size_type ppos = 0; ppos < piece.size();)
@@ -19035,7 +19055,7 @@ private:
 
 			if (piece.size())
 			{
-#if !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT) && !defined(SRELLDBG_NO_STATEHOOK)
+#if !defined(SRELLDBG_NO_POS_OPT)
 				state_type &laststate = piece[prevbranch_end];
 
 				laststate.next1 = piece.size() + (has_empty ? 2 : 1) - prevbranch_end;
@@ -19069,7 +19089,7 @@ private:
 			branchstate.quantifier.atmost = 1;
 			piece.push_back(branchstate);
 
-#if !defined(SRELLDBG_NO_ASTERISK_OPT) && !defined(SRELLDBG_NO_POS_OPT) && !defined(SRELLDBG_NO_STATEHOOK)
+#if !defined(SRELLDBG_NO_POS_OPT)
 			if (hooked)
 				reorder_piece(piece);
 #endif
@@ -19291,11 +19311,39 @@ private:
 #if !defined(SRELLDBG_NO_SCFINDER) || defined(SRELL_HAS_SSE42)
 		ui_l32 entrychar = constants::max_u32value;
 #endif
+#if defined(SRELL_HAS_SSE42)
+		charT *const sranges = reinterpret_cast<charT *>(this->simdranges);
+		const int maxnum = sizeof (charT) == 1 ? 16 : 8;
+		int curnum = 0;
+		ui_l32 secondcu = 0;
+#endif
 
 		for (typename range_pairs::size_type i = 0; i < fcc.size(); ++i)
 		{
 			const range_pair &range = fcc[i];
 
+#if defined(SRELL_HAS_SSE42)
+			if (curnum >= 0 && range.first <= utf_traits::maxcpvalue)
+			{
+				const ui_l32 r2 = range.second <= utf_traits::maxcpvalue ? range.second : utf_traits::maxcpvalue;
+				const ui_l32 firstcu = utf_traits::firstcodeunit(range.first) & utf_traits::bitsetmask;
+				const ui_l32 prev2 = secondcu;
+
+				secondcu = utf_traits::firstcodeunit(r2) & utf_traits::bitsetmask;
+
+				if (curnum > 0 && (prev2 == firstcu || prev2 + 1 == firstcu))
+				{
+					sranges[curnum - 1] = static_cast<charT>(secondcu);
+				}
+				else if (curnum < maxnum)
+				{
+					sranges[curnum++] = static_cast<charT>(firstcu);
+					sranges[curnum++] = static_cast<charT>(secondcu);
+				}
+				else
+					curnum = -1;
+			}
+#endif
 			for (ui_l32 ucp = range.first; ucp <= utf_traits::maxcpvalue; ++ucp)
 			{
 				const ui_l32 firstcu = utf_traits::firstcodeunit(ucp) & utf_traits::bitsetmask;
@@ -19322,52 +19370,16 @@ private:
 		}
 
 #if defined(SRELL_HAS_SSE42)
-
 #if defined(SRELL_OMIT_CPUCHECK)
 		if (sizeof (charT) <= 2)
 #else
 		if (cpu_checker<int>::x86simd() && sizeof (charT) <= 2)
 #endif
 		{
-			const std::size_t maxnum = sizeof (charT) == 1 ? 16 : 8;
-			unsigned int curnum = 0;
-			charT *const buffer = reinterpret_cast<charT *>(this->simdranges);
-			ui_l32 prev2 = 0;
-
-			for (typename range_pairs::size_type i = 0; i < fcc.size(); ++i)
-			{
-				const range_pair &range = fcc[i];
-
-				if (range.first > utf_traits::maxcpvalue)
-					break;
-
-				const ui_l32 second = range.second <= utf_traits::maxcpvalue ? range.second : utf_traits::maxcpvalue;
-				const ui_l32 firstcu = utf_traits::firstcodeunit(range.first) & utf_traits::bitsetmask;
-				const ui_l32 secondcu = utf_traits::firstcodeunit(second) & utf_traits::bitsetmask;
-
-				if (curnum && (prev2 == firstcu || prev2 + 1 == firstcu))
-				{
-					buffer[curnum - 1] = static_cast<charT>(secondcu);
-					continue;
-				}
-
-				if (curnum >= maxnum)
-				{
-					curnum = 0;
-					break;
-				}
-
-				buffer[curnum++] = static_cast<charT>(firstcu);
-				buffer[curnum++] = static_cast<charT>(secondcu);
-				if (second == utf_traits::maxcpvalue)
-					break;
-			}
-
-			if (curnum)
+			if (curnum > 0)
 				entrychar = masks::fcc_simd | curnum;
 		}
-
-#endif	//  defined(SRELL_HAS_SSE42)
+#endif
 
 #if !defined(SRELLDBG_NO_SCFINDER) || defined(SRELL_HAS_SSE42)
 		this->NFA_states[0].char_num = entrychar;
@@ -19515,11 +19527,11 @@ private:
 #endif
 			 !(this->soflags & regex_constants::sticky);
 
-#if !defined(SRELLDBG_NO_BRANCH_OPT2) && !defined(SRELLDBG_NO_STATEHOOK)
+#if !defined(SRELLDBG_NO_BRANCH_OPT2)
 		branch_optimisation2();
 #endif
 
-#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
+#if !defined(SRELLDBG_NO_MPREWINDER)
 		if (needs_prefilter)
 			find_better_es(1u, cvars);
 #endif
@@ -19528,7 +19540,7 @@ private:
 		asterisk_optimisation();
 #endif
 
-#if !defined(SRELLDBG_NO_BRANCH_OPT) && !defined(SRELLDBG_NO_ASTERISK_OPT)
+#if !defined(SRELLDBG_NO_BRANCH_OPT)
 		branch_optimisation();
 #endif
 
@@ -19956,7 +19968,7 @@ private:
 	}
 #endif	//  !defined(SRELLDBG_NO_CCPOS)
 
-#if !defined(SRELLDBG_NO_BRANCH_OPT2) && !defined(SRELLDBG_NO_STATEHOOK)
+#if !defined(SRELLDBG_NO_BRANCH_OPT2)
 
 	void branch_optimisation2()
 	{
@@ -20088,9 +20100,9 @@ private:
 		if (hooked)
 			reorder_piece(this->NFA_states);
 	}
-#endif	//   !defined(SRELLDBG_NO_BRANCH_OPT2) && !defined(SRELLDBG_NO_STATEHOOK)
+#endif	//   !defined(SRELLDBG_NO_BRANCH_OPT2)
 
-#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
+#if !defined(SRELLDBG_NO_MPREWINDER)
 
 	bool has_obstacle_to_reverse(state_size_type pos, const state_size_type end, const bool check_optseq) const
 	{
@@ -20606,7 +20618,7 @@ private:
 		return (charcount > 1u) ? (create_rewinder(betterpos, needs_rerun, cvars), true) : false;
 	}
 
-#endif	//  !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
+#endif	//  !defined(SRELLDBG_NO_MPREWINDER)
 
 public:	//  For debug.
 
@@ -22036,61 +22048,56 @@ SRELL_NO_VCWARNING_END
 	template <const bool icase, typename ContiguousIterator>
 	int do_search_sc(re_search_state<ContiguousIterator> &sstate, const is_cont_iter) const
 	{
+		typedef typename std::iterator_traits<ContiguousIterator>::value_type char_type2;
+		const char_type2 ec = static_cast<char_type2>(this->NFA_states[0].char_num);
+
+		for (; sstate.nextpos < sstate.srchend;)
 		{
-			typedef typename std::iterator_traits<ContiguousIterator>::value_type char_type2;
-			const char_type2 ec = static_cast<char_type2>(this->NFA_states[0].char_num);
+			sstate.ssc.iter = sstate.nextpos;
 
-			for (;;)
+			const char_type2 *const bgnpos = std::char_traits<char_type2>::find(&*sstate.nextpos, sstate.srchend - sstate.nextpos, ec);
+
+			if (bgnpos)
 			{
-				if (sstate.nextpos >= sstate.srchend)
-					break;
-
-				sstate.ssc.iter = sstate.nextpos;
-
-				const char_type2 *const bgnpos = std::char_traits<char_type2>::find(&*sstate.nextpos, sstate.srchend - sstate.nextpos, ec);
-
-				if (bgnpos)
-				{
-//					sstate.ssc.iter = bgnpos;
-					sstate.ssc.iter += bgnpos - &*sstate.nextpos;
-					sstate.nextpos = sstate.ssc.iter;
+//				sstate.ssc.iter = bgnpos;
+				sstate.ssc.iter += bgnpos - &*sstate.nextpos;
+				sstate.nextpos = sstate.ssc.iter;
 
 SRELL_NO_VCWARNING(4127)
-					if (utf_traits::maxseqlen > 1)
+				if (utf_traits::maxseqlen > 1)
 SRELL_NO_VCWARNING_END
+				{
+					if (utf_traits::is_mculeading(ec))
 					{
-						if (utf_traits::is_mculeading(ec))
-						{
-							const ui_l32 cp = utf_traits::codepoint_inc(sstate.nextpos, sstate.srchend);
-							const re_quantifier &r0q = this->NFA_states[0].quantifier;
+						const ui_l32 cp = utf_traits::codepoint_inc(sstate.nextpos, sstate.srchend);
+						const re_quantifier &r0q = this->NFA_states[0].quantifier;
 
 #if !defined(SRELLDBG_NO_CCPOS)
-							if (!this->character_class.is_included(r0q.atleast, r0q.atmost, cp))
+						if (!this->character_class.is_included(r0q.atleast, r0q.atmost, cp))
 #else
-							if (!this->character_class.is_included(r0q.is_greedy, cp))
+						if (!this->character_class.is_included(r0q.is_greedy, cp))
 #endif
-								continue;
+							continue;
 
-							goto SKIP_INC;
-						}
+						goto SKIP_INC;
 					}
-					++sstate.nextpos;
-					SKIP_INC:;
+				}
+				++sstate.nextpos;
+				SKIP_INC:;
 
 #if defined(SRELL_NO_LIMIT_COUNTER)
-					sstate.reset();
+				sstate.reset();
 #else
-					sstate.reset(this->limit_counter);
+				sstate.reset(this->limit_counter);
 #endif
-					const int reason = run_automaton<icase, false>(sstate);
-					if (reason)
-						return reason;
-				}
-				else
-					break;
+				const int reason = run_automaton<icase, false>(sstate);
+				if (reason)
+					return reason;
 			}
-			return 0;
+			else
+				break;
 		}
+		return 0;
 	}
 
 	template <const bool icase, typename BidirectionalIterator>
@@ -22723,7 +22730,7 @@ SRELL_NO_VCWARNING_END
 					if (lostate->quantifier.atleast <= lostate->quantifier.atmost)
 						sstate.push_bt(sstate.ssc);
 
-#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
+#if !defined(SRELLDBG_NO_MPREWINDER)
 					if (lostate->quantifier.is_greedy >= 2)
 					{
 						sstate.push_rp(sstate.lblim);
@@ -22776,7 +22783,7 @@ SRELL_NO_VCWARNING_END
 #endif
 					sstate.bt_resize(sstate.btstack_size);
 
-#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
+#if !defined(SRELLDBG_NO_MPREWINDER)
 					if (lostate->quantifier.is_greedy >= 2)
 					{
 						sstate.pop_rp(sstate.lblim);
@@ -22789,7 +22796,7 @@ SRELL_NO_VCWARNING_END
 					if (lostate->char_num != meta_char::mc_gt)	//  '>'
 #endif
 					{
-#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
+#if !defined(SRELLDBG_NO_MPREWINDER)
 						if (lostate->quantifier.is_greedy < 3)
 #endif
 							sstate.ssc.iter = orgpos;
@@ -22801,7 +22808,7 @@ SRELL_NO_VCWARNING_END
 
 					if (is_matched)
 					{
-#if !defined(SRELL_FIXEDWIDTHLOOKBEHIND) && !defined(SRELLDBG_NO_MPREWINDER)
+#if !defined(SRELLDBG_NO_MPREWINDER)
 						if (lostate->quantifier.is_greedy == 3)
 							sstate.ssc.state = this->NFA_states[0].next_state2;
 						else
