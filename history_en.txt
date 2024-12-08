@@ -1,3 +1,7 @@
+20241208; version 4.063:
+  * Adjusted the pattern compiler to consider surrogate pairs when
+    generating SIMD data for UTF-16.
+
 20241208; version 4.062:
   * Simplified debugging macro checks.
   * Minor improvements and cleanup.

@@ -1,6 +1,6 @@
 /*****************************************************************************
 **
-**  SRELL (std::regex-like library) version 4.062
+**  SRELL (std::regex-like library) version 4.063
 **
 **  Copyright (c) 2012-2024, Nozomu Katoo. All rights reserved.
 **
@@ -6856,57 +6856,63 @@ private:
 		charT *const sranges = reinterpret_cast<charT *>(this->simdranges);
 		const int maxnum = sizeof (charT) == 1 ? 16 : 8;
 		int curnum = 0;
-		ui_l32 secondcu = 0;
 #endif
+		ui_l32 cu2 = 0;
 
 		for (typename range_pairs::size_type i = 0; i < fcc.size(); ++i)
 		{
 			const range_pair &range = fcc[i];
 
-#if defined(SRELL_HAS_SSE42)
-			if (curnum >= 0 && range.first <= utf_traits::maxcpvalue)
-			{
-				const ui_l32 r2 = range.second <= utf_traits::maxcpvalue ? range.second : utf_traits::maxcpvalue;
-				const ui_l32 firstcu = utf_traits::firstcodeunit(range.first) & utf_traits::bitsetmask;
-				const ui_l32 prev2 = secondcu;
+			if (range.first > utf_traits::maxcpvalue)
+				break;
 
-				secondcu = utf_traits::firstcodeunit(r2) & utf_traits::bitsetmask;
+			const ui_l32 maxr2 = range.second <= utf_traits::maxcpvalue ? range.second : utf_traits::maxcpvalue;
+			ui_l32 r1 = range.first;
 
-				if (curnum > 0 && (prev2 == firstcu || prev2 + 1 == firstcu))
-				{
-					sranges[curnum - 1] = static_cast<charT>(secondcu);
-				}
-				else if (curnum < maxnum)
-				{
-					sranges[curnum++] = static_cast<charT>(firstcu);
-					sranges[curnum++] = static_cast<charT>(secondcu);
-				}
-				else
-					curnum = -1;
-			}
-#endif
-			for (ui_l32 ucp = range.first; ucp <= utf_traits::maxcpvalue; ++ucp)
+			for (; r1 <= maxr2;)
 			{
-				const ui_l32 firstcu = utf_traits::firstcodeunit(ucp) & utf_traits::bitsetmask;
+				const ui_l32 prev2 = cu2;
+				const ui_l32 cu1 = utf_traits::firstcodeunit(r1) & utf_traits::bitsetmask;
+				ui_l32 r2 = utf_traits::nextlengthchange(r1) - 1;
+
+				if (r2 > maxr2)
+					r2 = maxr2;
+
+				cu2 = utf_traits::firstcodeunit(r2) & utf_traits::bitsetmask;
 
 #if !defined(SRELLDBG_NO_BITSET)
-				this->firstchar_class_bs.set(firstcu);
+				for (ui_l32 cu = cu1; cu <= cu2; ++cu)
+					this->firstchar_class_bs.set(cu);
 #endif
-
 #if !defined(SRELLDBG_NO_SCFINDER)
 				if (entrychar != constants::invalid_u32value)
 				{
-					if (entrychar != firstcu)
-					{
-						if (entrychar == constants::max_u32value)
-							entrychar = firstcu;
-						else
-							entrychar = constants::invalid_u32value;
-					}
+					if (cu1 == cu2 && (entrychar == cu1 || entrychar == constants::max_u32value))
+						entrychar = cu1;
+					else
+						entrychar = constants::invalid_u32value;
 				}
 #endif
-				if (ucp == range.second)
+#if defined(SRELL_HAS_SSE42)
+				if (curnum >= 0)
+				{
+					if (curnum > 0 && (prev2 == cu1 || prev2 + 1 == cu1))
+					{
+						sranges[curnum - 1] = static_cast<charT>(cu2);
+					}
+					else if (curnum < maxnum)
+					{
+						sranges[curnum++] = static_cast<charT>(cu1);
+						sranges[curnum++] = static_cast<charT>(cu2);
+					}
+					else
+						curnum = -1;
+				}
+#endif
+				if (r2 == maxr2)
 					break;
+
+				r1 = r2 + 1;
 			}
 		}
 
@@ -9704,8 +9710,6 @@ SRELL_NO_VCWARNING_END
 
 #endif	//  !defined(SRELLDBG_NO_SCFINDER)
 
-#if !defined(SRELLDBG_NO_SCFINDER) || defined(SRELL_HAS_SSE42)
-
 	template <typename BidiIter, int N>
 	struct contiguous_checker
 	{
@@ -9734,8 +9738,6 @@ SRELL_NO_VCWARNING_END
 	};
 
 #endif
-
-#endif	//  !defined(SRELLDBG_NO_SCFINDER) || defined(SRELL_HAS_SSE42)
 
 	template <typename T, const bool>
 	struct casehelper
