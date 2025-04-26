@@ -1,4 +1,4 @@
-//  Generated on 2024/10/04.
+//  Generated on 2025/04/20.
 
 struct testdata
 {
@@ -50,6 +50,22 @@ testdata tests[] = {
 },
 #endif	//  !defined(NO_VMODE)
 
+{
+	0, "Compilation error 05: Out of range backref number 1.\n",
+	"E",
+	RE("a\\1"),
+	STR(""),
+	srell::regex_constants::error_backref, 0,
+	STR0("")
+},
+{
+	0, "Compilation error 06: Out of range backref number 2.\n",
+	"E",
+	RE("(?<=\\1a)"),
+	STR(""),
+	srell::regex_constants::error_backref, 0,
+	STR0("")
+},
 	//  Backreference.
 {
 	0, "Backref 01.\n",
@@ -926,6 +942,14 @@ testdata tests[] = {
 	STR0("aa")
 	STR0("AA")
 },
+{
+	0, "Modifiers 09: Nested flags #1.\n",
+	"",
+	RE("(?i:a(?s:a))"),
+	STR("AA"),
+	0, 1,
+	STR0("AA")
+},
 	//  Optimisations' side effect check.
 	//  gather_nextchars().
 {
@@ -1206,6 +1230,15 @@ testdata tests[] = {
 	STR0("2023")
 	STR0("8")
 	STR0("21")
+},
+{
+	0, "OSEC, EPS-v2 07: Replacement and restoration of lblim.\n",
+	"3",
+	RE(".*e(?<=(.*))"),
+	STR("0123abcdef"),
+	4, 2,
+	STR0("abcde")
+	STR0("0123abcde")
 },
 	//  branch_optimisation().
 {

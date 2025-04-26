@@ -1,3 +1,30 @@
+20250420; version 4.065:
+  ・内部のメモリ処理の改良。
+  ・SRELL_NO_THROW定義時用に、regex_token_iteratorにもecode()メンバ函数
+    を追加。
+  ・reinterpret_castの正しくない使い方をしていた箇所を修正。
+  ・SRELL_STRICT_IMPLとSRELL_NO_THROWとを同時に定義できるように改良。
+  ・後方参照番号が正規表現中に出現する括弧の総数を超えていてもエラーにな
+    らず暗黙のうちに無視されていた問題を修正。
+  ・Modifiersが入れ子で使われると外側のフラグ変更が内側のグループに継承
+    されていなかった問題を修正。たとえば (?i:a(?s:a)) は "AA" にマッチし
+    ませんでした。
+  ・std::basic_stringを検索対象とするregex_search()に、検索開始位置を指
+    定できるoverloadを追加。
+  ・上と同じoverloadをbasic_regex.search()にも追加。
+  ・パターンコンパイル時における極端な状況への配慮を追加：
+    ・括弧の総数、内部カウンタを必要とする繰り返しの総数、0幅チェッカの
+      総数、このどれかが32bit値の最大値に達した場合にはerror_complexity
+      をthrowするようにしました。
+    ・入れ子になっているグループや文字クラス（Vフラグモード時のみ）をパ
+      ーズする時、階層の深さの累計がSRELL_MAX_DEPTH（初期値は256）に到達
+      したらスタック溢れ防止のためerror_complexityをthrowするようにしま
+      した。
+  ・SRELL_NO_ICASEをdefineするとコンパイルできなくなっていた問題を修正。
+  ・独自拡張のうち、3つのイテレータを引数に取り、かつmatch_resultsを引数
+    に取らないregex_search()のoverloadを廃止。
+  ・SRELL_NO_THROW level 2の下準備。
+
 20250214; version 4.064:
   ・SIMD利用可能時にu32regex型のパターンコンパイルを行うとメモリが破壊さ
     れてしまうバグを修正。
