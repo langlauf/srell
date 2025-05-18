@@ -1,7 +1,22 @@
+20250518; version 4.066:
+  ・ECMAScriptの仕様に準拠していない振る舞いが3箇所あったので修正。
+    1. "" に対して /()*/ で検索した時、$1がundefined相当にならず "" にな
+       っていた。
+    2. \0の後ろに数字が続いていてもエラーにならなかった。
+    3. 正規表現が\cで終わっていてもエラーにならなかった。
+  ・syntax_option_typeにquietフラグを追加。
+  ・syntax_option_typeに既存のunicodesetsフラグの別名としてvmodeフラグを
+    追加。
+  ・照合用函数内に8箇所あったthrowする箇所を1箇所に統合。
+  ・conftestのexpectedが数ヶ所間違っていたので修正。
+  ・その他細々とした修正など。
+
 20250420; version 4.065:
   ・内部のメモリ処理の改良。
   ・SRELL_NO_THROW定義時用に、regex_token_iteratorにもecode()メンバ函数
     を追加。
+  ・照合用函数の改良。
+  ・match_results::format()の改良。
   ・reinterpret_castの正しくない使い方をしていた箇所を修正。
   ・SRELL_STRICT_IMPLとSRELL_NO_THROWとを同時に定義できるように改良。
   ・後方参照番号が正規表現中に出現する括弧の総数を超えていてもエラーにな

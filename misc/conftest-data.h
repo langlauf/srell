@@ -1,4 +1,4 @@
-//  Generated on 2025/04/20.
+//  Generated on 2025/05/18.
 
 struct testdata
 {
@@ -92,7 +92,7 @@ testdata tests[] = {
 	STR("ab"),
 	0, 2,
 	STR0("b")
-	STR0("")
+	STR0("(undefined)")
 },
 {
 	0, "Backref 04.\n",
@@ -363,6 +363,22 @@ testdata tests[] = {
 	STR("aBcD"),
 	0, 1,
 	STR0("aBcD")
+},
+{
+	0, "BMH 04a: Case-folded UTF-8 representation becomes longer in code unit.\n",
+	"8i",
+	RE("\\u023Az"),	//  023a (2 octets) -> 2c65 (3 octets).
+	STR("zzz\\u{023A}zzzz"),	//  Code unit(s): 1, 1, 1, 2, 1, 1, 1, 1.
+	0, 1,
+	STR0("\\u{023A}z")
+},
+{
+	0, "BMH 04b: Case-folded UTF-8 representation becomes longer in code unit.\n",
+	"8i",
+	RE("\\u023Ez"),	//  023e (2 octets) -> 2c66 (3 octets).
+	STR("zzz\\u{023E}zzzz"),
+	0, 1,
+	STR0("\\u{023E}z")
 },
 	//  Broken/corrupted UTF-8.
 {
@@ -1392,7 +1408,7 @@ testdata tests[] = {
 	STR("b"),
 	0, 2,
 	STR0("")
-	STR0("")
+	STR0("(undefined)")
 },
 {
 	0, "Test 5b (ECMAScript 2019 Language Specification 21.2.2.5.1, NOTE 4).\n",

@@ -1,6 +1,23 @@
+20250518; version 4.066:
+  * Fixed three minor issues being inconsistent with the ECMAScript
+    specification:
+    1. In the result of searching /()*/ against "", $1 was "" instead of
+       being unmatched.
+    2. No error was thrown even if \0 was followed by any digit.
+    3. No error was thrown even if the regex sequence ended with "\c".
+  * Added the "quiet" flag to syntax_option_type.
+  * Added the "vmode" flag as an alias to "unicodesets" to
+    syntax_option_type.
+  * Combined eight points of throwing an exception into one in the
+    matching algorithm function.
+  * Fixed several wrong expected results in conftest.
+  * Various minor fixes.
+
 20250420; version 4.065:
   * Improved internal memory handling.
   * Add ecode() to regex_token_iterator for SRELL_NO_THROW.
+  * Several improvements on the matching algorithm function.
+  * Improvements on match_results::format().
   * Replaced reinterpret_cast that had been used inappropriately with
     more proper code.
   * Improved the pattern compiler so that SRELL_STRICT_IMPL and
