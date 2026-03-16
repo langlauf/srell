@@ -1,3 +1,58 @@
+20260316; version 2026.01:
+  * Fixed a backreference bug originating from the fact that the fixes in
+    versions 4.001-4.003 and the rewinder do not consider each other.
+    (Thanks to Rimas Misevičius for the report.)
+
+20260316; version 2026.00:
+  * Changed the include guard name. Its value represents the version
+    number.
+  * Simplified the definition of match_results::size_type.
+  * Fixed an optimisation bug that caused a crash when such an
+    expression as /(?:|)a/, /(?:a|)a/ was given. Conditions:
+      1. A non-capturing group is followed by at least one character,
+      2. The group contains a '|' and all Alternatives separated by it
+         are empty or begin with the same character as the one following
+         the group.
+    (Thanks to Rimas Misevičius for the report.)
+
+20251227; version 4.140:
+  * Fixed several undefined behaviour problems warned by GCC/Clang's
+    ubsan (undefined behaviour sanitizer). (Thanks to Avi Hayoun for the
+    report.)
+
+20251214; version 4.130:
+  * Extended the change made in the previous version so that no
+    compilation error would occur even if both _MSC_VER and __GNUC__ are
+    defined at the same time.
+
+20251130; version 4.120:
+  * Adopted a patch to fix a compilation error with clang-cl. (Thanks to
+    Rimas Misevičius for the patch.)
+
+20251111; version 4.110:
+  * Unified the pattern compiler's finalise operations into one place.
+  * Combined four algorithm core functions into two, to solve a matching
+    performance problem within a subexpression where the icase flag is
+    modified (?i-i:) having been slower than pure icase matching.
+    (Secondarily, this change reduces binary size.)
+  * Fixed a bug that caused BMH 04a and 04b in conftest to fail when
+    searching with bidirectional iterators (since version 2.710).
+  * Updated unicode/ucfdataout2.cpp and unicode/updataout3.cpp.
+
+20251010; version 4.100:
+  * Now SRELL requires that the bit widths of int and size_t be at least
+    32.
+  * Based on the additional requirement above, simplified the code in
+    some places.
+  * Modified overloads of constructors, assign(), and operator=() of
+    basic_regex for supporting string_view etc.
+  * Other minor improvements:
+    1. Switch to CPU cache friendly Boyer-Moore-Horspool data.
+    2. Pre-C++11 compilers had been unable to compile
+       regex_token_iterator since version 4.065 owing to lack of data()
+       in std::vector.
+    3. Coexistence of SIMD info and info for non-contiguous iterators.
+
 20250928; version 4.090:
   * Improved memory efficiency in lookup for Unicode property names and
     values.

@@ -1,3 +1,52 @@
+20260316; version 2026.01:
+  ・Versions 4.001-4.003での修正とrewinderとの相性が悪さに由来する後方参
+    照バグを修正（報告してくださったRimas Misevičius氏に感謝します）。
+
+20260316; version 2026.00:
+  ・Include guard名を変更。値にヴァージョン番号を定義。
+  ・match_results::size_typeの定義を簡略化。
+  ・/(?:|)a/ や /(?:a|)a/ のような表現で誤った最適化により落ちるバグを
+    修正。発生条件：
+      1. 非キャプチャグループの後ろに1文字以上続いている。
+      2. そのグループ内に '|' があり、それに隔てられたすべての
+         Alternativesが空、もしくはグループに後続している文字と同じ文字
+         で始まっている。
+    （報告してくださったRimas Misevičius氏に感謝します）
+
+20251227; version 4.140:
+  ・GCC/Clangのubsan (undefined behaviour sanitizer) が警告を発する問題
+    に対処（報告してくださったAvi Hayoun氏に感謝します）。
+
+20251214; version 4.130:
+  ・前版の変更を拡張し、_MSC_VERと__GNUC__とが同時に定義されてもエラーと
+    ならないように。
+
+20251130; version 4.120:
+  ・Clang-clでコンパイルエラーとなる問題を修正（パッチを送ってくださった
+    Rimas Misevičius氏に感謝します）。
+
+20251111; version 4.110:
+  ・パターンコンパイル最後に行う複数のfinalise処理を一纏めに。
+  ・アルゴリズムの中心函数4つを2つに統合。icaseフラグを変更した部分
+    (?i-i:)の速度が純粋なicase検索より遅い問題を解消（この変更によりバイ
+    ナリサイズの削減ももたらされています）。
+  ・Bidirectional iteratorによる検索時にconftestのBMH 04aと04bとがパスし
+    ないバグを修正（2.710以降）。
+  ・unicode/ucfdataout2.cppとunicode/updataout3.cppとを更新。
+
+20251010; version 4.100:
+  ・intおよびsize_tのビット幅が32以上であることを求めるように。
+  ・上の要件追加により、一部のコードを簡略化。
+  ・basic_regexのコンストラクタ、assign(), operator=()をstring_view対応
+    に。
+  ・その他細々とした改良：
+    1. CPUキャッシュと相性の良いBoyer-Moore-Horspoolデータに。
+    2. C++11より前のコンパイラにはstd::vectorにdata()メンバがないため、
+       version 4.065以降でregex_token_iteratorがコンパイルできなくなって
+       いました。
+    3. SIMD用の情報とcontiguousではないイテレータ用の情報とが共存できる
+       ように。
+
 20250928; version 4.090:
   ・Unicode property名を引く時のメモリ使用効率を改良。
   ・bad_allocなしモード（SRELL_NO_THROW 2）対応無期限延期につき、関連コ
